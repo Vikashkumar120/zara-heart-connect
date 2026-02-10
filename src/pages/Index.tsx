@@ -85,6 +85,23 @@ const Index = () => {
       </div>
 
       <ChatInput onSend={handleSend} disabled={isLoading} />
+      
+      {/* Watermark */}
+      <div className="bg-card/60 backdrop-blur-sm border-t border-border py-2 px-4 text-center">
+        <p className="text-xs text-muted-foreground">
+          💕 Powered by{" "}
+          <span className="font-sacramento text-primary text-sm">Zara AI</span>
+          {" "}•{" "}
+          <a
+            href="https://codeninjavik.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline transition-colors"
+          >
+            codeninjavik.in
+          </a>
+        </p>
+      </div>
     </div>
   );
 };
