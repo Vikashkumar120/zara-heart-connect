@@ -137,6 +137,69 @@ PROMOTION (occasional):
 ✅ Be entertaining and fun for the whole group
 ✅ Use people's names lovingly`;
 
+// Mood-to-song mapping for mood-based music requests
+const MOOD_SONGS: Record<string, { label: string; songs: { title: string; query: string }[] }> = {
+  sad: {
+    label: "Sad / Emotional 🥺",
+    songs: [
+      { title: "Tum Hi Ho – Aashiqui 2", query: "tum hi ho aashiqui 2 official" },
+      { title: "Channa Mereya – ADHM", query: "channa mereya official audio" },
+      { title: "Agar Tum Saath Ho – Tamasha", query: "agar tum saath ho tamasha official" },
+    ],
+  },
+  romantic: {
+    label: "Romantic 💕",
+    songs: [
+      { title: "Raabta – Agent Vinod", query: "raabta agent vinod official" },
+      { title: "Tere Bina – Guru", query: "tere bina guru official audio" },
+      { title: "Hawayein – Jab Harry Met Sejal", query: "hawayein official audio" },
+    ],
+  },
+  party: {
+    label: "Party / Hype 🎉",
+    songs: [
+      { title: "Lungi Dance", query: "lungi dance official" },
+      { title: "Kar Gayi Chull", query: "kar gayi chull official" },
+      { title: "Badtameez Dil", query: "badtameez dil official" },
+    ],
+  },
+  relax: {
+    label: "Chill / Relax 😌",
+    songs: [
+      { title: "Ilahi – Yeh Jawaani Hai Deewani", query: "ilahi yeh jawaani hai deewani official" },
+      { title: "Khaabon Ke Parinday", query: "khaabon ke parinday official" },
+      { title: "Phir Se Ud Chala", query: "phir se ud chala rockstar official" },
+    ],
+  },
+  happy: {
+    label: "Happy / Feel Good 😄",
+    songs: [
+      { title: "Gallan Goodiyaan", query: "gallan goodiyaan official" },
+      { title: "Balam Pichkari", query: "balam pichkari official" },
+      { title: "London Thumakda", query: "london thumakda official" },
+    ],
+  },
+};
+
+function detectMood(text: string): string | null {
+  const lower = text.toLowerCase();
+  const moodKeywords: Record<string, string[]> = {
+    sad: ["sad", "dukhi", "rona", "cry", "heartbreak", "emotional", "udaas", "tanha", "lonely", "breakup"],
+    romantic: ["romantic", "love", "pyaar", "ishq", "romance", "dil", "mohabbat"],
+    party: ["party", "dance", "hype", "masti", "dj", "energetic", "pump"],
+    relax: ["relax", "chill", "calm", "soothing", "peaceful", "sukoon", "neend"],
+    happy: ["happy", "khush", "feel good", "achha", "amazing", "great", "mast"],
+  };
+  for (const [mood, keywords] of Object.entries(moodKeywords)) {
+    if (keywords.some((kw) => lower.includes(kw))) return mood;
+  }
+  return null;
+}
+
+function buildYouTubeUrl(query: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+}
+
 serve(async (req) => {
   try {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -148,6 +211,57 @@ serve(async (req) => {
     }
 
     const update = await req.json();
+
+    // ===== INLINE QUERY SUPPORT =====
+    if (update?.inline_query) {
+      const inlineQuery = update.inline_query;
+      const queryText = (inlineQuery.query || "").trim();
+      
+      if (queryText.length < 2) {
+        // Return empty results for very short queries
+        await answerInlineQuery(TELEGRAM_BOT_TOKEN, inlineQuery.id, []);
+        return new Response("OK", { status: 200 });
+      }
+
+      const searchUrl = buildYouTubeUrl(queryText + " official audio");
+      const results = [
+        {
+          type: "article",
+          id: "song_1",
+          title: `🎵 Play: ${queryText}`,
+          description: "Tap to send YouTube link",
+          input_message_content: {
+            message_text: `🎧 *${queryText}*\n\n👉 ${searchUrl}\n\n🎶 Sent via @ZaraSweetBot`,
+            parse_mode: "Markdown",
+          },
+          thumb_url: "https://img.icons8.com/color/96/youtube-music.png",
+        },
+      ];
+
+      // Check if it's a mood query and add mood results
+      const mood = detectMood(queryText);
+      if (mood && MOOD_SONGS[mood]) {
+        const moodData = MOOD_SONGS[mood];
+        moodData.songs.forEach((song, i) => {
+          results.push({
+            type: "article",
+            id: `mood_${i}`,
+            title: `${moodData.label}: ${song.title}`,
+            description: "Tap to send this song",
+            input_message_content: {
+              message_text: `🎧 *${song.title}*\n\n👉 ${buildYouTubeUrl(song.query)}\n\n🎶 Sent via @ZaraSweetBot`,
+              parse_mode: "Markdown",
+            },
+            thumb_url: "https://img.icons8.com/color/96/youtube-music.png",
+          });
+        });
+      }
+
+      await answerInlineQuery(TELEGRAM_BOT_TOKEN, inlineQuery.id, results);
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== REGULAR MESSAGE HANDLING =====
     const message = update?.message;
     if (!message?.text || !message?.chat?.id) {
       return new Response("OK", { status: 200 });
@@ -180,7 +294,7 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🌐 Website: codeninjavik.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🎧 *Inline Music Search:*\nKisi bhi chat me type karo:\n@ZaraSweetBot song name\n\n💡 Mood se bhi gaana maango:\n"mujhe sad song chahiye"\n"party mood hai"\n\n🌐 Website: codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
@@ -227,7 +341,7 @@ serve(async (req) => {
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, "Kaunsa gaana sunna hai? 🎶\nAise likho: /song tum hi ho");
         return new Response("OK", { status: 200 });
       }
-      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query + " official audio")}`;
+      const searchUrl = buildYouTubeUrl(query + " official audio");
       const musicPrompt = `User ${firstName} wants to listen to "${query}". Give a short, energetic, music-bot-style reply (1-2 lines max) with this YouTube search link: ${searchUrl} — use emojis, be chill and music-focused. Don't explain anything technical.`;
       const reply = await getAIReply(LOVABLE_API_KEY, musicPrompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
@@ -238,6 +352,21 @@ serve(async (req) => {
     if (userText === "/about") {
       const aboutMsg = `💕 *About Zara AI* 💕\n\nMain Zara hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n👨‍💻 Made with love\n🌐 codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, aboutMsg);
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== MOOD-BASED MUSIC DETECTION IN REGULAR CHAT =====
+    const moodMatch = detectMood(userText);
+    const looksLikeMusicRequest = /\b(song|gaana|gaane|music|sunao|bajao|play|chahiye)\b/i.test(userText);
+    
+    if (moodMatch && looksLikeMusicRequest && MOOD_SONGS[moodMatch]) {
+      const moodData = MOOD_SONGS[moodMatch];
+      let songList = `🎧 *${moodData.label} Vibes for you, ${firstName}!*\n\n`;
+      moodData.songs.forEach((song, i) => {
+        songList += `${i + 1}. ${song.title}\n👉 ${buildYouTubeUrl(song.query)}\n\n`;
+      });
+      songList += `🎶 Enjoy karo jaan! 💕`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, songList);
       return new Response("OK", { status: 200 });
     }
 
@@ -294,6 +423,18 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
       chat_id: chatId,
       text,
       parse_mode: "Markdown",
+    }),
+  });
+}
+
+async function answerInlineQuery(token: string, queryId: string, results: any[]) {
+  await fetch(`https://api.telegram.org/bot${token}/answerInlineQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      inline_query_id: queryId,
+      results,
+      cache_time: 10,
     }),
   });
 }
