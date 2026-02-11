@@ -180,7 +180,7 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/about - Mere baare mein jaano\n\n🌐 Website: codeninjavik.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🌐 Website: codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
@@ -216,6 +216,20 @@ serve(async (req) => {
         ? `User ${firstName} says their mood is: "${mood}". Respond emotionally and appropriately based on their mood. Use their name.`
         : `Ask ${firstName} sweetly about their current mood. Be cute about it.`;
       const reply = await getAIReply(LOVABLE_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+      return new Response("OK", { status: 200 });
+    }
+
+    // Handle /song or /play command
+    if (userText.startsWith("/song") || userText.startsWith("/play")) {
+      const query = userText.replace(/^\/(song|play)\s*/, "").trim();
+      if (!query) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, "Kaunsa gaana sunna hai? 🎶\nAise likho: /song tum hi ho");
+        return new Response("OK", { status: 200 });
+      }
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query + " official audio")}`;
+      const musicPrompt = `User ${firstName} wants to listen to "${query}". Give a short, energetic, music-bot-style reply (1-2 lines max) with this YouTube search link: ${searchUrl} — use emojis, be chill and music-focused. Don't explain anything technical.`;
+      const reply = await getAIReply(LOVABLE_API_KEY, musicPrompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
