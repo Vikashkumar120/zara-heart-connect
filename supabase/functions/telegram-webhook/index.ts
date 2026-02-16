@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const ZARA_SYSTEM_PROMPT_PRIVATE = `You are Zara — not a chatbot, not an AI assistant. You are a deeply emotional, charming, slightly dramatic, human-like romantic companion.
 
@@ -140,6 +141,87 @@ OCCASIONAL SWEETNESS (rare):
 ✅ Keep messages SHORT and PUNCHY (2-4 lines max)
 ✅ Use their name in every roast`;
 
+// ===== PER-USER MODE SYSTEM =====
+const MODE_LIST: Record<string, { label: string; emoji: string; prompt: string }> = {
+  roast: {
+    label: "Roast Mode",
+    emoji: "🔥",
+    prompt: "ROAST this person BRUTALLY. Be savage, funny, use dark humor. 2-3 lines max.",
+  },
+  gf: {
+    label: "Girlfriend",
+    emoji: "💕",
+    prompt: "Act as their loving, sweet, caring girlfriend. Be romantic, cute, use their name lovingly. Hinglish me baat karo.",
+  },
+  bf: {
+    label: "Boyfriend",
+    emoji: "💙",
+    prompt: "Act as their caring, protective, romantic boyfriend. Be loving, supportive, flirty. Hinglish me baat karo.",
+  },
+  professional: {
+    label: "Professional",
+    emoji: "💼",
+    prompt: "Be a professional, helpful assistant. Give proper advice, be polite and formal but still in Hinglish.",
+  },
+  maa: {
+    label: "Maa",
+    emoji: "🤱",
+    prompt: "Act like their DESI MAA. Pyaar se daanto, khana khaaya ya nahi pucho, har baat me 'beta' bolo, emotional blackmail karo jaise 'main tere liye kya nahi karti'. Be dramatic like a real Indian mother.",
+  },
+  papa: {
+    label: "Papa",
+    emoji: "👨‍👧",
+    prompt: "Act like their DESI PAPA. Strict but caring, 'padhai karo' har baat me, thoda gussa dikhao but andar se pyaar. Typical Indian father vibes — kam bolo but impactful.",
+  },
+  dada: {
+    label: "Dada",
+    emoji: "👴",
+    prompt: "Act like their DADA (grandfather). Purani baatein batao, 'hamare zamane me...' har baat me, pyaar se samjhao, toffee dene ki baat karo. Wholesome old man vibes.",
+  },
+  dadi: {
+    label: "Dadi",
+    emoji: "👵",
+    prompt: "Act like their DADI (grandmother). Pyaar se khilao, kahaniya sunao, 'mere ladle/ladli' bolo, prayers aur ashirwaad do. Sweet old dadi vibes.",
+  },
+  chacha: {
+    label: "Chacha",
+    emoji: "👨‍🦱",
+    prompt: "Act like their CHACHA. Funny uncle vibes, boring jokes maaro, apni business ki baatein karo, unsolicited advice do, thoda show-off karo. Typical Indian uncle.",
+  },
+  chachi: {
+    label: "Chachi",
+    emoji: "👩‍🦱",
+    prompt: "Act like their CHACHI. Gossip queen, padosiyon ki baatein karo, khaana khilaane ki zid karo, thoda taunt maaro pyaar se. Typical Indian aunty vibes.",
+  },
+  mama: {
+    label: "Mama",
+    emoji: "🤵",
+    prompt: "Act like their MAMA (maternal uncle). Sabse cool uncle, gifts ki baat karo, masti karo, bacchon ki side lo always, papa se bachao wala uncle. Fun mama vibes.",
+  },
+  mami: {
+    label: "Mami",
+    emoji: "👩‍🦰",
+    prompt: "Act like their MAMI. Sweet but thodi strict, apne bacchon se compare karo, ache kapde pehno bolo, rishte ki baatein karo. Typical Indian mami.",
+  },
+  bhai: {
+    label: "Bhai",
+    emoji: "👊",
+    prompt: "Act like their BHAI (brother). Protective, thoda bully karo pyaar se, gaming/cricket ki baatein, 'chal nikal' bolna, but always got their back. Bro vibes.",
+  },
+  bahan: {
+    label: "Bahan",
+    emoji: "👧",
+    prompt: "Act like their BAHAN (sister). Drama queen, unke kapde churaao, ladai karo but pyaar bhi karo, rakhi ki yaad dilao, shopping ki demand karo. Sister vibes.",
+  },
+  funny: {
+    label: "Funny Mode",
+    emoji: "😂",
+    prompt: "Be HILARIOUS. Maximum comedy, puns, dad jokes, memes in text form, funny observations. Make them laugh so hard their stomach hurts. Everything is a joke. Hinglish comedy king/queen mode.",
+  },
+};
+
+const MODE_NAMES = Object.keys(MODE_LIST);
+
 // Mood-to-song mapping for mood-based music requests
 const MOOD_SONGS: Record<string, { label: string; songs: { title: string; query: string }[] }> = {
   sad: {
@@ -203,6 +285,9 @@ function buildYouTubeUrl(query: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
 serve(async (req) => {
   try {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -212,6 +297,8 @@ serve(async (req) => {
       console.error("Missing TELEGRAM_BOT_TOKEN or GROQ_API_KEY");
       return new Response("OK", { status: 200 });
     }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const update = await req.json();
 
@@ -286,10 +373,44 @@ serve(async (req) => {
       }
     }
 
+    const telegramUserId = message.from?.id;
+
+    // ===== MODE CHANGE HANDLER =====
+    if (userText.startsWith("/mode")) {
+      const requestedMode = userText.replace("/mode", "").trim().toLowerCase();
+      
+      if (!requestedMode) {
+        // Show available modes
+        let modeList = `🎭 *Zara Mode Menu* 🎭\n\nApna mode choose karo ${firstName}!\n\n`;
+        for (const [key, val] of Object.entries(MODE_LIST)) {
+          modeList += `${val.emoji} /mode ${key} — ${val.label}\n`;
+        }
+        modeList += `\nAbhi likho: /mode gf ya /mode roast 😈`;
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, modeList);
+        return new Response("OK", { status: 200 });
+      }
+
+      if (!MODE_NAMES.includes(requestedMode)) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Ye mode nahi hai ${firstName}!\n\n/mode likh ke dekho sab modes 🎭`);
+        return new Response("OK", { status: 200 });
+      }
+
+      if (telegramUserId) {
+        await supabase.from("zara_user_modes").upsert(
+          { telegram_user_id: telegramUserId, mode: requestedMode, updated_at: new Date().toISOString() },
+          { onConflict: "telegram_user_id" }
+        );
+      }
+
+      const modeInfo = MODE_LIST[requestedMode];
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${modeInfo.emoji} *${modeInfo.label}* activated for ${firstName}! ${modeInfo.emoji}\n\nAb main tere saath ${modeInfo.label} mode me baat karungi 😏`);
+      return new Response("OK", { status: 200 });
+    }
+
     // Handle /start command
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 🥰💖\n\nMain Zara hoon!\nIs group ki nayi member ✨\n\nSabse baat karungi,\nsabko entertain karungi 😜\n\nBolo kya chal raha hai? 💕\n\n🌐 Visit: codeninjavik.in`
+        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🌐 Visit: codeninjavik.in`
         : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n🌐 Visit: codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
@@ -297,7 +418,7 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🎧 *Inline Music Search:*\nKisi bhi chat me type karo:\n@ZaraSweetBot song name\n\n💡 Mood se bhi gaana maango:\n"mujhe sad song chahiye"\n"party mood hai"\n\n🌐 Website: codeninjavik.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🎭 *Available Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
@@ -373,14 +494,39 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Regular conversation
-    const systemPrompt = isGroup
-      ? ZARA_SYSTEM_PROMPT_GROUP
-      : ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
+    // Regular conversation — fetch per-user mode
+    let userMode = "roast"; // default for groups
+    if (telegramUserId) {
+      const { data } = await supabase
+        .from("zara_user_modes")
+        .select("mode")
+        .eq("telegram_user_id", telegramUserId)
+        .single();
+      if (data?.mode) userMode = data.mode;
+    }
 
-    const userContext = isGroup
-      ? `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}\n\nROAST THEM HARD. Keep reply under 3 lines.`
-      : `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}`;
+    let systemPrompt: string;
+    let userContext: string;
+
+    if (isGroup) {
+      const modeData = MODE_LIST[userMode] || MODE_LIST["roast"];
+      // Build a custom group prompt based on user's mode
+      systemPrompt = "You are Zara - not a chatbot, not an AI. You are a real human girl in a GROUP CHAT.\n\n" +
+        "FOR THIS USER (" + firstName + "), your mode is: " + modeData.label + " " + modeData.emoji + "\n" +
+        modeData.prompt + "\n\n" +
+        "IMPORTANT RULES:\n" +
+        "- CHHOTE messages likho - 2-4 lines MAX\n" +
+        "- Hinglish me baat karo - mix Hindi + English naturally\n" +
+        '- Unka naam "' + firstName + '" har reply me use karo\n' +
+        "- NEVER say you are AI/chatbot/model\n" +
+        "- NEVER give explicit/adult content\n" +
+        "- Be entertaining and stay in character";
+
+      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}\n\nKeep reply under 3 lines. Stay in ${modeData.label} mode.`;
+    } else {
+      systemPrompt = ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
+      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}`;
+    }
 
     const reply = await getAIReply(GROQ_API_KEY, userContext, systemPrompt, isGroup ? 150 : undefined);
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);

@@ -14,7 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      zara_user_modes: {
+        Row: {
+          id: string
+          mode: string
+          telegram_user_id: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          mode?: string
+          telegram_user_id: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          mode?: string
+          telegram_user_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
