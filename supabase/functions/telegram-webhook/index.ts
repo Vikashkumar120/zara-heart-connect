@@ -203,10 +203,10 @@ function buildYouTubeUrl(query: string): string {
 serve(async (req) => {
   try {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
-    if (!TELEGRAM_BOT_TOKEN || !LOVABLE_API_KEY) {
-      console.error("Missing TELEGRAM_BOT_TOKEN or LOVABLE_API_KEY");
+    if (!TELEGRAM_BOT_TOKEN || !GROQ_API_KEY) {
+      console.error("Missing TELEGRAM_BOT_TOKEN or GROQ_API_KEY");
       return new Response("OK", { status: 200 });
     }
 
@@ -302,7 +302,7 @@ serve(async (req) => {
     // Handle /shayari command
     if (userText === "/shayari") {
       const prompt = `Write a beautiful romantic shayari in Hinglish for ${firstName}. Make it personal with their name. Add emojis. Keep it 4 lines.`;
-      const reply = await getAIReply(LOVABLE_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
@@ -310,7 +310,7 @@ serve(async (req) => {
     // Handle /compliment command
     if (userText === "/compliment") {
       const prompt = `Give ${firstName} a super sweet, cute compliment. Be dramatic and loving. Use their name.`;
-      const reply = await getAIReply(LOVABLE_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
@@ -318,7 +318,7 @@ serve(async (req) => {
     // Handle /joke command
     if (userText === "/joke") {
       const prompt = `Tell ${firstName} a funny Hinglish joke. Be witty and cute about it.`;
-      const reply = await getAIReply(LOVABLE_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
@@ -329,7 +329,7 @@ serve(async (req) => {
       const prompt = mood
         ? `User ${firstName} says their mood is: "${mood}". Respond emotionally and appropriately based on their mood. Use their name.`
         : `Ask ${firstName} sweetly about their current mood. Be cute about it.`;
-      const reply = await getAIReply(LOVABLE_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
@@ -343,7 +343,7 @@ serve(async (req) => {
       }
       const searchUrl = buildYouTubeUrl(query + " official audio");
       const musicPrompt = `User ${firstName} wants to listen to "${query}". Give a short, energetic, music-bot-style reply (1-2 lines max) with this YouTube search link: ${searchUrl} — use emojis, be chill and music-focused. Don't explain anything technical.`;
-      const reply = await getAIReply(LOVABLE_API_KEY, musicPrompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+      const reply = await getAIReply(GROQ_API_KEY, musicPrompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
@@ -379,7 +379,7 @@ serve(async (req) => {
       ? `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}`
       : `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}`;
 
-    const reply = await getAIReply(LOVABLE_API_KEY, userContext, systemPrompt);
+    const reply = await getAIReply(GROQ_API_KEY, userContext, systemPrompt);
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
 
     return new Response("OK", { status: 200 });
@@ -390,14 +390,14 @@ serve(async (req) => {
 });
 
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string): Promise<string> {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "llama-3.3-70b-versatile",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
