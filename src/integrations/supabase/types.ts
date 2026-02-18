@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      zara_game_scores: {
+        Row: {
+          chat_id: number
+          created_at: string
+          first_name: string
+          game_type: string
+          id: string
+          points: number
+          telegram_user_id: number
+        }
+        Insert: {
+          chat_id: number
+          created_at?: string
+          first_name?: string
+          game_type: string
+          id?: string
+          points?: number
+          telegram_user_id: number
+        }
+        Update: {
+          chat_id?: number
+          created_at?: string
+          first_name?: string
+          game_type?: string
+          id?: string
+          points?: number
+          telegram_user_id?: number
+        }
+        Relationships: []
+      }
       zara_user_modes: {
         Row: {
           id: string

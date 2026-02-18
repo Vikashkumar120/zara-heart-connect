@@ -497,8 +497,118 @@ serve(async (req) => {
 
         // Default: show game menu
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
-          `🎮 *Zara Game Zone!* 🎮\n\n${firstName}, kya khelna hai?\n\n🔢 /game guess — Number Guessing\n🧩 /game emoji — Emoji Movie Puzzle\n🔗 /game chain — Word Chain\n🤔 /game wyr — Would You Rather\n🎯 /game kbc — KBC Quiz\n\nGroup me sab khelo! 🔥`
+          `🎮 *Zara Game Zone!* 🎮\n\n${firstName}, kya khelna hai?\n\n🔢 /game guess — Number Guessing\n🧩 /game emoji — Emoji Movie Puzzle\n🔗 /game chain — Word Chain\n🤔 /game wyr — Would You Rather\n🎯 /game kbc — KBC Quiz\n\n⚔️ /challenge — Battle karo!\n🏆 /leaderboard — Top players\n\nGroup me sab khelo! 🔥`
         );
+        return new Response("OK", { status: 200 });
+      }
+
+      // /challenge - Battle between users
+      if (userText.startsWith("/challenge")) {
+        const challengeArg = userText.replace("/challenge", "").trim().toLowerCase();
+        const replyTo = message.reply_to_message;
+        
+        const challengeTypes: Record<string, { label: string; emoji: string; prompt: string }> = {
+          roast: {
+            label: "Roast Battle",
+            emoji: "🔥",
+            prompt: `Generate a BRUTAL roast battle scenario between ${firstName} and OPPONENT. Give both sides a savage roast line (2 lines each). Then declare a random winner. Hinglish. Emojis. Keep it fun and savage.`,
+          },
+          shayari: {
+            label: "Shayari Battle",
+            emoji: "📝",
+            prompt: `Generate a romantic/funny shayari battle between ${firstName} and OPPONENT. Give both sides a unique shayari (2 lines each). Then declare a random winner based on "whose shayari hit harder". Hinglish. Emojis.`,
+          },
+          joke: {
+            label: "Joke Battle",
+            emoji: "😂",
+            prompt: `Generate a joke battle between ${firstName} and OPPONENT. Give both sides a funny joke/one-liner (2 lines each). Then declare a random winner based on "who was funnier". Hinglish. Emojis.`,
+          },
+          rap: {
+            label: "Rap Battle",
+            emoji: "🎤",
+            prompt: `Generate a desi rap battle between ${firstName} and OPPONENT. Give both sides 2-3 lines of rap/bars. Then declare a random winner. Hinglish. Street style. Emojis.`,
+          },
+          flirt: {
+            label: "Flirt Battle",
+            emoji: "😏",
+            prompt: `Generate a flirt battle between ${firstName} and OPPONENT. Give both sides their best pickup line (2 lines each). Then declare a random winner based on "whose line was smoother". Hinglish. Emojis.`,
+          },
+        };
+
+        const challengeNames = Object.keys(challengeTypes);
+
+        if (!challengeArg || !challengeNames.includes(challengeArg.split(" ")[0])) {
+          let menu = `⚔️ *Challenge Arena!* ⚔️\n\n${firstName}, kisko challenge karna hai?\n\nKisi ke message pe reply karke likho:\n\n`;
+          for (const [key, val] of Object.entries(challengeTypes)) {
+            menu += `${val.emoji} /challenge ${key}\n`;
+          }
+          menu += `\nExample: Kisi ke message pe reply karo aur likho /challenge roast 🔥`;
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, menu);
+          return new Response("OK", { status: 200 });
+        }
+
+        const battleType = challengeArg.split(" ")[0];
+        const battle = challengeTypes[battleType];
+        const opponentName = replyTo?.from?.first_name || challengeArg.replace(battleType, "").trim() || "Mystery Opponent";
+        const opponentId = replyTo?.from?.id;
+
+        // Determine winner randomly
+        const winnerIsChallenger = Math.random() > 0.5;
+        const winnerName = winnerIsChallenger ? firstName : opponentName;
+        const winnerId = winnerIsChallenger ? telegramUserId : opponentId;
+
+        const battlePrompt = battle.prompt.replace(/OPPONENT/g, opponentName) + `\n\nThe WINNER is: ${winnerName}. Announce dramatically!`;
+        const reply = await getAIReply(GROQ_API_KEY, battlePrompt, ZARA_SYSTEM_PROMPT_GROUP, 300);
+
+        // Award point to winner
+        if (winnerId) {
+          await supabase.from("zara_game_scores").insert({
+            chat_id: chatId,
+            telegram_user_id: winnerId,
+            first_name: winnerName,
+            game_type: `challenge_${battleType}`,
+            points: 1,
+          });
+        }
+
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${battle.emoji} *${battle.label}!* ${battle.emoji}\n\n${firstName} ⚔️ ${opponentName}\n\n${reply}\n\n🏆 Winner ka point add ho gaya! /leaderboard dekho`);
+        return new Response("OK", { status: 200 });
+      }
+
+      // /leaderboard - Show top players
+      if (userText.startsWith("/leaderboard")) {
+        const { data: scores } = await supabase
+          .from("zara_game_scores")
+          .select("telegram_user_id, first_name, points")
+          .eq("chat_id", chatId);
+
+        if (!scores || scores.length === 0) {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🏆 *Leaderboard*\n\nAbhi tak koi score nahi hai ${firstName}! 😅\n\n/challenge ya /game khelo points earn karne ke liye! 🎮`);
+          return new Response("OK", { status: 200 });
+        }
+
+        // Aggregate scores per user
+        const userScores: Record<number, { name: string; total: number }> = {};
+        for (const s of scores) {
+          if (!userScores[s.telegram_user_id]) {
+            userScores[s.telegram_user_id] = { name: s.first_name, total: 0 };
+          }
+          userScores[s.telegram_user_id].total += s.points;
+        }
+
+        const sorted = Object.entries(userScores)
+          .sort(([, a], [, b]) => b.total - a.total)
+          .slice(0, 10);
+
+        const medals = ["🥇", "🥈", "🥉"];
+        let board = `🏆 *Group Leaderboard* 🏆\n\n`;
+        sorted.forEach(([, user], i) => {
+          const medal = medals[i] || `${i + 1}.`;
+          board += `${medal} *${user.name}* — ${user.total} points\n`;
+        });
+        board += `\n⚔️ /challenge se points kamao!\n🎮 /game se khelo!`;
+
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, board);
         return new Response("OK", { status: 200 });
       }
 
@@ -560,7 +670,7 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group-Only Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n/game - Mini games khelo 🎮\n\n🎮 *Games:*\n/game guess - Number guessing\n/game emoji - Emoji movie puzzle\n/game chain - Word chain\n/game wyr - Would you rather\n/game kbc - KBC quiz\n\n🎭 *Available Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group-Only Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n/game - Mini games khelo 🎮\n/challenge - Battle karo ⚔️\n/leaderboard - Top players 🏆\n\n🎮 *Games:*\n/game guess - Number guessing\n/game emoji - Emoji movie puzzle\n/game chain - Word chain\n/game wyr - Would you rather\n/game kbc - KBC quiz\n\n⚔️ *Challenges:*\n/challenge roast - Roast battle\n/challenge shayari - Shayari battle\n/challenge joke - Joke battle\n/challenge rap - Rap battle\n/challenge flirt - Flirt battle\n\n🎭 *Available Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
