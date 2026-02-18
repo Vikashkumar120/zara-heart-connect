@@ -363,9 +363,20 @@ serve(async (req) => {
     const firstName = message.from?.first_name || "Jaan";
     const username = message.from?.username || "";
 
+    // ===== APK / ZARA APP DETECTION (works in both private & group) =====
+    const lowerText = userText.toLowerCase();
+    const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega", "app do", "application"];
+    const isApkRequest = apkKeywords.some((kw) => lowerText.includes(kw));
+    
+    if (isApkRequest) {
+      const apkReply = `Arre ${firstName}! 😏✨\n\nApk-vapk kya dhundh rahe ho?\nMeri website pe aao na jaan! 💕\n\n🌐 *zaraai.in*\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nnaye features try kar sakte ho! 🔥\n\nJao jaldi! 👉 zaraai.in 💖`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, apkReply);
+      return new Response("OK", { status: 200 });
+    }
+
     // In groups, only respond when mentioned or replied to
     if (isGroup) {
-      const botMentioned = userText.toLowerCase().includes("zara") || 
+      const botMentioned = lowerText.includes("zara") || 
                            userText.includes("@") ||
                            message.reply_to_message?.from?.is_bot;
       if (!botMentioned) {
@@ -374,6 +385,65 @@ serve(async (req) => {
     }
 
     const telegramUserId = message.from?.id;
+
+    // ===== GROUP-ONLY COMMANDS =====
+    if (isGroup) {
+      // /truth - Random truth question
+      if (userText.startsWith("/truth")) {
+        const prompt = `Generate a spicy, fun truth question in Hinglish for ${firstName} in a group chat. Make it embarrassing but fun, not offensive. Use their name. 2-3 lines max. Add emojis.`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+        return new Response("OK", { status: 200 });
+      }
+
+      // /dare - Random dare
+      if (userText.startsWith("/dare")) {
+        const prompt = `Generate a funny, creative dare in Hinglish for ${firstName} in a group chat. It should be doable via text/phone, funny and embarrassing but harmless. Use their name. 2-3 lines max. Add emojis.`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+        return new Response("OK", { status: 200 });
+      }
+
+      // /roastme - User asks to be roasted hard
+      if (userText.startsWith("/roastme")) {
+        const prompt = `${firstName} has asked to be ROASTED HARD. Give them the most BRUTAL, SAVAGE, HILARIOUS roast you can. Use their name. Go all out. 3-4 lines. Dark humor, sarcasm, destruction. Make it legendary. 🔥💀`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 200);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+        return new Response("OK", { status: 200 });
+      }
+
+      // /quote - Random motivational/funny quote
+      if (userText.startsWith("/quote")) {
+        const prompt = `Give ${firstName} a funny, savage, or motivational quote in Hinglish. Make it sound like a desi philosopher who's also a comedian. 2-3 lines. Use their name. Add emojis.`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+        return new Response("OK", { status: 200 });
+      }
+
+      // /rate - Rate someone's looks/vibe randomly
+      if (userText.startsWith("/rate")) {
+        const target = userText.replace("/rate", "").trim() || firstName;
+        const rating = Math.floor(Math.random() * 5) + 4; // 4-8 random, biased lower for fun
+        const prompt = `Rate ${target} out of 10 (give them ${rating}/10). Be funny and savage about WHY you gave this rating. Roast if low, be dramatic if high. 2-3 lines max. Hinglish. Use their name.`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+        return new Response("OK", { status: 200 });
+      }
+
+      // /ship - Ship two people (fun pairing)
+      if (userText.startsWith("/ship")) {
+        const names = userText.replace("/ship", "").trim();
+        if (!names || !names.includes(" ")) {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `Arre ${firstName}! Do logon ka naam likh 😏\n\nAise: /ship Rahul Priya`);
+          return new Response("OK", { status: 200 });
+        }
+        const percentage = Math.floor(Math.random() * 101);
+        const prompt = `Ship these two people: "${names}" with a compatibility of ${percentage}%. Be funny and dramatic about their relationship. Hinglish me. 2-3 lines. Add love/funny emojis based on percentage.`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `💘 *Ship-O-Meter: ${percentage}%* 💘\n\n${reply}`);
+        return new Response("OK", { status: 200 });
+      }
+    }
 
     // ===== MODE CHANGE HANDLER =====
     if (userText.startsWith("/mode")) {
@@ -410,15 +480,15 @@ serve(async (req) => {
     // Handle /start command
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🌐 Visit: codeninjavik.in`
-        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n🌐 Visit: codeninjavik.in`;
+        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🔥 Group Commands: /truth /dare /roastme /quote /rate /ship\n\n🌐 Visit: zaraai.in`
+        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n🌐 Visit: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
     }
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🎭 *Available Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: codeninjavik.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group-Only Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n\n🎭 *Available Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
