@@ -432,93 +432,94 @@ serve(async (req) => {
       }
 
       // ===== SHORT COMMAND ALIASES =====
-      // Map short commands to their /game equivalents
-      const shortGameCommands: Record<string, string> = {
-        "/guess": "guess",
-        "/number": "guess",
-        "/emoji": "emoji",
-        "/puzzle": "emoji",
-        "/chain": "chain",
-        "/word": "chain",
-        "/wyr": "wyr",
-        "/rather": "wyr",
-        "/kbc": "kbc",
-        "/quiz": "quiz",
-        "/roastbattle": "roast",
-        "/shayaribattle": "shayari",
-        "/jokebattle": "joke",
-        "/rapbattle": "rap",
-        "/flirtbattle": "flirt",
-        "/lb": "leaderboard",
-      };
-
-      // Check for short game commands
       const firstWord = lowerText.split(" ")[0].split("@")[0]; // handle /guess@BotName
-      if (shortGameCommands[firstWord]) {
-        const mapped = shortGameCommands[firstWord];
-        if (mapped === "leaderboard") {
-          // Redirect to leaderboard logic below
-        } else if (["roast", "shayari", "joke", "rap", "flirt"].includes(mapped)) {
-          // Redirect to challenge - rewrite userText conceptually
-          const restOfText = userText.replace(firstWord, "").trim();
-          const fakeChallengeText = `/challenge ${mapped} ${restOfText}`;
-          // We'll handle inline below by setting gameArg
-        } else {
-          // It's a game command - handle directly
-          const gameArg = mapped;
-          
-          if (gameArg === "guess") {
-            const secretNum = Math.floor(Math.random() * 50) + 1;
-            const hint1 = secretNum % 2 === 0 ? "even" : "odd";
-            const hint2 = secretNum > 25 ? "25 se bada hai" : "25 se chhota ya equal hai";
-            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
-              `🔢 *Number Guessing Game!*\n\nMaine 1-50 ke beech ek number socha hai! 🤔\n\n💡 Hints:\n• Number ${hint1} hai\n• ${hint2}\n\n🎯 Answer: ||${secretNum}||\n\nSpoiler pe click karke check karo! 😈`
-            );
-            return new Response("OK", { status: 200 });
-          }
-          if (gameArg === "emoji") {
-            const emojiPuzzles = [
-              { emojis: "🦁👑", answer: "The Lion King", hint: "Disney movie" },
-              { emojis: "🕷️🧑", answer: "Spider-Man", hint: "Marvel hero" },
-              { emojis: "❄️👸", answer: "Frozen", hint: "Disney movie" },
-              { emojis: "🐍✈️", answer: "Snakes on a Plane", hint: "Hollywood movie" },
-              { emojis: "💀☠️🏴‍☠️", answer: "Pirates of the Caribbean", hint: "Johnny Depp movie" },
-              { emojis: "🏠🔑👻", answer: "Haunted House / Stree", hint: "Horror movie" },
-              { emojis: "🐒🍌👑", answer: "Jungle Book", hint: "Disney/Bollywood" },
-              { emojis: "💕🗼🇫🇷", answer: "Befikre / Paris romance", hint: "Bollywood + Paris" },
-              { emojis: "🏍️💨🔥", answer: "Dhoom", hint: "Bollywood action" },
-              { emojis: "🤴👧❤️🚢", answer: "Titanic", hint: "Classic romance" },
-              { emojis: "🧙‍♂️⚡📚", answer: "Harry Potter", hint: "Magic school" },
-              { emojis: "🐭👨‍🍳🇫🇷", answer: "Ratatouille", hint: "Cooking + rat" },
-            ];
-            const puzzle = emojiPuzzles[Math.floor(Math.random() * emojiPuzzles.length)];
-            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
-              `🧩 *Emoji Puzzle!*\n\nIs movie ka naam batao:\n\n${puzzle.emojis}\n\n💡 Hint: ${puzzle.hint}\n\n🎯 Answer: ||${puzzle.answer}||\n\nSpoiler pe click karo check karne ke liye! 🤓`
-            );
-            return new Response("OK", { status: 200 });
-          }
-          if (gameArg === "chain") {
-            const starters = ["Pyaar", "Dosti", "Sapna", "Gaadi", "Phone", "Cricket", "Biryani", "Mumbai", "College", "Paisa", "Drama", "Bollywood"];
-            const word = starters[Math.floor(Math.random() * starters.length)];
-            const lastLetter = word.slice(-1).toUpperCase();
-            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
-              `🔗 *Word Chain Game!*\n\nRules: Mera word ka last letter se naya word bolo! 🧠\n\nMera word: *${word}*\n\nAb "${lastLetter}" se shuru hone wala word batao! 💪\n\nSab participate karo! 🔥`
-            );
-            return new Response("OK", { status: 200 });
-          }
-          if (gameArg === "wyr") {
-            const prompt = `Generate a fun, spicy "Would You Rather" question in Hinglish for ${firstName} and the group. Make it funny, slightly embarrassing, desi-themed. Format: "Would you rather A ya B?" 2-3 lines. Emojis.`;
-            const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
-            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🤔 *Would You Rather?*\n\n${reply}`);
-            return new Response("OK", { status: 200 });
-          }
-          if (gameArg === "quiz") {
-            const prompt = `Generate a fun KBC-style quiz question in Hinglish with 4 options (A, B, C, D). Topic can be Bollywood, cricket, desi culture, memes, or general knowledge. Keep it fun not boring. Give the answer in spoiler format at end. Format it nicely with emojis. 4-5 lines max.`;
-            const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 250);
-            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *KBC with Zara!*\n\n${reply}`);
-            return new Response("OK", { status: 200 });
-          }
+
+      // Short leaderboard command
+      if (firstWord === "/lb") {
+        // Fall through to /leaderboard handler below
+      }
+
+      // Short challenge commands
+      else if (["/roastbattle", "/shayaribattle", "/jokebattle", "/rapbattle", "/flirtbattle"].includes(firstWord)) {
+        const challengeMap: Record<string, string> = {
+          "/roastbattle": "roast", "/shayaribattle": "shayari", "/jokebattle": "joke",
+          "/rapbattle": "rap", "/flirtbattle": "flirt",
+        };
+        const battleType = challengeMap[firstWord];
+        const replyTo = message.reply_to_message;
+        const challengeTypes: Record<string, { label: string; emoji: string; prompt: string }> = {
+          roast: { label: "Roast Battle", emoji: "🔥", prompt: `Generate a BRUTAL roast battle between ${firstName} and OPPONENT. 2 lines each side. Declare winner. Hinglish. Emojis.` },
+          shayari: { label: "Shayari Battle", emoji: "📝", prompt: `Generate a shayari battle between ${firstName} and OPPONENT. 2 lines each. Declare winner. Hinglish.` },
+          joke: { label: "Joke Battle", emoji: "😂", prompt: `Generate a joke battle between ${firstName} and OPPONENT. 2 lines each. Declare winner. Hinglish.` },
+          rap: { label: "Rap Battle", emoji: "🎤", prompt: `Generate a rap battle between ${firstName} and OPPONENT. 2-3 lines each. Declare winner. Hinglish.` },
+          flirt: { label: "Flirt Battle", emoji: "😏", prompt: `Generate a flirt battle between ${firstName} and OPPONENT. 2 lines each. Declare winner. Hinglish.` },
+        };
+        const battle = challengeTypes[battleType];
+        const opponentName = replyTo?.from?.first_name || "Mystery Opponent";
+        const opponentId = replyTo?.from?.id;
+        const winnerIsChallenger = Math.random() > 0.5;
+        const winnerName = winnerIsChallenger ? firstName : opponentName;
+        const winnerId = winnerIsChallenger ? telegramUserId : opponentId;
+        const battlePrompt = battle.prompt.replace(/OPPONENT/g, opponentName) + `\n\nThe WINNER is: ${winnerName}. Announce dramatically!`;
+        const reply = await getAIReply(GROQ_API_KEY, battlePrompt, ZARA_SYSTEM_PROMPT_GROUP, 300);
+        if (winnerId) {
+          await supabase.from("zara_game_scores").insert({ chat_id: chatId, telegram_user_id: winnerId, first_name: winnerName, game_type: `challenge_${battleType}`, points: 1 });
         }
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${battle.emoji} *${battle.label}!* ${battle.emoji}\n\n${firstName} ⚔️ ${opponentName}\n\n${reply}\n\n🏆 /lb dekho`);
+        return new Response("OK", { status: 200 });
+      }
+
+      // Short game commands — directly handle each
+      else if (["/guess", "/number"].includes(firstWord)) {
+        const secretNum = Math.floor(Math.random() * 50) + 1;
+        const hint1 = secretNum % 2 === 0 ? "even" : "odd";
+        const hint2 = secretNum > 25 ? "25 se bada hai" : "25 se chhota ya equal hai";
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          `🔢 *Number Guessing Game!*\n\nMaine 1-50 ke beech ek number socha hai! 🤔\n\n💡 Hints:\n• Number ${hint1} hai\n• ${hint2}\n\n🎯 Answer: ||${secretNum}||\n\nSpoiler pe click karke check karo! 😈`
+        );
+        return new Response("OK", { status: 200 });
+      }
+      else if (["/emoji", "/puzzle"].includes(firstWord)) {
+        const emojiPuzzles = [
+          { emojis: "🦁👑", answer: "The Lion King", hint: "Disney movie" },
+          { emojis: "🕷️🧑", answer: "Spider-Man", hint: "Marvel hero" },
+          { emojis: "❄️👸", answer: "Frozen", hint: "Disney movie" },
+          { emojis: "🐍✈️", answer: "Snakes on a Plane", hint: "Hollywood movie" },
+          { emojis: "💀☠️🏴‍☠️", answer: "Pirates of the Caribbean", hint: "Johnny Depp movie" },
+          { emojis: "🏠🔑👻", answer: "Haunted House / Stree", hint: "Horror movie" },
+          { emojis: "🐒🍌👑", answer: "Jungle Book", hint: "Disney/Bollywood" },
+          { emojis: "💕🗼🇫🇷", answer: "Befikre / Paris romance", hint: "Bollywood + Paris" },
+          { emojis: "🏍️💨🔥", answer: "Dhoom", hint: "Bollywood action" },
+          { emojis: "🤴👧❤️🚢", answer: "Titanic", hint: "Classic romance" },
+          { emojis: "🧙‍♂️⚡📚", answer: "Harry Potter", hint: "Magic school" },
+          { emojis: "🐭👨‍🍳🇫🇷", answer: "Ratatouille", hint: "Cooking + rat" },
+        ];
+        const puzzle = emojiPuzzles[Math.floor(Math.random() * emojiPuzzles.length)];
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          `🧩 *Emoji Puzzle!*\n\nIs movie ka naam batao:\n\n${puzzle.emojis}\n\n💡 Hint: ${puzzle.hint}\n\n🎯 Answer: ||${puzzle.answer}||\n\nSpoiler pe click karo check karne ke liye! 🤓`
+        );
+        return new Response("OK", { status: 200 });
+      }
+      else if (["/chain", "/word"].includes(firstWord)) {
+        const starters = ["Pyaar", "Dosti", "Sapna", "Gaadi", "Phone", "Cricket", "Biryani", "Mumbai", "College", "Paisa", "Drama", "Bollywood"];
+        const word = starters[Math.floor(Math.random() * starters.length)];
+        const lastLetter = word.slice(-1).toUpperCase();
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          `🔗 *Word Chain Game!*\n\nRules: Mera word ka last letter se naya word bolo! 🧠\n\nMera word: *${word}*\n\nAb "${lastLetter}" se shuru hone wala word batao! 💪\n\nSab participate karo! 🔥`
+        );
+        return new Response("OK", { status: 200 });
+      }
+      else if (["/wyr", "/rather"].includes(firstWord)) {
+        const prompt = `Generate a fun, spicy "Would You Rather" question in Hinglish for ${firstName} and the group. Make it funny, slightly embarrassing, desi-themed. Format: "Would you rather A ya B?" 2-3 lines. Emojis.`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🤔 *Would You Rather?*\n\n${reply}`);
+        return new Response("OK", { status: 200 });
+      }
+      else if (["/kbc", "/quiz"].includes(firstWord)) {
+        const prompt = `Generate a fun KBC-style quiz question in Hinglish with 4 options (A, B, C, D). Topic can be Bollywood, cricket, desi culture, memes, or general knowledge. Keep it fun not boring. Give the answer in spoiler format at end. Format it nicely with emojis. 4-5 lines max.`;
+        const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 250);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *KBC with Zara!*\n\n${reply}`);
+        return new Response("OK", { status: 200 });
       }
 
       // /game - Mini games for groups (also handles /game guess, /game emoji, etc.)
