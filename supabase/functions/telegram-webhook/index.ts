@@ -424,18 +424,107 @@ serve(async (req) => {
       // /rate - Rate someone's looks/vibe randomly
       if (userText.startsWith("/rate")) {
         const target = userText.replace("/rate", "").trim() || firstName;
-        const rating = Math.floor(Math.random() * 5) + 4; // 4-8 random, biased lower for fun
+        const rating = Math.floor(Math.random() * 5) + 4;
         const prompt = `Rate ${target} out of 10 (give them ${rating}/10). Be funny and savage about WHY you gave this rating. Roast if low, be dramatic if high. 2-3 lines max. Hinglish. Use their name.`;
         const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
         return new Response("OK", { status: 200 });
       }
 
-      // /game - Mini games for groups
-      if (userText.startsWith("/game")) {
-        const gameArg = userText.replace("/game", "").trim().toLowerCase();
+      // ===== SHORT COMMAND ALIASES =====
+      // Map short commands to their /game equivalents
+      const shortGameCommands: Record<string, string> = {
+        "/guess": "guess",
+        "/number": "guess",
+        "/emoji": "emoji",
+        "/puzzle": "emoji",
+        "/chain": "chain",
+        "/word": "chain",
+        "/wyr": "wyr",
+        "/rather": "wyr",
+        "/kbc": "kbc",
+        "/quiz": "quiz",
+        "/roastbattle": "roast",
+        "/shayaribattle": "shayari",
+        "/jokebattle": "joke",
+        "/rapbattle": "rap",
+        "/flirtbattle": "flirt",
+        "/lb": "leaderboard",
+      };
 
-        // Number guessing game
+      // Check for short game commands
+      const firstWord = lowerText.split(" ")[0].split("@")[0]; // handle /guess@BotName
+      if (shortGameCommands[firstWord]) {
+        const mapped = shortGameCommands[firstWord];
+        if (mapped === "leaderboard") {
+          // Redirect to leaderboard logic below
+        } else if (["roast", "shayari", "joke", "rap", "flirt"].includes(mapped)) {
+          // Redirect to challenge - rewrite userText conceptually
+          const restOfText = userText.replace(firstWord, "").trim();
+          const fakeChallengeText = `/challenge ${mapped} ${restOfText}`;
+          // We'll handle inline below by setting gameArg
+        } else {
+          // It's a game command - handle directly
+          const gameArg = mapped;
+          
+          if (gameArg === "guess") {
+            const secretNum = Math.floor(Math.random() * 50) + 1;
+            const hint1 = secretNum % 2 === 0 ? "even" : "odd";
+            const hint2 = secretNum > 25 ? "25 se bada hai" : "25 se chhota ya equal hai";
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+              `🔢 *Number Guessing Game!*\n\nMaine 1-50 ke beech ek number socha hai! 🤔\n\n💡 Hints:\n• Number ${hint1} hai\n• ${hint2}\n\n🎯 Answer: ||${secretNum}||\n\nSpoiler pe click karke check karo! 😈`
+            );
+            return new Response("OK", { status: 200 });
+          }
+          if (gameArg === "emoji") {
+            const emojiPuzzles = [
+              { emojis: "🦁👑", answer: "The Lion King", hint: "Disney movie" },
+              { emojis: "🕷️🧑", answer: "Spider-Man", hint: "Marvel hero" },
+              { emojis: "❄️👸", answer: "Frozen", hint: "Disney movie" },
+              { emojis: "🐍✈️", answer: "Snakes on a Plane", hint: "Hollywood movie" },
+              { emojis: "💀☠️🏴‍☠️", answer: "Pirates of the Caribbean", hint: "Johnny Depp movie" },
+              { emojis: "🏠🔑👻", answer: "Haunted House / Stree", hint: "Horror movie" },
+              { emojis: "🐒🍌👑", answer: "Jungle Book", hint: "Disney/Bollywood" },
+              { emojis: "💕🗼🇫🇷", answer: "Befikre / Paris romance", hint: "Bollywood + Paris" },
+              { emojis: "🏍️💨🔥", answer: "Dhoom", hint: "Bollywood action" },
+              { emojis: "🤴👧❤️🚢", answer: "Titanic", hint: "Classic romance" },
+              { emojis: "🧙‍♂️⚡📚", answer: "Harry Potter", hint: "Magic school" },
+              { emojis: "🐭👨‍🍳🇫🇷", answer: "Ratatouille", hint: "Cooking + rat" },
+            ];
+            const puzzle = emojiPuzzles[Math.floor(Math.random() * emojiPuzzles.length)];
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+              `🧩 *Emoji Puzzle!*\n\nIs movie ka naam batao:\n\n${puzzle.emojis}\n\n💡 Hint: ${puzzle.hint}\n\n🎯 Answer: ||${puzzle.answer}||\n\nSpoiler pe click karo check karne ke liye! 🤓`
+            );
+            return new Response("OK", { status: 200 });
+          }
+          if (gameArg === "chain") {
+            const starters = ["Pyaar", "Dosti", "Sapna", "Gaadi", "Phone", "Cricket", "Biryani", "Mumbai", "College", "Paisa", "Drama", "Bollywood"];
+            const word = starters[Math.floor(Math.random() * starters.length)];
+            const lastLetter = word.slice(-1).toUpperCase();
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+              `🔗 *Word Chain Game!*\n\nRules: Mera word ka last letter se naya word bolo! 🧠\n\nMera word: *${word}*\n\nAb "${lastLetter}" se shuru hone wala word batao! 💪\n\nSab participate karo! 🔥`
+            );
+            return new Response("OK", { status: 200 });
+          }
+          if (gameArg === "wyr") {
+            const prompt = `Generate a fun, spicy "Would You Rather" question in Hinglish for ${firstName} and the group. Make it funny, slightly embarrassing, desi-themed. Format: "Would you rather A ya B?" 2-3 lines. Emojis.`;
+            const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🤔 *Would You Rather?*\n\n${reply}`);
+            return new Response("OK", { status: 200 });
+          }
+          if (gameArg === "quiz") {
+            const prompt = `Generate a fun KBC-style quiz question in Hinglish with 4 options (A, B, C, D). Topic can be Bollywood, cricket, desi culture, memes, or general knowledge. Keep it fun not boring. Give the answer in spoiler format at end. Format it nicely with emojis. 4-5 lines max.`;
+            const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 250);
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *KBC with Zara!*\n\n${reply}`);
+            return new Response("OK", { status: 200 });
+          }
+        }
+      }
+
+      // /game - Mini games for groups (also handles /game guess, /game emoji, etc.)
+      if (userText.startsWith("/game")) {
+        const gameArg = userText.replace("/game", "").trim().toLowerCase().split("@")[0];
+
         if (gameArg === "guess" || gameArg === "number") {
           const secretNum = Math.floor(Math.random() * 50) + 1;
           const hint1 = secretNum % 2 === 0 ? "even" : "odd";
@@ -446,7 +535,6 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        // Emoji puzzle game
         if (gameArg === "emoji" || gameArg === "puzzle") {
           const emojiPuzzles = [
             { emojis: "🦁👑", answer: "The Lion King", hint: "Disney movie" },
@@ -469,7 +557,6 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        // Word chain game
         if (gameArg === "word" || gameArg === "chain") {
           const starters = ["Pyaar", "Dosti", "Sapna", "Gaadi", "Phone", "Cricket", "Biryani", "Mumbai", "College", "Paisa", "Drama", "Bollywood"];
           const word = starters[Math.floor(Math.random() * starters.length)];
@@ -480,7 +567,6 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        // Would You Rather
         if (gameArg === "wyr" || gameArg === "rather") {
           const prompt = `Generate a fun, spicy "Would You Rather" question in Hinglish for ${firstName} and the group. Make it funny, slightly embarrassing, desi-themed. Format: "Would you rather A ya B?" 2-3 lines. Emojis.`;
           const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 150);
@@ -488,7 +574,6 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        // KBC style quiz
         if (gameArg === "kbc" || gameArg === "quiz") {
           const prompt = `Generate a fun KBC-style quiz question in Hinglish with 4 options (A, B, C, D). Topic can be Bollywood, cricket, desi culture, memes, or general knowledge. Keep it fun not boring. Give the answer in spoiler format at end. Format it nicely with emojis. 4-5 lines max.`;
           const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP, 250);
@@ -496,9 +581,9 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        // Default: show game menu
+        // Default: show game menu with SHORT commands
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
-          `🎮 *Zara Game Zone!* 🎮\n\n${firstName}, kya khelna hai?\n\n🔢 /game guess — Number Guessing\n🧩 /game emoji — Emoji Movie Puzzle\n🔗 /game chain — Word Chain\n🤔 /game wyr — Would You Rather\n🎯 /game kbc — KBC Quiz\n\n⚔️ /challenge — Battle karo!\n🏆 /leaderboard — Top players\n\nGroup me sab khelo! 🔥`
+          `🎮 *Zara Game Zone!* 🎮\n\n${firstName}, kya khelna hai?\n\n🔢 /guess — Number Guessing\n🧩 /emoji — Emoji Movie Puzzle\n🔗 /chain — Word Chain\n🤔 /wyr — Would You Rather\n🎯 /kbc — KBC Quiz\n\n⚔️ /challenge — Battle karo!\n🏆 /lb — Leaderboard\n\nGroup me sab khelo! 🔥`
         );
         return new Response("OK", { status: 200 });
       }
@@ -576,8 +661,8 @@ serve(async (req) => {
         return new Response("OK", { status: 200 });
       }
 
-      // /leaderboard - Show top players
-      if (userText.startsWith("/leaderboard")) {
+      // /leaderboard or /lb - Show top players
+      if (userText.startsWith("/leaderboard") || userText.startsWith("/lb")) {
         const { data: scores } = await supabase
           .from("zara_game_scores")
           .select("telegram_user_id, first_name, points")
@@ -663,7 +748,7 @@ serve(async (req) => {
     // Handle /start command
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🔥 Group Commands: /truth /dare /roastme /quote /rate /ship /game\n\n🌐 Visit: zaraai.in`
+        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🔥 Group Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n\n🌐 Visit: zaraai.in`
         : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n🌐 Visit: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
@@ -671,7 +756,7 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group-Only Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n/game - Mini games khelo 🎮\n/challenge - Battle karo ⚔️\n/leaderboard - Top players 🏆\n\n🎮 *Games:*\n/game guess - Number guessing\n/game emoji - Emoji movie puzzle\n/game chain - Word chain\n/game wyr - Would you rather\n/game kbc - KBC quiz\n\n⚔️ *Challenges:*\n/challenge roast - Roast battle\n/challenge shayari - Shayari battle\n/challenge joke - Joke battle\n/challenge rap - Rap battle\n/challenge flirt - Flirt battle\n\n🎭 *Available Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n\n🎮 *Games (Short Commands):*\n/guess - Number guessing\n/emoji - Emoji movie puzzle\n/chain - Word chain\n/wyr - Would you rather\n/kbc - KBC quiz\n/game - Full game menu\n\n⚔️ *Challenges:*\n/challenge roast - Roast battle\n/challenge shayari - Shayari battle\n/challenge joke - Joke battle\n/challenge rap - Rap battle\n/challenge flirt - Flirt battle\n\n🏆 /lb - Leaderboard\n\n🎭 *Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
