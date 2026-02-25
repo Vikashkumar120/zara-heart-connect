@@ -374,12 +374,13 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // In groups, only respond when mentioned or replied to
+    // In groups, only respond when mentioned, replied to, or using a command
     if (isGroup) {
+      const isCommand = lowerText.startsWith("/");
       const botMentioned = lowerText.includes("zara") || 
                            userText.includes("@") ||
                            message.reply_to_message?.from?.is_bot;
-      if (!botMentioned) {
+      if (!isCommand && !botMentioned) {
         return new Response("OK", { status: 200 });
       }
     }
