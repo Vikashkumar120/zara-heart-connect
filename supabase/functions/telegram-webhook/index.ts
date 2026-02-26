@@ -868,6 +868,26 @@ serve(async (req) => {
     }
 
     const reply = await getAIReply(GROQ_API_KEY, userContext, systemPrompt, isGroup ? 150 : undefined);
+
+    // Random voice message chance — 15% private, 8% group
+    const voiceChance = isGroup ? 0.08 : 0.15;
+    const shouldSendVoice = Math.random() < voiceChance;
+    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+
+    if (shouldSendVoice && ELEVENLABS_API_KEY && reply.length < 300) {
+      try {
+        const cleanText = reply.replace(/[*_~`|]/g, "").replace(/\p{Emoji_Presentation}/gu, "").trim();
+        if (cleanText.length > 10) {
+          const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanText);
+          if (sent) {
+            return new Response("OK", { status: 200 });
+          }
+        }
+      } catch (voiceErr) {
+        console.error("Voice message failed, falling back to text:", voiceErr);
+      }
+    }
+
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
 
     return new Response("OK", { status: 200 });
@@ -914,6 +934,44 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
       parse_mode: "Markdown",
     }),
   });
+}
+
+async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId: number, text: string): Promise<boolean> {
+  const voiceId = "cgSgspJ2msm6clMCkdW9"; // Jessica — Hindi-friendly
+  const ttsResponse = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": elevenLabsKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: { stability: 0.4, similarity_boost: 0.75, style: 0.5, use_speaker_boost: true },
+      }),
+    }
+  );
+
+  if (!ttsResponse.ok) {
+    console.error("ElevenLabs TTS error:", ttsResponse.status);
+    return false;
+  }
+
+  const audioBuffer = await ttsResponse.arrayBuffer();
+  const audioBlob = new Blob([audioBuffer], { type: "audio/mpeg" });
+
+  const formData = new FormData();
+  formData.append("chat_id", chatId.toString());
+  formData.append("voice", audioBlob, "zara_voice.mp3");
+
+  const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendVoice`, {
+    method: "POST",
+    body: formData,
+  });
+
+  return sendResult.ok;
 }
 
 async function answerInlineQuery(token: string, queryId: string, results: any[]) {
