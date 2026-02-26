@@ -699,6 +699,55 @@ serve(async (req) => {
         return new Response("OK", { status: 200 });
       }
 
+      // /mystats - Show user's own stats
+      if (firstWord === "/mystats" || lowerText.startsWith("/mystats")) {
+        if (!telegramUserId) {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Stats nahi mil rahe ${firstName}! 😅`);
+          return new Response("OK", { status: 200 });
+        }
+
+        const { data: myScores } = await supabase
+          .from("zara_game_scores")
+          .select("game_type, points")
+          .eq("telegram_user_id", telegramUserId)
+          .eq("chat_id", chatId);
+
+        if (!myScores || myScores.length === 0) {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `📊 *${firstName} ki Stats*\n\nAbhi tak koi win nahi hai! 😅\n\n/challenge ya /kbc khelo points kamane ke liye! 🎮`);
+          return new Response("OK", { status: 200 });
+        }
+
+        const totalPoints = myScores.reduce((sum, s) => sum + s.points, 0);
+        const totalWins = myScores.length;
+
+        // Find favorite game type
+        const gameCount: Record<string, number> = {};
+        for (const s of myScores) {
+          gameCount[s.game_type] = (gameCount[s.game_type] || 0) + 1;
+        }
+        const favoriteGame = Object.entries(gameCount).sort(([, a], [, b]) => b - a)[0];
+
+        // Rank in group
+        const { data: allScores } = await supabase
+          .from("zara_game_scores")
+          .select("telegram_user_id, points")
+          .eq("chat_id", chatId);
+
+        let rank = 1;
+        if (allScores) {
+          const userTotals: Record<number, number> = {};
+          for (const s of allScores) {
+            userTotals[s.telegram_user_id] = (userTotals[s.telegram_user_id] || 0) + s.points;
+          }
+          const sorted = Object.entries(userTotals).sort(([, a], [, b]) => b - a);
+          rank = sorted.findIndex(([id]) => Number(id) === telegramUserId) + 1;
+        }
+
+        const statsMsg = `📊 *${firstName} ki Stats* 📊\n\n🏆 Total Wins: *${totalWins}*\n⭐ Total Points: *${totalPoints}*\n🎮 Favorite Game: *${favoriteGame[0]}* (${favoriteGame[1]} wins)\n📍 Group Rank: *#${rank}*\n\n⚔️ /challenge se aur points kamao!`;
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, statsMsg);
+        return new Response("OK", { status: 200 });
+      }
+
       // /ship - Ship two people (fun pairing)
       if (userText.startsWith("/ship")) {
         const names = userText.replace("/ship", "").trim();
@@ -712,6 +761,31 @@ serve(async (req) => {
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `💘 *Ship-O-Meter: ${percentage}%* 💘\n\n${reply}`);
         return new Response("OK", { status: 200 });
       }
+    }
+
+    // ===== /voice COMMAND — Zara replies with voice =====
+    if (lowerText.startsWith("/voice")) {
+      const voiceQuery = userText.replace(/^\/voice\s*/i, "").trim() || `Say something sweet and romantic to ${firstName} in Hinglish`;
+      const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+
+      if (!ELEVENLABS_API_KEY) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎤 Voice feature abhi setup nahi hai ${firstName}! 😅`);
+        return new Response("OK", { status: 200 });
+      }
+
+      const voiceSystemPrompt = isGroup ? ZARA_SYSTEM_PROMPT_GROUP : ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
+      const voiceReply = await getAIReply(GROQ_API_KEY, `${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. Keep it short and sweet for voice.`, voiceSystemPrompt, 100);
+      const cleanVoice = voiceReply.replace(/[*_~`|#]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
+
+      if (cleanVoice.length > 5) {
+        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanVoice);
+        if (sent) {
+          return new Response("OK", { status: 200 });
+        }
+      }
+      // Fallback to text
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, voiceReply);
+      return new Response("OK", { status: 200 });
     }
 
     // ===== MODE CHANGE HANDLER =====
@@ -749,7 +823,7 @@ serve(async (req) => {
     // Handle /start command
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🔥 Group Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n\n🌐 Visit: zaraai.in`
+        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🔥 Group Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n📊 Stats: /mystats\n🎤 Voice: /voice\n\n🌐 Visit: zaraai.in`
         : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n🌐 Visit: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
@@ -757,7 +831,7 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n\n🎮 *Games (Short Commands):*\n/guess - Number guessing\n/emoji - Emoji movie puzzle\n/chain - Word chain\n/wyr - Would you rather\n/kbc - KBC quiz\n/game - Full game menu\n\n⚔️ *Challenges:*\n/challenge roast - Roast battle\n/challenge shayari - Shayari battle\n/challenge joke - Joke battle\n/challenge rap - Rap battle\n/challenge flirt - Flirt battle\n\n🏆 /lb - Leaderboard\n\n🎭 *Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/voice - Meri awaaz suno 🎤\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n\n🎮 *Games (Short Commands):*\n/guess - Number guessing\n/emoji - Emoji movie puzzle\n/chain - Word chain\n/wyr - Would you rather\n/kbc - KBC quiz\n/game - Full game menu\n\n⚔️ *Challenges:*\n/challenge roast - Roast battle\n/challenge shayari - Shayari battle\n/challenge joke - Joke battle\n/challenge rap - Rap battle\n/challenge flirt - Flirt battle\n\n🏆 /lb - Leaderboard\n📊 /mystats - Apni stats dekho\n🎤 /voice - Voice message\n\n🎭 *Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
@@ -938,6 +1012,8 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
 
 async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId: number, text: string): Promise<boolean> {
   const voiceId = "cgSgspJ2msm6clMCkdW9"; // Jessica — Hindi-friendly
+  
+  // Use ogg_opus format — required by Telegram sendVoice
   const ttsResponse = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
     {
@@ -955,21 +1031,44 @@ async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId:
   );
 
   if (!ttsResponse.ok) {
-    console.error("ElevenLabs TTS error:", ttsResponse.status);
+    const errText = await ttsResponse.text();
+    console.error("ElevenLabs TTS error:", ttsResponse.status, errText);
     return false;
   }
 
-  const audioBuffer = await ttsResponse.arrayBuffer();
-  const audioBlob = new Blob([audioBuffer], { type: "audio/mpeg" });
+  const audioBytes = new Uint8Array(await ttsResponse.arrayBuffer());
+  console.log("TTS audio bytes received:", audioBytes.length);
 
-  const formData = new FormData();
-  formData.append("chat_id", chatId.toString());
-  formData.append("voice", audioBlob, "zara_voice.mp3");
+  // Telegram sendVoice accepts MP3 as well — send as audio file using multipart
+  const boundary = "----ZaraVoiceBoundary" + Date.now();
+  const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+  const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="voice.mp3"\r\nContent-Type: audio/mpeg\r\n\r\n`;
+  const endPart = `\r\n--${boundary}--\r\n`;
+
+  const encoder = new TextEncoder();
+  const chatIdBytes = encoder.encode(chatIdPart);
+  const filePartBytes = encoder.encode(filePart);
+  const endPartBytes = encoder.encode(endPart);
+
+  // Combine all parts into one Uint8Array
+  const totalLength = chatIdBytes.length + filePartBytes.length + audioBytes.length + endPartBytes.length;
+  const body = new Uint8Array(totalLength);
+  let offset = 0;
+  body.set(chatIdBytes, offset); offset += chatIdBytes.length;
+  body.set(filePartBytes, offset); offset += filePartBytes.length;
+  body.set(audioBytes, offset); offset += audioBytes.length;
+  body.set(endPartBytes, offset);
 
   const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendVoice`, {
     method: "POST",
-    body: formData,
+    headers: {
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+    },
+    body: body,
   });
+
+  const sendResultText = await sendResult.text();
+  console.log("Telegram sendVoice result:", sendResult.status, sendResultText);
 
   return sendResult.ok;
 }
