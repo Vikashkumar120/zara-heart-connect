@@ -351,14 +351,23 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== REGULAR MESSAGE HANDLING =====
+    // ===== REGULAR MESSAGE HANDLING (text + voice) =====
     const message = update?.message;
-    if (!message?.text || !message?.chat?.id) {
+    
+    // Handle voice messages from user — transcribe concept via text
+    let userText = message?.text || "";
+    const isVoiceMsg = !!message?.voice;
+    
+    if (isVoiceMsg && message?.chat?.id) {
+      // User sent voice — we can't transcribe but acknowledge and reply
+      userText = "[User sent a voice message]";
+    }
+    
+    if (!userText || !message?.chat?.id) {
       return new Response("OK", { status: 200 });
     }
 
     const chatId = message.chat.id;
-    const userText = message.text;
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
     const firstName = message.from?.first_name || "Jaan";
     const username = message.from?.username || "";
@@ -773,12 +782,20 @@ serve(async (req) => {
         return new Response("OK", { status: 200 });
       }
 
+      // Fetch user mode for voice config
+      let voiceMode = "gf";
+      if (telegramUserId) {
+        const { data: modeData } = await supabase.from("zara_user_modes").select("mode").eq("telegram_user_id", telegramUserId).single();
+        if (modeData?.mode) voiceMode = modeData.mode;
+      }
+
       const voiceSystemPrompt = isGroup ? ZARA_SYSTEM_PROMPT_GROUP : ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      const voiceReply = await getAIReply(GROQ_API_KEY, `${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. Keep it short and sweet for voice.`, voiceSystemPrompt, 100);
-      const cleanVoice = voiceReply.replace(/[*_~`|#]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
+      const voiceReply = await getAIReply(GROQ_API_KEY, `${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. No special characters. Keep it short, natural and sweet for voice.`, voiceSystemPrompt, 100);
+      const cleanVoice = voiceReply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
       if (cleanVoice.length > 5) {
-        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanVoice);
+        const voiceConfig = getVoiceConfigForMode(voiceMode);
+        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanVoice, voiceConfig);
         if (sent) {
           return new Response("OK", { status: 200 });
         }
@@ -941,27 +958,30 @@ serve(async (req) => {
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}`;
     }
 
-    const reply = await getAIReply(GROQ_API_KEY, userContext, systemPrompt, isGroup ? 150 : undefined);
+    // Generate reply — for voice, ask for clean text without emojis/markdown
+    const replyPrompt = userContext + "\n\nIMPORTANT: Reply will be spoken as voice message. Keep it conversational, natural, no emojis, no markdown formatting, no special characters. Just pure spoken Hinglish words.";
+    const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, isGroup ? 150 : 200);
 
-    // Random voice message chance — 15% private, 8% group
-    const voiceChance = isGroup ? 0.08 : 0.15;
-    const shouldSendVoice = Math.random() < voiceChance;
+    // ===== VOICE-FIRST REPLY SYSTEM =====
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+    const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
-    if (shouldSendVoice && ELEVENLABS_API_KEY && reply.length < 300) {
+    if (ELEVENLABS_API_KEY && cleanText.length > 5 && cleanText.length < 500) {
       try {
-        const cleanText = reply.replace(/[*_~`|]/g, "").replace(/\p{Emoji_Presentation}/gu, "").trim();
-        if (cleanText.length > 10) {
-          const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanText);
-          if (sent) {
-            return new Response("OK", { status: 200 });
-          }
+        // Mode-aware voice settings
+        const voiceConfig = getVoiceConfigForMode(userMode);
+        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanText, voiceConfig);
+        if (sent) {
+          return new Response("OK", { status: 200 });
         }
+        // If voice failed (credits exhausted etc), fall through to text
+        console.log("Voice failed, falling back to text");
       } catch (voiceErr) {
-        console.error("Voice message failed, falling back to text:", voiceErr);
+        console.error("Voice error, falling back to text:", voiceErr);
       }
     }
 
+    // Fallback: send as text message
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
 
     return new Response("OK", { status: 200 });
@@ -1010,12 +1030,60 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
   });
 }
 
-async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId: number, text: string): Promise<boolean> {
-  const voiceId = "cgSgspJ2msm6clMCkdW9"; // Jessica — Hindi-friendly
+// Mode-aware voice configuration
+type VoiceConfig = {
+  voiceId: string;
+  stability: number;
+  similarity_boost: number;
+  style: number;
+};
+
+function getVoiceConfigForMode(mode: string): VoiceConfig {
+  // Sarah (EXAVITQu4vr4xnSDxMaL) — soft, warm, natural female voice
+  // Jessica (cgSgspJ2msm6clMCkdW9) — expressive, youthful
+  // Lily (pFZP5JQG7iQjIQuC4Bku) — gentle, sweet
+  // Laura (FGY2WhTYpPnrIDTdsKH5) — mature, confident
   
-  // Use ogg_opus format — required by Telegram sendVoice
+  switch (mode) {
+    case "gf":
+      // Romantic, soft, intimate
+      return { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.3, similarity_boost: 0.8, style: 0.7 }; // Sarah — breathy, romantic
+    case "bf":
+      return { voiceId: "onwK4e9ZLuTAKqWW03F9", stability: 0.4, similarity_boost: 0.75, style: 0.5 }; // Daniel — warm male
+    case "roast":
+      // Savage, energetic, punchy
+      return { voiceId: "cgSgspJ2msm6clMCkdW9", stability: 0.25, similarity_boost: 0.7, style: 0.8 }; // Jessica — expressive, aggressive
+    case "funny":
+      return { voiceId: "cgSgspJ2msm6clMCkdW9", stability: 0.2, similarity_boost: 0.7, style: 0.9 }; // Jessica — maximum expression
+    case "maa":
+    case "dadi":
+    case "chachi":
+    case "mami":
+      // Mature, caring, emotional
+      return { voiceId: "FGY2WhTYpPnrIDTdsKH5", stability: 0.5, similarity_boost: 0.8, style: 0.4 }; // Laura — mature, warm
+    case "papa":
+    case "dada":
+    case "chacha":
+    case "mama":
+      // Mature male, authoritative but caring
+      return { voiceId: "nPczCjzI2devNBz1zQrb", stability: 0.6, similarity_boost: 0.8, style: 0.3 }; // Brian — deep, fatherly
+    case "bhai":
+      return { voiceId: "TX3LPaxmHKxFdv7VOQHJ", stability: 0.35, similarity_boost: 0.75, style: 0.6 }; // Liam — young, casual
+    case "bahan":
+      return { voiceId: "pFZP5JQG7iQjIQuC4Bku", stability: 0.3, similarity_boost: 0.75, style: 0.7 }; // Lily — sweet, sisterly
+    case "professional":
+      return { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.7, similarity_boost: 0.8, style: 0.2 }; // Sarah — calm, professional
+    default:
+      // Default romantic girlfriend
+      return { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.35, similarity_boost: 0.8, style: 0.6 }; // Sarah
+  }
+}
+
+async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId: number, text: string, voiceConfig?: VoiceConfig): Promise<boolean> {
+  const config = voiceConfig || { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.35, similarity_boost: 0.8, style: 0.6 };
+  
   const ttsResponse = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    `https://api.elevenlabs.io/v1/text-to-speech/${config.voiceId}?output_format=mp3_44100_128`,
     {
       method: "POST",
       headers: {
@@ -1025,7 +1093,13 @@ async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId:
       body: JSON.stringify({
         text,
         model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.4, similarity_boost: 0.75, style: 0.5, use_speaker_boost: true },
+        voice_settings: {
+          stability: config.stability,
+          similarity_boost: config.similarity_boost,
+          style: config.style,
+          use_speaker_boost: true,
+          speed: 0.95, // Slightly slower for natural feel
+        },
       }),
     }
   );
@@ -1039,8 +1113,13 @@ async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId:
   const audioBytes = new Uint8Array(await ttsResponse.arrayBuffer());
   console.log("TTS audio bytes received:", audioBytes.length);
 
-  // Telegram sendVoice accepts MP3 as well — send as audio file using multipart
-  const boundary = "----ZaraVoiceBoundary" + Date.now();
+  if (audioBytes.length < 100) {
+    console.error("Audio too small, likely empty");
+    return false;
+  }
+
+  // Build multipart form data manually for Telegram sendVoice
+  const boundary = "----ZaraVoice" + Date.now();
   const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
   const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="voice.mp3"\r\nContent-Type: audio/mpeg\r\n\r\n`;
   const endPart = `\r\n--${boundary}--\r\n`;
@@ -1050,7 +1129,6 @@ async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId:
   const filePartBytes = encoder.encode(filePart);
   const endPartBytes = encoder.encode(endPart);
 
-  // Combine all parts into one Uint8Array
   const totalLength = chatIdBytes.length + filePartBytes.length + audioBytes.length + endPartBytes.length;
   const body = new Uint8Array(totalLength);
   let offset = 0;
@@ -1061,9 +1139,7 @@ async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId:
 
   const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendVoice`, {
     method: "POST",
-    headers: {
-      "Content-Type": `multipart/form-data; boundary=${boundary}`,
-    },
+    headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
     body: body,
   });
 
