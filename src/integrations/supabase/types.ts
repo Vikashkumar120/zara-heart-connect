@@ -44,6 +44,30 @@ export type Database = {
         }
         Relationships: []
       }
+      zara_group_chats: {
+        Row: {
+          chat_id: number
+          chat_title: string
+          created_at: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          chat_id: number
+          chat_title?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          chat_id?: number
+          chat_title?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
       zara_user_modes: {
         Row: {
           id: string

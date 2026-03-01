@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.setup-telegram]
 verify_jwt = false
+
+[functions.zara-scheduled]
+verify_jwt = false
