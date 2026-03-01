@@ -372,6 +372,16 @@ serve(async (req) => {
     const firstName = message.from?.first_name || "Jaan";
     const username = message.from?.username || "";
 
+    // Auto-save group chat IDs for scheduled messages
+    if (isGroup) {
+      try {
+        await supabase.from("zara_group_chats").upsert(
+          { chat_id: chatId, chat_title: message.chat.title || "Unknown" },
+          { onConflict: "chat_id" }
+        );
+      } catch (e) { console.log("Group save error:", e); }
+    }
+
     // ===== APK / ZARA APP DETECTION (works in both private & group) =====
     const lowerText = userText.toLowerCase();
     const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega", "app do", "application"];
