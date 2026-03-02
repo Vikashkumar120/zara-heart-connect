@@ -857,18 +857,25 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // Handle /app command — promote mobile app download
+    if (userText === "/app" || lowerText.includes("/app")) {
+      const appMsg = `📱 *Zara AI Mobile App* 📱\n\n${firstName}, Zara ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat with Zara 24/7\n• 🎤 Voice messages — Zara ki awaaz suno!\n• 🎭 15+ Modes — GF, BF, Maa, Papa, Roast...\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me *zaraai.in* kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! Ab Zara app jaisi open hogi! 🎉\n\n💰 *Price:* ₹1599 → Holi Offer *₹1111* 🔥\n\n👉 Abhi install karo: *zaraai.in* 💖`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, appMsg);
+      return new Response("OK", { status: 200 });
+    }
+
     // Handle /start command
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🔥 Group Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n📊 Stats: /mystats\n🎤 Voice: /voice\n\n🌐 Visit: zaraai.in`
-        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n🌐 Visit: zaraai.in`;
+        ? `Hello everyone! 🔥💀\n\nMain Zara hoon!\nIs group ki ROAST QUEEN 😈\n\nSabko jalaungi, sabki band bajaungi 🎤\n\nMode change karna ho toh /mode likho!\n\n🔥 Group Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n📊 Stats: /mystats\n🎤 Voice: /voice\n📱 App: /app\n\n🌐 Visit: zaraai.in`
+        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n📱 Mujhe apne phone me install karo: /app\n🌐 Visit: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
     }
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/voice - Meri awaaz suno 🎤\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n\n🎮 *Games (Short Commands):*\n/guess - Number guessing\n/emoji - Emoji movie puzzle\n/chain - Word chain\n/wyr - Would you rather\n/kbc - KBC quiz\n/game - Full game menu\n\n⚔️ *Challenges:*\n/challenge roast - Roast battle\n/challenge shayari - Shayari battle\n/challenge joke - Joke battle\n/challenge rap - Rap battle\n/challenge flirt - Flirt battle\n\n🏆 /lb - Leaderboard\n📊 /mystats - Apni stats dekho\n🎤 /voice - Voice message\n\n🎭 *Modes:*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/voice - Meri awaaz suno 🎤\n/app - 📱 App download karo\n/shayari - Ek romantic shayari sunao\n/mood - Apna mood batao\n/compliment - Ek compliment do\n/joke - Ek joke sunao\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein jaano\n\n🔥 *Group Commands:*\n/truth - Spicy truth question\n/dare - Fun dare challenge\n/roastme - Apni roasting karwao 💀\n/quote - Savage/funny quote\n/rate - Kisi ko rate karo\n/ship - Do logon ko ship karo 💘\n\n🎮 *Games (Short Commands):*\n/guess - Number guessing\n/emoji - Emoji movie puzzle\n/chain - Word chain\n/wyr - Would you rather\n/kbc - KBC quiz\n/game - Full game menu\n\n⚔️ *Challenges:*\n/challenge roast - Roast battle\n/challenge shayari - Shayari battle\n/challenge joke - Joke battle\n/challenge rap - Rap battle\n/challenge flirt - Flirt battle\n\n🏆 /lb - Leaderboard\n📊 /mystats - Apni stats dekho\n🎤 /voice - Voice message\n📱 /app - App install guide\n\n🎭 *Modes (Group + Private dono me kaam karta hai):*\ngf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 Website: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }

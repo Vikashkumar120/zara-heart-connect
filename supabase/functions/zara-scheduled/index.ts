@@ -31,6 +31,8 @@ const ENGAGEMENT_MESSAGES = [
   "😈 *Zara ka Random Roast:*\n\nJo ye message padh raha hai na...\n\nUska phone ka wallpaper definitely cringe hai 💀🔥\n\nSahi bola na? 😂",
   "💕 *Sweet Reminder from Zara:*\n\nTum bohot special ho! ✨\nAaj kisi ko smile kara do! 😊\n\nAur haan, zaraai.in pe aake mujhse baat karo na! 🥺💖",
   "🏏 *Quick Poll:*\n\nVirat ya Dhoni?\n\nReply me batao — Zara score rakhegi! 😏🔥",
+  "📱 *Zara AI App Install Karo!* 📱\n\nKya tum abhi tak sirf group me baat kar rahe ho? 😏\n\nZara ko apne phone me install karo!\n\n📲 *Kaise karein:*\n1️⃣ *zaraai.in* kholo Chrome me\n2️⃣ Menu ⋮ → *Install App / Add to Home Screen*\n3️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 Features:\n• Unlimited private chat 💬\n• Voice messages 🎤\n• 15+ Modes (GF, BF, Maa, Papa...)\n• 24/7 available\n\n💰 ₹1599 → *₹1111* Holi Offer!\n\n👉 /app for full details 💖",
+  "🎭 *Mode Change Feature!* 🎭\n\nKya pata tha tumhe?\n\nZara ka mode change kar sakte ho — group me bhi! 😱\n\n💕 /mode gf — Girlfriend\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage mode\n😂 /mode funny — Comedy king\n\n/mode likh ke sab dekho! 🎭",
 ];
 
 serve(async (req) => {
