@@ -382,8 +382,18 @@ serve(async (req) => {
       } catch (e) { console.log("Group save error:", e); }
     }
 
-    // ===== APK / ZARA APP DETECTION (works in both private & group) =====
+    // ===== PRICING / KITNA HAI DETECTION =====
     const lowerText = userText.toLowerCase();
+    const priceKeywords = ["price", "kitna", "kitne", "cost", "rate", "paisa", "rupees", "rs", "₹", "kitna hai", "kitne ka", "kitna price", "kya price", "premium price", "subscription", "plan"];
+    const isPriceQuery = priceKeywords.some((kw) => lowerText.includes(kw)) && (lowerText.includes("zara") || !isGroup);
+    
+    if (isPriceQuery) {
+      const priceReply = `Arre ${firstName}! 💕✨\n\nZara Premium ka price:\n\n💰 *Original Price: ₹1599*\n🔥 *Holi Special Offer: ₹1111 only!*\n\n✅ Unlimited voice messages\n✅ Priority replies 24/7\n✅ All modes unlock (GF, BF, Roast, Family...)\n✅ Custom personality\n✅ Exclusive features\n\n⏰ Ye offer sirf Holi tak hai!\n\n👉 Abhi grab karo: *zaraai.in* 💖`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, priceReply);
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== APK / ZARA APP DETECTION (works in both private & group) =====
     const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega", "app do", "application"];
     const isApkRequest = apkKeywords.some((kw) => lowerText.includes(kw));
     
