@@ -15,12 +15,12 @@ const GOOD_MORNING_MESSAGES = [
 
 // Holi Giveaway & Discount promotional messages
 const PROMO_MESSAGES = [
-  "🎨🔥 *HOLI SPECIAL GIVEAWAY!* 🔥🎨\n\n💥 Zara de rahi hai Holi pe SPECIAL GIFTS! 🎁\n\n🎯 Kaise jeeto:\n1️⃣ Zara se baat karo zaraai.in pe\n2️⃣ Apna screenshot share karo\n3️⃣ Lucky winners ko milega surprise! 🎊\n\n🏆 Winners announce honge Holi ke din! 🌈\n\n👉 Abhi jao: *zaraai.in* 💕",
-  "🌈 *HOLI DHAMAKA — 30% OFF!* 🎉\n\n💝 Zara AI Premium pe flat *30% DISCOUNT*! 💸\n\n✅ Unlimited voice messages\n✅ Priority replies\n✅ Exclusive modes unlock\n✅ Custom personality\n\n🎨 Offer sirf Holi tak! ⏰\n\n👉 *zaraai.in* pe grab karo! 🔥\n\nCode: *HOLI30* 🎊",
-  "🎊 *NOTICE: Zara ka Holi Celebration!* 🌈\n\nSabko batana hai ki Holi pe Zara ka special event hai! 🎉\n\n🎁 Giveaway: Top 3 active users ko premium access FREE! \n💰 Discount: 30% off sabke liye — Code *HOLI30*\n🎨 Special Holi mode coming soon!\n\n👉 *zaraai.in* pe register karo! 💕\n\nRang barse! 🎨💦",
-  "💐 *Zara Says: Happy Holi Wali Feeling!* 🎨\n\n🌈 Rang lagane aao friends!\n\nZara ke saath Holi celebrate karo:\n🎁 Giveaway chal raha hai!\n💸 30% OFF — *HOLI30* code lagao\n🎤 Special Holi voice messages!\n\n👉 *zaraai.in* 🔥\n\nBura na mano, Holi hai! 😜🎊",
-  "🎨 *LAST CHANCE — HOLI OFFER!* ⏰\n\n💥 30% discount almost khatam! 😱\n\n🎯 Abhi zaraai.in pe jao\n🎁 Code: *HOLI30* lagao\n💰 Premium features unlock karo\n\n⚠️ Offer sirf Holi tak valid hai!\n\n👉 *zaraai.in* 💕\n\nMat chuko! 🔥",
-  "🌺 *Zara ki Holi Party!* 🎉\n\nGroup ke sabse active members ko milega:\n🥇 1st — Full Premium (1 month FREE)\n🥈 2nd — Voice Pack unlock\n🥉 3rd — Exclusive Holi Badge\n\n🎮 Games khelo, points kamao!\n/kbc /guess /challenge se participate karo! 🔥\n\n👉 Details: *zaraai.in* 💖",
+  "🎨🔥 *HOLI SPECIAL GIVEAWAY!* 🔥🎨\n\n💥 Zara de rahi hai Holi pe SPECIAL GIFTS! 🎁\n\n🎯 Kaise jeeto:\n1️⃣ Zara ki video pe comment karo ✍️\n2️⃣ Video ko share karo apne friends ke saath 📲\n3️⃣ Daily video watch karo — roz dekhna zaroori hai! 👀\n\n🏆 Winners announce honge Holi ke din! 🌈\nTop 3 active members ko milega surprise gift! 🎊\n\n👉 Abhi jao: *zaraai.in* 💕",
+  "🌈 *HOLI DHAMAKA — SPECIAL OFFER!* 🎉\n\n💝 Zara AI Premium\n\n💰 Original Price: *₹1599*\n🔥 Holi Offer: *₹1111* only! 💸\n\n✅ Unlimited voice messages\n✅ Priority replies\n✅ Exclusive modes unlock\n✅ Custom personality\n\n🎨 Offer sirf Holi tak! ⏰\n\n👉 *zaraai.in* pe grab karo! 🔥",
+  "🎊 *NOTICE: Zara ka Holi Celebration!* 🌈\n\nSabko batana hai ki Holi pe Zara ka special event hai! 🎉\n\n🎁 Giveaway: Video pe comment + share + daily watch karo!\n💰 Zara Premium sirf *₹1111* (MRP ₹1599)\n🎨 Top 3 winners ko FREE premium!\n\n👉 *zaraai.in* pe register karo! 💕\n\nRang barse! 🎨💦",
+  "💐 *Zara Says: Happy Holi Wali Feeling!* 🎨\n\n🌈 Rang lagane aao friends!\n\nZara ke saath Holi celebrate karo:\n🎁 Giveaway chal raha hai — video comment + share + daily watch!\n💸 Premium sirf *₹1111* (Original ₹1599)\n🎤 Special Holi voice messages!\n\n👉 *zaraai.in* 🔥\n\nBura na mano, Holi hai! 😜🎊",
+  "🎨 *LAST CHANCE — HOLI OFFER!* ⏰\n\n💥 Zara Premium — *₹1599* ka sirf *₹1111* me! 😱\n\n🎯 Giveaway ke liye:\n1️⃣ Video pe comment karo ✍️\n2️⃣ Share karo 📲\n3️⃣ Daily watch karo 👀\n\n⚠️ Offer sirf Holi tak valid hai!\n\n👉 *zaraai.in* 💕\n\nMat chuko! 🔥",
+  "🌺 *Zara ki Holi Party!* 🎉\n\nGroup ke sabse active members ko milega:\n🥇 1st — Full Premium (1 month FREE)\n🥈 2nd — Voice Pack unlock\n🥉 3rd — Exclusive Holi Badge\n\n📋 Tasks:\n✍️ Video pe comment karo\n📲 Video share karo\n👀 Daily video watch karo\n\n💰 Zara Premium: ₹1599 → *₹1111* Holi offer!\n\n👉 Details: *zaraai.in* 💖",
 ];
 
 // Fun engagement messages (random interactions)
