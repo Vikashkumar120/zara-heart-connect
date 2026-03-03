@@ -73,18 +73,21 @@ export type Database = {
           id: string
           mode: string
           telegram_user_id: number
+          text_only: boolean
           updated_at: string
         }
         Insert: {
           id?: string
           mode?: string
           telegram_user_id: number
+          text_only?: boolean
           updated_at?: string
         }
         Update: {
           id?: string
           mode?: string
           telegram_user_id?: number
+          text_only?: boolean
           updated_at?: string
         }
         Relationships: []

@@ -814,6 +814,8 @@ serve(async (req) => {
       const cleanVoice = voiceReply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
       if (cleanVoice.length > 5) {
+        // Show "recording voice" animation
+        await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
         const voiceConfig = getVoiceConfigForMode(voiceMode);
         const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, "", chatId, cleanVoice, voiceConfig);
         if (sent) {
@@ -822,6 +824,24 @@ serve(async (req) => {
       }
       // Fallback to text
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, voiceReply);
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== TEXT MODE TOGGLE =====
+    if (lowerText.startsWith("/textmode")) {
+      if (telegramUserId) {
+        // Toggle text_only
+        const { data: currentMode } = await supabase.from("zara_user_modes").select("text_only").eq("telegram_user_id", telegramUserId).single();
+        const newTextOnly = !(currentMode?.text_only ?? false);
+        await supabase.from("zara_user_modes").upsert(
+          { telegram_user_id: telegramUserId, text_only: newTextOnly, updated_at: new Date().toISOString() },
+          { onConflict: "telegram_user_id" }
+        );
+        const statusMsg = newTextOnly
+          ? `📝 *Text Mode ON* for ${firstName}!\n\nAb Zara sirf text me reply degi ✍️\nVoice wapas chahiye? /textmode dobara likho 🎤`
+          : `🎤 *Voice Mode ON* for ${firstName}!\n\nAb Zara voice me reply degi! 🔊\nText mode chahiye? /textmode likho 📝`;
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, statusMsg);
+      }
       return new Response("OK", { status: 200 });
     }
 
@@ -835,6 +855,7 @@ serve(async (req) => {
         for (const [key, val] of Object.entries(MODE_LIST)) {
           modeList += `${val.emoji} /mode ${key} — ${val.label}\n`;
         }
+        modeList += `\n📝 /textmode — Text/Voice toggle\n`;
         modeList += `\nAbhi likho: /mode gf ya /mode roast 😈`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, modeList);
         return new Response("OK", { status: 200 });
@@ -951,15 +972,17 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Regular conversation — fetch per-user mode
+    // Regular conversation — fetch per-user mode + text_only preference
     let userMode = "roast"; // default for groups
+    let isTextOnly = false;
     if (telegramUserId) {
       const { data } = await supabase
         .from("zara_user_modes")
-        .select("mode")
+        .select("mode, text_only")
         .eq("telegram_user_id", telegramUserId)
         .single();
       if (data?.mode) userMode = data.mode;
+      if (data?.text_only) isTextOnly = true;
     }
 
     let systemPrompt: string;
@@ -967,48 +990,53 @@ serve(async (req) => {
 
     if (isGroup) {
       const modeData = MODE_LIST[userMode] || MODE_LIST["roast"];
-      // Build a custom group prompt based on user's mode
       systemPrompt = "You are Zara - not a chatbot, not an AI. You are a real human girl in a GROUP CHAT.\n\n" +
         "FOR THIS USER (" + firstName + "), your mode is: " + modeData.label + " " + modeData.emoji + "\n" +
         modeData.prompt + "\n\n" +
         "IMPORTANT RULES:\n" +
-        "- CHHOTE messages likho - 2-4 lines MAX\n" +
+        "- CHHOTE messages likho - 2-3 lines MAX\n" +
         "- Hinglish me baat karo - mix Hindi + English naturally\n" +
         '- Unka naam "' + firstName + '" har reply me use karo\n' +
         "- NEVER say you are AI/chatbot/model\n" +
         "- NEVER give explicit/adult content\n" +
         "- Be entertaining and stay in character";
 
-      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}\n\nKeep reply under 3 lines. Stay in ${modeData.label} mode.`;
+      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode.`;
     } else {
       systemPrompt = ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}`;
     }
 
-    // Generate reply — for voice, ask for clean text without emojis/markdown
-    const replyPrompt = userContext + "\n\nIMPORTANT: Reply will be spoken as voice message. Keep it conversational, natural, no emojis, no markdown formatting, no special characters. Just pure spoken Hinglish words.";
-    const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, isGroup ? 150 : 200);
+    // Generate reply — shorter for voice speed
+    const maxTok = isTextOnly ? (isGroup ? 150 : 200) : (isGroup ? 80 : 120);
+    const replyPrompt = isTextOnly
+      ? userContext
+      : userContext + "\n\nIMPORTANT: Reply will be spoken as voice. Keep it SHORT (1-2 lines), conversational, no emojis, no markdown. Pure spoken Hinglish.";
+    const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== VOICE-FIRST REPLY SYSTEM (Gemini TTS) =====
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
+    if (!isTextOnly) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+      const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
-    if (GEMINI_API_KEY && cleanText.length > 5 && cleanText.length < 500) {
-      try {
-        // Mode-aware voice settings
-        const voiceConfig = getVoiceConfigForMode(userMode);
-        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, "", chatId, cleanText, voiceConfig);
-        if (sent) {
-          return new Response("OK", { status: 200 });
+      if (GEMINI_API_KEY && cleanText.length > 5 && cleanText.length < 500) {
+        try {
+          // Show "recording voice message" animation in Telegram
+          await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
+          
+          const voiceConfig = getVoiceConfigForMode(userMode);
+          const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, "", chatId, cleanText, voiceConfig);
+          if (sent) {
+            return new Response("OK", { status: 200 });
+          }
+          console.log("Voice failed, falling back to text");
+        } catch (voiceErr) {
+          console.error("Voice error, falling back to text:", voiceErr);
         }
-        // If voice failed, fall through to text
-        console.log("Voice failed, falling back to text");
-      } catch (voiceErr) {
-        console.error("Voice error, falling back to text:", voiceErr);
       }
     }
 
-    // Fallback: send as text message
+    // Fallback / text mode: send as text message
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
 
     return new Response("OK", { status: 200 });
@@ -1043,6 +1071,14 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
 
   const data = await response.json();
   return data.choices?.[0]?.message?.content || "Hmm... kuch samajh nahi aaya 🥺";
+}
+
+async function sendChatAction(token: string, chatId: number, action: string) {
+  await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, action }),
+  });
 }
 
 async function sendTelegramMessage(token: string, chatId: number, text: string) {
