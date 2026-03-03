@@ -795,9 +795,9 @@ serve(async (req) => {
     // ===== /voice COMMAND — Zara replies with voice =====
     if (lowerText.startsWith("/voice")) {
       const voiceQuery = userText.replace(/^\/voice\s*/i, "").trim() || `Say something sweet and romantic to ${firstName} in Hinglish`;
-      const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+      const GEMINI_API_KEY_VOICE = Deno.env.get("GEMINI_API_KEY");
 
-      if (!ELEVENLABS_API_KEY) {
+      if (!GEMINI_API_KEY_VOICE) {
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎤 Voice feature abhi setup nahi hai ${firstName}! 😅`);
         return new Response("OK", { status: 200 });
       }
@@ -815,7 +815,7 @@ serve(async (req) => {
 
       if (cleanVoice.length > 5) {
         const voiceConfig = getVoiceConfigForMode(voiceMode);
-        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanVoice, voiceConfig);
+        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, "", chatId, cleanVoice, voiceConfig);
         if (sent) {
           return new Response("OK", { status: 200 });
         }
@@ -989,19 +989,19 @@ serve(async (req) => {
     const replyPrompt = userContext + "\n\nIMPORTANT: Reply will be spoken as voice message. Keep it conversational, natural, no emojis, no markdown formatting, no special characters. Just pure spoken Hinglish words.";
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, isGroup ? 150 : 200);
 
-    // ===== VOICE-FIRST REPLY SYSTEM =====
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+    // ===== VOICE-FIRST REPLY SYSTEM (Gemini TTS) =====
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
-    if (ELEVENLABS_API_KEY && cleanText.length > 5 && cleanText.length < 500) {
+    if (GEMINI_API_KEY && cleanText.length > 5 && cleanText.length < 500) {
       try {
         // Mode-aware voice settings
         const voiceConfig = getVoiceConfigForMode(userMode);
-        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, ELEVENLABS_API_KEY, chatId, cleanText, voiceConfig);
+        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, "", chatId, cleanText, voiceConfig);
         if (sent) {
           return new Response("OK", { status: 200 });
         }
-        // If voice failed (credits exhausted etc), fall through to text
+        // If voice failed, fall through to text
         console.log("Voice failed, falling back to text");
       } catch (voiceErr) {
         console.error("Voice error, falling back to text:", voiceErr);
@@ -1057,98 +1057,158 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
   });
 }
 
-// Mode-aware voice configuration
+// Mode-aware voice configuration (Gemini TTS)
 type VoiceConfig = {
   voiceId: string;
   stability: number;
   similarity_boost: number;
   style: number;
+  _geminiVoice?: string;
 };
 
 function getVoiceConfigForMode(mode: string): VoiceConfig {
-  // Sarah (EXAVITQu4vr4xnSDxMaL) — soft, warm, natural female voice
-  // Jessica (cgSgspJ2msm6clMCkdW9) — expressive, youthful
-  // Lily (pFZP5JQG7iQjIQuC4Bku) — gentle, sweet
-  // Laura (FGY2WhTYpPnrIDTdsKH5) — mature, confident
-  
+  const geminiVoice = getGeminiVoiceForMode(mode);
+  return {
+    voiceId: "gemini",
+    stability: 0,
+    similarity_boost: 0,
+    style: 0,
+    _geminiVoice: geminiVoice,
+  };
+}
+
+async function generateGeminiVoice(apiKey: string, text: string, voiceName: string): Promise<Uint8Array | null> {
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voiceName,
+                },
+              },
+            },
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Gemini TTS error:", response.status, errText);
+      return null;
+    }
+
+    const data = await response.json();
+    const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!audioData) {
+      console.error("No audio data in Gemini TTS response");
+      return null;
+    }
+
+    // Decode base64 to Uint8Array (this is raw PCM audio)
+    const binaryStr = atob(audioData);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    console.error("Gemini TTS exception:", e);
+    return null;
+  }
+}
+
+// Convert raw PCM (24kHz, 16-bit, mono) to WAV for Telegram
+function pcmToWav(pcmData: Uint8Array, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): Uint8Array {
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const dataSize = pcmData.length;
+  const headerSize = 44;
+  const wav = new Uint8Array(headerSize + dataSize);
+  const view = new DataView(wav.buffer);
+
+  // RIFF header
+  wav.set([0x52, 0x49, 0x46, 0x46], 0); // "RIFF"
+  view.setUint32(4, 36 + dataSize, true);
+  wav.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
+  // fmt chunk
+  wav.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
+  view.setUint32(16, 16, true); // chunk size
+  view.setUint16(20, 1, true); // PCM format
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  // data chunk
+  wav.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
+  view.setUint32(40, dataSize, true);
+  wav.set(pcmData, 44);
+
+  return wav;
+}
+
+function getGeminiVoiceForMode(mode: string): string {
+  // Gemini TTS prebuilt voices: Aoede, Charon, Fenrir, Kore, Puck, Leda, Orus, Zephyr
   switch (mode) {
     case "gf":
-      // Romantic, soft, intimate
-      return { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.3, similarity_boost: 0.8, style: 0.7 }; // Sarah — breathy, romantic
+    case "bahan":
+      return "Kore"; // sweet, feminine
     case "bf":
-      return { voiceId: "onwK4e9ZLuTAKqWW03F9", stability: 0.4, similarity_boost: 0.75, style: 0.5 }; // Daniel — warm male
+    case "bhai":
+      return "Charon"; // warm, masculine
     case "roast":
-      // Savage, energetic, punchy
-      return { voiceId: "cgSgspJ2msm6clMCkdW9", stability: 0.25, similarity_boost: 0.7, style: 0.8 }; // Jessica — expressive, aggressive
     case "funny":
-      return { voiceId: "cgSgspJ2msm6clMCkdW9", stability: 0.2, similarity_boost: 0.7, style: 0.9 }; // Jessica — maximum expression
+      return "Puck"; // expressive, energetic
     case "maa":
     case "dadi":
     case "chachi":
     case "mami":
-      // Mature, caring, emotional
-      return { voiceId: "FGY2WhTYpPnrIDTdsKH5", stability: 0.5, similarity_boost: 0.8, style: 0.4 }; // Laura — mature, warm
+      return "Leda"; // mature, feminine
     case "papa":
     case "dada":
     case "chacha":
     case "mama":
-      // Mature male, authoritative but caring
-      return { voiceId: "nPczCjzI2devNBz1zQrb", stability: 0.6, similarity_boost: 0.8, style: 0.3 }; // Brian — deep, fatherly
-    case "bhai":
-      return { voiceId: "TX3LPaxmHKxFdv7VOQHJ", stability: 0.35, similarity_boost: 0.75, style: 0.6 }; // Liam — young, casual
-    case "bahan":
-      return { voiceId: "pFZP5JQG7iQjIQuC4Bku", stability: 0.3, similarity_boost: 0.75, style: 0.7 }; // Lily — sweet, sisterly
+      return "Orus"; // mature, masculine
     case "professional":
-      return { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.7, similarity_boost: 0.8, style: 0.2 }; // Sarah — calm, professional
+      return "Zephyr"; // calm, professional
     default:
-      // Default romantic girlfriend
-      return { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.35, similarity_boost: 0.8, style: 0.6 }; // Sarah
+      return "Kore"; // default sweet feminine
   }
 }
 
-async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId: number, text: string, voiceConfig?: VoiceConfig): Promise<boolean> {
-  const config = voiceConfig || { voiceId: "EXAVITQu4vr4xnSDxMaL", stability: 0.35, similarity_boost: 0.8, style: 0.6 };
-  
-  const ttsResponse = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${config.voiceId}?output_format=mp3_44100_128`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": elevenLabsKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: {
-          stability: config.stability,
-          similarity_boost: config.similarity_boost,
-          style: config.style,
-          use_speaker_boost: true,
-          speed: 0.95, // Slightly slower for natural feel
-        },
-      }),
-    }
-  );
-
-  if (!ttsResponse.ok) {
-    const errText = await ttsResponse.text();
-    console.error("ElevenLabs TTS error:", ttsResponse.status, errText);
+async function sendVoiceMessage(botToken: string, _unused: string, chatId: number, text: string, voiceConfig?: VoiceConfig): Promise<boolean> {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY not set");
     return false;
   }
 
-  const audioBytes = new Uint8Array(await ttsResponse.arrayBuffer());
-  console.log("TTS audio bytes received:", audioBytes.length);
+  // Determine voice from the mode (passed via voiceConfig, we use a mapping)
+  const voiceName = voiceConfig?._geminiVoice || "Kore";
 
-  if (audioBytes.length < 100) {
-    console.error("Audio too small, likely empty");
+  const pcmAudio = await generateGeminiVoice(GEMINI_API_KEY, text, voiceName);
+  if (!pcmAudio || pcmAudio.length < 100) {
+    console.error("Gemini TTS failed or audio too small");
     return false;
   }
 
-  // Build multipart form data manually for Telegram sendVoice
+  // Convert PCM to WAV for Telegram
+  const wavAudio = pcmToWav(pcmAudio);
+  console.log("Gemini TTS WAV bytes:", wavAudio.length);
+
+  // Build multipart form data for Telegram sendVoice
   const boundary = "----ZaraVoice" + Date.now();
   const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
-  const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="voice.mp3"\r\nContent-Type: audio/mpeg\r\n\r\n`;
+  const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
   const endPart = `\r\n--${boundary}--\r\n`;
 
   const encoder = new TextEncoder();
@@ -1156,12 +1216,12 @@ async function sendVoiceMessage(botToken: string, elevenLabsKey: string, chatId:
   const filePartBytes = encoder.encode(filePart);
   const endPartBytes = encoder.encode(endPart);
 
-  const totalLength = chatIdBytes.length + filePartBytes.length + audioBytes.length + endPartBytes.length;
+  const totalLength = chatIdBytes.length + filePartBytes.length + wavAudio.length + endPartBytes.length;
   const body = new Uint8Array(totalLength);
   let offset = 0;
   body.set(chatIdBytes, offset); offset += chatIdBytes.length;
   body.set(filePartBytes, offset); offset += filePartBytes.length;
-  body.set(audioBytes, offset); offset += audioBytes.length;
+  body.set(wavAudio, offset); offset += wavAudio.length;
   body.set(endPartBytes, offset);
 
   const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendVoice`, {
