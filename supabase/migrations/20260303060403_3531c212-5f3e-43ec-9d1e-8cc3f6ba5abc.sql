@@ -1,0 +1,1 @@
+ALTER TABLE public.zara_user_modes ADD COLUMN IF NOT EXISTS text_only boolean NOT NULL DEFAULT false;
