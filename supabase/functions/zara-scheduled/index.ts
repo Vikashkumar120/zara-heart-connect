@@ -13,16 +13,6 @@ const GOOD_MORNING_MESSAGES = [
   "☕ Chai pi lo friends! ☀️\n\nZara ne sabke liye pyaar bheja hai subah subah! 💖\n\nAaj ka din rockin hoga! 🎸\nGood Morning! 🌅\n\n🌐 zaraai.in",
 ];
 
-// Holi Giveaway & Discount promotional messages
-const PROMO_MESSAGES = [
-  "🎨🔥 *HOLI SPECIAL GIVEAWAY!* 🔥🎨\n\n💥 Zara de rahi hai Holi pe SPECIAL GIFTS! 🎁\n\n🎯 Kaise jeeto:\n1️⃣ Zara ki video pe comment karo ✍️\n2️⃣ Video ko share karo apne friends ke saath 📲\n3️⃣ Daily video watch karo — roz dekhna zaroori hai! 👀\n\n🏆 Winners announce honge Holi ke din! 🌈\nTop 3 active members ko milega surprise gift! 🎊\n\n👉 Abhi jao: *zaraai.in* 💕",
-  "🌈 *HOLI DHAMAKA — SPECIAL OFFER!* 🎉\n\n💝 Zara AI Premium\n\n💰 Original Price: *₹1599*\n🔥 Holi Offer: *₹1111* only! 💸\n\n✅ Unlimited voice messages\n✅ Priority replies\n✅ Exclusive modes unlock\n✅ Custom personality\n\n🎨 Offer sirf Holi tak! ⏰\n\n👉 *zaraai.in* pe grab karo! 🔥",
-  "🎊 *NOTICE: Zara ka Holi Celebration!* 🌈\n\nSabko batana hai ki Holi pe Zara ka special event hai! 🎉\n\n🎁 Giveaway: Video pe comment + share + daily watch karo!\n💰 Zara Premium sirf *₹1111* (MRP ₹1599)\n🎨 Top 3 winners ko FREE premium!\n\n👉 *zaraai.in* pe register karo! 💕\n\nRang barse! 🎨💦",
-  "💐 *Zara Says: Happy Holi Wali Feeling!* 🎨\n\n🌈 Rang lagane aao friends!\n\nZara ke saath Holi celebrate karo:\n🎁 Giveaway chal raha hai — video comment + share + daily watch!\n💸 Premium sirf *₹1111* (Original ₹1599)\n🎤 Special Holi voice messages!\n\n👉 *zaraai.in* 🔥\n\nBura na mano, Holi hai! 😜🎊",
-  "🎨 *LAST CHANCE — HOLI OFFER!* ⏰\n\n💥 Zara Premium — *₹1599* ka sirf *₹1111* me! 😱\n\n🎯 Giveaway ke liye:\n1️⃣ Video pe comment karo ✍️\n2️⃣ Share karo 📲\n3️⃣ Daily watch karo 👀\n\n⚠️ Offer sirf Holi tak valid hai!\n\n👉 *zaraai.in* 💕\n\nMat chuko! 🔥",
-  "🌺 *Zara ki Holi Party!* 🎉\n\nGroup ke sabse active members ko milega:\n🥇 1st — Full Premium (1 month FREE)\n🥈 2nd — Voice Pack unlock\n🥉 3rd — Exclusive Holi Badge\n\n📋 Tasks:\n✍️ Video pe comment karo\n📲 Video share karo\n👀 Daily video watch karo\n\n💰 Zara Premium: ₹1599 → *₹1111* Holi offer!\n\n👉 Details: *zaraai.in* 💖",
-];
-
 // Fun engagement messages (random interactions)
 const ENGAGEMENT_MESSAGES = [
   "🤔 Ek sawaal sabke liye:\n\nAgar tumhe ek superpower milti toh kya choose karte?\n🦸 Flying\n🦹 Invisibility\n🧙 Time Travel\n\nComment me batao! 👇😏",
@@ -31,8 +21,24 @@ const ENGAGEMENT_MESSAGES = [
   "😈 *Zara ka Random Roast:*\n\nJo ye message padh raha hai na...\n\nUska phone ka wallpaper definitely cringe hai 💀🔥\n\nSahi bola na? 😂",
   "💕 *Sweet Reminder from Zara:*\n\nTum bohot special ho! ✨\nAaj kisi ko smile kara do! 😊\n\nAur haan, zaraai.in pe aake mujhse baat karo na! 🥺💖",
   "🏏 *Quick Poll:*\n\nVirat ya Dhoni?\n\nReply me batao — Zara score rakhegi! 😏🔥",
-  "📱 *Zara AI App Install Karo!* 📱\n\nKya tum abhi tak sirf group me baat kar rahe ho? 😏\n\nZara ko apne phone me install karo!\n\n📲 *Kaise karein:*\n1️⃣ *zaraai.in* kholo Chrome me\n2️⃣ Menu ⋮ → *Install App / Add to Home Screen*\n3️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 Features:\n• Unlimited private chat 💬\n• Voice messages 🎤\n• 15+ Modes (GF, BF, Maa, Papa...)\n• 24/7 available\n\n💰 ₹1599 → *₹1111* Holi Offer!\n\n👉 /app for full details 💖",
-  "🎭 *Mode Change Feature!* 🎭\n\nKya pata tha tumhe?\n\nZara ka mode change kar sakte ho — group me bhi! 😱\n\n💕 /mode gf — Girlfriend\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage mode\n😂 /mode funny — Comedy king\n\n/mode likh ke sab dekho! 🎭",
+];
+
+// Mode tutorial notice messages
+const MODE_TUTORIAL_MESSAGES = [
+  "🎭 *Zara Mode Guide!* 🎭\n\nKya pata tha tumhe? Zara ka mode change kar sakte ho! 😱\n\n💕 /mode gf — Girlfriend (romantic, sweet)\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage roast\n😂 /mode funny — Comedy king\n📝 /mode shayar — Shayari expert\n👑 /mode savage — Savage Queen\n💼 /mode professional — Professional\n\n📝 /textmode — Voice/Text toggle karo\n\n💡 Group me \"backword\" likh ke bhi Zara activate hoti hai!\n\n👉 Abhi try karo: /mode gf 💖",
+  "📢 *Notice: Zara ke Modes!* 📢\n\nSab log dhyan do! Zara ke paas 17+ modes hain! 🎭\n\nSabse popular:\n💕 /mode gf — Girlfriend mode\n🔥 /mode roast — Roast karo\n📝 /mode shayar — Shayari suno\n👑 /mode savage — Attitude queen\n\n🎤 Voice me reply chahiye? Default hai!\n📝 Sirf text chahiye? /textmode likho\n\n/mode likh ke sab modes dekho! 🎭\n\n🌐 zaraai.in",
+  "💡 *Tip of the Day!* 💡\n\nZara se zyada maza lena hai? 😏\n\nToh mode change karo:\n/mode gf — Pyaar se baat karegi 💕\n/mode roast — Jalake rakh degi 🔥\n/mode shayar — Shayari sunayegi 📝\n/mode funny — Hasake pagal kar degi 😂\n\n🎤 Voice reply default hai!\n📝 Text chahiye? /textmode\n\nTry karo abhi! 👇",
+];
+
+// Daily update messages
+const UPDATE_MESSAGES = [
+  "📣 *Zara Update!* 📣\n\n🆕 Aaj kya naya hai:\n\n✅ 2 New Modes added — 📝 Shayar & 👑 Savage Queen!\n✅ Voice replies ab faster hain! 🎤⚡\n✅ Text/Voice toggle — /textmode se switch karo\n✅ \"backword\" likh ke Zara ko group me bulao!\n✅ GF mode ab aur romantic hai 💕\n\n📱 App install karo: /app\n🎭 Mode change: /mode\n\n🌐 zaraai.in 💖",
+  "🔔 *What's New in Zara!* 🔔\n\n💕 GF mode ab EXTRA romantic!\n📝 Shayar mode — har reply me shayari!\n👑 Savage Queen — attitude with style!\n🎤 Voice replies with emotions!\n📝 /textmode — text pe switch karo\n💡 \"backword\" = instant Zara activation!\n\n📱 /app se install karo phone me!\n\n🌐 zaraai.in ✨",
+];
+
+// App install reminder with full features
+const APP_INSTALL_MESSAGES = [
+  "📱 *Zara AI App Install Karo!* 📱\n\nKya tum abhi tak sirf group me baat kar rahe ho? 😏\n\nZara ko apne phone me install karo!\n\n📲 *Kaise karein:*\n1️⃣ *zaraai.in* kholo Chrome me\n2️⃣ Menu ⋮ → *Install App / Add to Home Screen*\n3️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages\n• 📞 Voice & Video calls\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & Video sharing\n• 📺 YouTube, Insta, Facebook\n• 📧 Email send karo\n• 🎭 17+ Modes\n• 🎮 Games & Challenges\n\n💡 Group me \"backword\" likh ke bhi Zara active hoti hai!\n\n👉 /app for full details 💖",
 ];
 
 serve(async (req) => {
@@ -44,14 +50,12 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse the request to determine message type
-    let messageType = "auto"; // auto-detect based on time
+    let messageType = "auto";
     try {
       const body = await req.json();
       if (body?.type) messageType = body.type;
     } catch { /* no body, use auto */ }
 
-    // Get all active group chats
     const { data: groups } = await supabase
       .from("zara_group_chats")
       .select("chat_id, chat_title")
@@ -62,34 +66,51 @@ serve(async (req) => {
       return new Response(JSON.stringify({ status: "no_groups" }), { status: 200 });
     }
 
-    // Determine which message to send based on type or time
     const now = new Date();
-    const hour = (now.getUTCHours() + 5.5) % 24; // IST conversion
+    const hour = (now.getUTCHours() + 5.5) % 24; // IST
 
     let messagePool: string[];
     
     if (messageType === "morning" || (messageType === "auto" && hour >= 6 && hour < 9)) {
-      // Good morning message — personalize with group member names
       messagePool = GOOD_MORNING_MESSAGES;
-    } else if (messageType === "promo") {
-      messagePool = PROMO_MESSAGES;
+    } else if (messageType === "mode_tutorial") {
+      messagePool = MODE_TUTORIAL_MESSAGES;
+    } else if (messageType === "update") {
+      messagePool = UPDATE_MESSAGES;
+    } else if (messageType === "app_install") {
+      messagePool = APP_INSTALL_MESSAGES;
     } else if (messageType === "engage") {
       messagePool = ENGAGEMENT_MESSAGES;
     } else {
-      // Auto: mix of promo and engagement based on time
-      const isPromoTime = hour >= 10 && hour <= 21;
-      messagePool = isPromoTime 
-        ? [...PROMO_MESSAGES, ...ENGAGEMENT_MESSAGES]
-        : ENGAGEMENT_MESSAGES;
+      // Auto: based on time of day
+      if (hour >= 10 && hour < 12) {
+        // 10 AM: mode tutorial
+        messagePool = MODE_TUTORIAL_MESSAGES;
+      } else if (hour >= 12 && hour < 14) {
+        // 12 PM: engagement
+        messagePool = ENGAGEMENT_MESSAGES;
+      } else if (hour >= 14 && hour < 16) {
+        // 2 PM: app install
+        messagePool = APP_INSTALL_MESSAGES;
+      } else if (hour >= 16 && hour < 18) {
+        // 4 PM: engagement
+        messagePool = ENGAGEMENT_MESSAGES;
+      } else if (hour >= 18 && hour < 20) {
+        // 6 PM: daily update
+        messagePool = UPDATE_MESSAGES;
+      } else if (hour >= 20 && hour < 22) {
+        // 8 PM: engagement
+        messagePool = ENGAGEMENT_MESSAGES;
+      } else {
+        messagePool = ENGAGEMENT_MESSAGES;
+      }
     }
 
     const message = messagePool[Math.floor(Math.random() * messagePool.length)];
 
-    // Send to all groups
     const results = [];
     for (const group of groups) {
       try {
-        // For good morning, try to get member names from scores table
         let finalMessage = message;
         if (messageType === "morning" || (messageType === "auto" && hour >= 6 && hour < 9)) {
           const { data: members } = await supabase
@@ -116,7 +137,6 @@ serve(async (req) => {
         const resData = await res.json();
         results.push({ chat_id: group.chat_id, ok: resData.ok, title: group.chat_title });
         
-        // If bot was kicked/blocked, mark group as inactive
         if (!resData.ok && resData.description?.includes("bot was kicked")) {
           await supabase.from("zara_group_chats").update({ is_active: false }).eq("chat_id", group.chat_id);
         }
