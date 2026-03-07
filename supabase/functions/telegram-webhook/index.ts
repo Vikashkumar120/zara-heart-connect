@@ -975,6 +975,42 @@ serve(async (req) => {
       replyContext = `\n\n[User is replying to this message: "${message.reply_to_message.text}"]\nRespond about THIS specific message that they're replying to.`;
     }
 
+    // ===== MEM0 MEMORY: Search relevant memories =====
+    let memoryContext = "";
+    const MEM0_API_KEY = Deno.env.get("MEM0_API_KEY");
+    if (MEM0_API_KEY && telegramUserId) {
+      try {
+        const mem0UserId = `telegram_${telegramUserId}`;
+        const searchRes = await fetch("https://api.mem0.ai/v1/memories/search/", {
+          method: "POST",
+          headers: {
+            "Authorization": `Token ${MEM0_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: userText,
+            user_id: mem0UserId,
+            limit: 5,
+          }),
+        });
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const memories = searchData?.results || searchData || [];
+          if (Array.isArray(memories) && memories.length > 0) {
+            const memTexts = memories
+              .map((m: any) => m.memory || m.text || m.content || "")
+              .filter((t: string) => t.length > 0)
+              .slice(0, 5);
+            if (memTexts.length > 0) {
+              memoryContext = "\n\n[MEMORIES about this user from past conversations:\n" + memTexts.map((m: string, i: number) => `${i+1}. ${m}`).join("\n") + "]\nUse these memories NATURALLY in your reply — reference them casually like a real person remembering things. Don't say 'mere memory me hai' or 'mujhe yaad hai database se'.";
+            }
+          }
+        }
+      } catch (memErr) {
+        console.error("Mem0 search error:", memErr);
+      }
+    }
+
     if (isGroup) {
       const modeData = MODE_LIST[userMode] || MODE_LIST["gf"];
       systemPrompt = "You are Zara - not a chatbot, not an AI. You are a real human girl in a GROUP CHAT.\n\n" +
@@ -989,10 +1025,10 @@ serve(async (req) => {
         "- Be entertaining and stay in character\n" +
         "- Yaad rakho pehle ki baatein — natural memory dikhao";
 
-      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}${replyContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode.`;
+      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}${replyContext}${memoryContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode.`;
     } else {
       systemPrompt = ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}`;
+      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}`;
     }
 
     // Generate reply
@@ -1001,6 +1037,30 @@ serve(async (req) => {
       ? userContext
       : userContext + "\n\nIMPORTANT: Reply will be spoken as voice. Keep it SHORT (1-2 lines), conversational, no emojis, no markdown. Pure spoken Hinglish.";
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
+
+    // ===== MEM0 MEMORY: Store new memory from conversation =====
+    if (MEM0_API_KEY && telegramUserId) {
+      try {
+        const mem0UserId = `telegram_${telegramUserId}`;
+        fetch("https://api.mem0.ai/v1/memories/", {
+          method: "POST",
+          headers: {
+            "Authorization": `Token ${MEM0_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "user", content: `${firstName}: ${userText}` },
+              { role: "assistant", content: reply },
+            ],
+            user_id: mem0UserId,
+            metadata: { platform: "telegram", first_name: firstName, chat_id: String(chatId) },
+          }),
+        }).catch(e => console.error("Mem0 store error:", e));
+      } catch (memErr) {
+        console.error("Mem0 store error:", memErr);
+      }
+    }
 
     // ===== VOICE-FIRST REPLY SYSTEM =====
     if (!isTextOnly) {
