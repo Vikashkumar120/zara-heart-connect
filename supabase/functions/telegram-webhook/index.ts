@@ -992,7 +992,7 @@ serve(async (req) => {
       userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}${replyContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode.`;
     } else {
       systemPrompt = ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}`;
+      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}`;
     }
 
     // Generate reply
