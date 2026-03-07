@@ -969,6 +969,12 @@ serve(async (req) => {
     let systemPrompt: string;
     let userContext: string;
 
+    // Check if user is replying to a specific message
+    let replyContext = "";
+    if (message.reply_to_message?.text) {
+      replyContext = `\n\n[User is replying to this message: "${message.reply_to_message.text}"]\nRespond about THIS specific message that they're replying to.`;
+    }
+
     if (isGroup) {
       const modeData = MODE_LIST[userMode] || MODE_LIST["gf"];
       systemPrompt = "You are Zara - not a chatbot, not an AI. You are a real human girl in a GROUP CHAT.\n\n" +
@@ -980,9 +986,10 @@ serve(async (req) => {
         '- Unka naam "' + firstName + '" har reply me use karo\n' +
         "- NEVER say you are AI/chatbot/model\n" +
         "- NEVER give explicit/adult content\n" +
-        "- Be entertaining and stay in character";
+        "- Be entertaining and stay in character\n" +
+        "- Yaad rakho pehle ki baatein — natural memory dikhao";
 
-      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode.`;
+      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}${replyContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode.`;
     } else {
       systemPrompt = ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}`;
