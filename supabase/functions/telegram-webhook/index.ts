@@ -1178,8 +1178,9 @@ function pcmToWav(pcmData: Uint8Array, sampleRate = 24000, numChannels = 1, bits
 function getGeminiVoiceForMode(mode: string): string {
   switch (mode) {
     case "gf":
+      return "Aoede"; // breezy, natural, romantic female voice
     case "bahan":
-      return "Kore";
+      return "Leda";
     case "bf":
     case "bhai":
       return "Charon";
