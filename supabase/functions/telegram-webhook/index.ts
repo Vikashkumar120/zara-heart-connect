@@ -418,17 +418,8 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // In groups, respond when mentioned, replied to, using a command, or "backword" trigger
-    if (isGroup) {
-      const isCommand = lowerText.startsWith("/");
-      const botMentioned = lowerText.includes("zara") || 
-                           lowerText.includes("backword") ||
-                           userText.includes("@") ||
-                           message.reply_to_message?.from?.is_bot;
-      if (!isCommand && !botMentioned) {
-        return new Response("OK", { status: 200 });
-      }
-    }
+    // In groups, respond to ALL messages (no tag needed)
+    // Zara will reply to every message in the group like a real group member
 
     const telegramUserId = message.from?.id;
 
