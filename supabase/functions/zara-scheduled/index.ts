@@ -87,26 +87,28 @@ serve(async (req) => {
       messagePool = APP_INSTALL_MESSAGES;
     } else if (messageType === "engage") {
       messagePool = ENGAGEMENT_MESSAGES;
+    } else if (messageType === "services") {
+      messagePool = SERVICES_MESSAGES;
     } else {
       // Auto: based on time of day
       if (hour >= 10 && hour < 12) {
-        // 10 AM: mode tutorial
         messagePool = MODE_TUTORIAL_MESSAGES;
       } else if (hour >= 12 && hour < 14) {
-        // 12 PM: engagement
         messagePool = ENGAGEMENT_MESSAGES;
-      } else if (hour >= 14 && hour < 16) {
-        // 2 PM: app install
+      } else if (hour >= 14 && hour < 15) {
+        messagePool = SERVICES_MESSAGES;
+      } else if (hour >= 15 && hour < 16) {
         messagePool = APP_INSTALL_MESSAGES;
       } else if (hour >= 16 && hour < 18) {
-        // 4 PM: engagement
         messagePool = ENGAGEMENT_MESSAGES;
-      } else if (hour >= 18 && hour < 20) {
-        // 6 PM: daily update
+      } else if (hour >= 18 && hour < 19) {
         messagePool = UPDATE_MESSAGES;
-      } else if (hour >= 20 && hour < 22) {
-        // 8 PM: engagement
+      } else if (hour >= 19 && hour < 20) {
+        messagePool = SERVICES_MESSAGES;
+      } else if (hour >= 20 && hour < 21) {
         messagePool = ENGAGEMENT_MESSAGES;
+      } else if (hour >= 21 && hour < 22) {
+        messagePool = SERVICES_MESSAGES;
       } else {
         messagePool = ENGAGEMENT_MESSAGES;
       }
