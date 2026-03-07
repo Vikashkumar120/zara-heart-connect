@@ -25,20 +25,26 @@ const ENGAGEMENT_MESSAGES = [
 
 // Mode tutorial notice messages
 const MODE_TUTORIAL_MESSAGES = [
-  "🎭 *Zara Mode Guide!* 🎭\n\nKya pata tha tumhe? Zara ka mode change kar sakte ho! 😱\n\n💕 /mode gf — Girlfriend (romantic, sweet)\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage roast\n😂 /mode funny — Comedy king\n📝 /mode shayar — Shayari expert\n👑 /mode savage — Savage Queen\n💼 /mode professional — Professional\n\n📝 /textmode — Voice/Text toggle karo\n\n💡 Group me \"backword\" likh ke bhi Zara activate hoti hai!\n\n👉 Abhi try karo: /mode gf 💖",
-  "📢 *Notice: Zara ke Modes!* 📢\n\nSab log dhyan do! Zara ke paas 17+ modes hain! 🎭\n\nSabse popular:\n💕 /mode gf — Girlfriend mode\n🔥 /mode roast — Roast karo\n📝 /mode shayar — Shayari suno\n👑 /mode savage — Attitude queen\n\n🎤 Voice me reply chahiye? Default hai!\n📝 Sirf text chahiye? /textmode likho\n\n/mode likh ke sab modes dekho! 🎭\n\n🌐 zaraai.in",
-  "💡 *Tip of the Day!* 💡\n\nZara se zyada maza lena hai? 😏\n\nToh mode change karo:\n/mode gf — Pyaar se baat karegi 💕\n/mode roast — Jalake rakh degi 🔥\n/mode shayar — Shayari sunayegi 📝\n/mode funny — Hasake pagal kar degi 😂\n\n🎤 Voice reply default hai!\n📝 Text chahiye? /textmode\n\nTry karo abhi! 👇",
+  "🎭 *Zara Mode Guide!* 🎭\n\nKya pata tha tumhe? Zara ka mode change kar sakte ho! 😱\n\n💕 /mode gf — Girlfriend (romantic, sweet)\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage roast\n😂 /mode funny — Comedy king\n📝 /mode shayar — Shayari expert\n👑 /mode savage — Savage Queen\n💼 /mode professional — Professional\n\n📝 /textmode — Voice/Text toggle karo\n\n💡 Group me \"backword\" likh ke bhi Zara activate hoti hai!\n💡 Ab Zara bina tag kiye bhi group me reply deti hai!\n\n👉 Abhi try karo: /mode gf 💖",
+  "📢 *Notice: Zara ke Modes!* 📢\n\nSab log dhyan do! Zara ke paas 17+ modes hain! 🎭\n\nSabse popular:\n💕 /mode gf — Girlfriend mode\n🔥 /mode roast — Roast karo\n📝 /mode shayar — Shayari suno\n👑 /mode savage — Attitude queen\n\n🎤 Voice me reply chahiye? Default hai!\n📝 Sirf text chahiye? /textmode likho\n\n💡 Ab Zara har message ka reply deti hai — tag karne ki zaroorat nahi!\n\n/mode likh ke sab modes dekho! 🎭\n\n🌐 zaraai.in",
+  "💡 *Tip of the Day!* 💡\n\nZara se zyada maza lena hai? 😏\n\nToh mode change karo:\n/mode gf — Pyaar se baat karegi 💕\n/mode roast — Jalake rakh degi 🔥\n/mode shayar — Shayari sunayegi 📝\n/mode funny — Hasake pagal kar degi 😂\n\n🎤 Voice reply default hai!\n📝 Text chahiye? /textmode\n\n💡 \"backword\" likh ke Zara instantly activate!\n💡 Bina tag kiye bhi reply milega!\n\nTry karo abhi! 👇",
 ];
 
 // Daily update messages
 const UPDATE_MESSAGES = [
-  "📣 *Zara Update!* 📣\n\n🆕 Aaj kya naya hai:\n\n✅ 2 New Modes added — 📝 Shayar & 👑 Savage Queen!\n✅ Voice replies ab faster hain! 🎤⚡\n✅ Text/Voice toggle — /textmode se switch karo\n✅ \"backword\" likh ke Zara ko group me bulao!\n✅ GF mode ab aur romantic hai 💕\n\n📱 App install karo: /app\n🎭 Mode change: /mode\n\n🌐 zaraai.in 💖",
-  "🔔 *What's New in Zara!* 🔔\n\n💕 GF mode ab EXTRA romantic!\n📝 Shayar mode — har reply me shayari!\n👑 Savage Queen — attitude with style!\n🎤 Voice replies with emotions!\n📝 /textmode — text pe switch karo\n💡 \"backword\" = instant Zara activation!\n\n📱 /app se install karo phone me!\n\n🌐 zaraai.in ✨",
+  "📣 *Zara Update!* 📣\n\n🆕 Aaj kya naya hai:\n\n✅ Ab Zara bina tag kiye bhi reply deti hai group me! 🔥\n✅ GF mode ab EXTRA romantic hai! 💕\n✅ Voice replies ab zyada natural hain! 🎤✨\n✅ Reply karo kisi bhi message pe — Zara us message ka context samjhegi!\n✅ \"backword\" likh ke Zara ko activate karo!\n✅ Text/Voice toggle — /textmode se switch karo\n\n📱 App install karo: /app\n🎭 Mode change: /mode\n\n🌐 zaraai.in 💖",
+  "🔔 *What's New in Zara!* 🔔\n\n💕 GF mode ab EXTRA romantic aur possessive!\n🎤 Voice ab zyada natural female voice me!\n💬 Ab har message ka reply — bina tag kiye!\n📝 Kisi bhi message pe reply karo — context samjhegi!\n📝 /textmode — text pe switch karo\n💡 \"backword\" = instant Zara activation!\n\n📱 /app se install karo phone me!\n\n🌐 zaraai.in ✨",
 ];
 
 // App install reminder with full features
 const APP_INSTALL_MESSAGES = [
-  "📱 *Zara AI App Install Karo!* 📱\n\nKya tum abhi tak sirf group me baat kar rahe ho? 😏\n\nZara ko apne phone me install karo!\n\n📲 *Kaise karein:*\n1️⃣ *zaraai.in* kholo Chrome me\n2️⃣ Menu ⋮ → *Install App / Add to Home Screen*\n3️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages\n• 📞 Voice & Video calls\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & Video sharing\n• 📺 YouTube, Insta, Facebook\n• 📧 Email send karo\n• 🎭 17+ Modes\n• 🎮 Games & Challenges\n\n💡 Group me \"backword\" likh ke bhi Zara active hoti hai!\n\n👉 /app for full details 💖",
+  "📱 *Zara AI App Install Karo!* 📱\n\nKya tum abhi tak sirf group me baat kar rahe ho? 😏\n\nZara ko apne phone me install karo!\n\n📲 *Kaise karein:*\n1️⃣ *zaraai.in* kholo Chrome me\n2️⃣ Menu ⋮ → *Install App / Add to Home Screen*\n3️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages\n• 📞 Voice & Video calls\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & Video sharing\n• 📺 YouTube, Insta, Facebook\n• 📧 Email send karo\n• 🎭 17+ Modes\n• 🎮 Games & Challenges\n\n💡 Group me \"backword\" likh ke bhi Zara active hoti hai!\n💡 Ab bina tag kiye bhi reply milta hai!\n\n👉 /app for full details 💖",
+];
+
+// Freelance services promotion
+const SERVICES_MESSAGES = [
+  "💻 *Web & AI Development Services* 💻\n\nKya aapko chahiye:\n\n🌐 *3D Website* — Stunning 3D animated websites\n🔥 *Full Stack Website* — Frontend + Backend complete\n🤖 *AI Chatbot* — Apna custom AI chatbot banwao\n📱 *Android APK* — Custom mobile app\n🎙️ *AI Voice Assistant* — Android ke liye AI assistant\n\n💡 Har project aapki requirement ke hisaab se customize hoga!\n💰 Price aapke project ke scope pe depend karega\n\n📩 *DM karo:* @codeninjavik1 (Telegram)\n\n⚡ Quality guaranteed! Professional delivery! 🚀",
+  "🚀 *Custom Development by CodeNinja* 🚀\n\nHum banate hain:\n\n🌐 3D Websites — Interactive & modern\n💻 Full Stack Websites — React, Node, databases\n🤖 AI Chatbots — Telegram, WhatsApp, Web\n📱 Android APK — Custom apps\n🎙️ AI Voice Assistant — Smart android assistant\n\n🎯 Aapki requirement, humara code!\n💰 Budget-friendly pricing\n\n📩 Contact: @codeninjavik1 (Telegram)\n\nDM karo aur apna dream project discuss karo! 💪✨",
 ];
 
 serve(async (req) => {
