@@ -1027,39 +1027,22 @@ serve(async (req) => {
       replyContext = `\n\n[User is replying to this message: "${message.reply_to_message.text}"]\nRespond about THIS specific message that they're replying to.`;
     }
 
-    // ===== MEM0 MEMORY: Search relevant memories =====
+    // ===== MEM0 MEMORY: Process pre-fetched memories =====
     let memoryContext = "";
-    const MEM0_API_KEY = Deno.env.get("MEM0_API_KEY");
-    if (MEM0_API_KEY && telegramUserId) {
+    if (memoryResult) {
       try {
-        const mem0UserId = `telegram_${telegramUserId}`;
-        const searchRes = await fetch("https://api.mem0.ai/v1/memories/search/", {
-          method: "POST",
-          headers: {
-            "Authorization": `Token ${MEM0_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: userText,
-            user_id: mem0UserId,
-            limit: 5,
-          }),
-        });
-        if (searchRes.ok) {
-          const searchData = await searchRes.json();
-          const memories = searchData?.results || searchData || [];
-          if (Array.isArray(memories) && memories.length > 0) {
-            const memTexts = memories
-              .map((m: any) => m.memory || m.text || m.content || "")
-              .filter((t: string) => t.length > 0)
-              .slice(0, 5);
-            if (memTexts.length > 0) {
-              memoryContext = "\n\n[MEMORIES about this user from past conversations:\n" + memTexts.map((m: string, i: number) => `${i+1}. ${m}`).join("\n") + "]\nUse these memories NATURALLY in your reply — reference them casually like a real person remembering things. Don't say 'mere memory me hai' or 'mujhe yaad hai database se'.";
-            }
+        const memories = memoryResult?.results || memoryResult || [];
+        if (Array.isArray(memories) && memories.length > 0) {
+          const memTexts = memories
+            .map((m: any) => m.memory || m.text || m.content || "")
+            .filter((t: string) => t.length > 0)
+            .slice(0, 5);
+          if (memTexts.length > 0) {
+            memoryContext = "\n\n[MEMORIES about this user from past conversations:\n" + memTexts.map((m: string, i: number) => `${i+1}. ${m}`).join("\n") + "]\nUse these memories NATURALLY in your reply — reference them casually like a real person remembering things. Don't say 'mere memory me hai' or 'mujhe yaad hai database se'.";
           }
         }
       } catch (memErr) {
-        console.error("Mem0 search error:", memErr);
+        console.error("Mem0 memory parse error:", memErr);
       }
     }
 
