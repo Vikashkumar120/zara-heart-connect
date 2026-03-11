@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      zara_channels: {
+        Row: {
+          channel_id: number
+          channel_title: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+        }
+        Insert: {
+          channel_id: number
+          channel_title?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+        }
+        Update: {
+          channel_id?: number
+          channel_title?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+        }
+        Relationships: []
+      }
       zara_game_scores: {
         Row: {
           chat_id: number
