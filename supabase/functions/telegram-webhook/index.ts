@@ -440,7 +440,7 @@ serve(async (req) => {
     const isApkRequest = apkKeywords.some((kw) => lowerText.includes(kw));
     
     if (isApkRequest) {
-      const apkReply = `Arre ${firstName}! 😏✨\n\nApk-vapk kya dhundh rahe ho?\nMeri website pe aao na jaan! 💕\n\n🌐 *zaraai.in*\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nnaye features try kar sakte ho! 🔥\n\nJao jaldi! 👉 zaraai.in 💖`;
+      const apkReply = `Arre ${firstName}! 😏✨\n\nZara AI app download karo! 💕\n\n📱 *zaraai.in/r/NINJA5*\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 👉 zaraai.in/r/NINJA5 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, apkReply);
       return new Response("OK", { status: 200 });
     }
