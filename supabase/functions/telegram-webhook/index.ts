@@ -995,18 +995,28 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Regular conversation — fetch per-user mode + text_only preference
-    let userMode = "gf"; // DEFAULT CHANGED TO GF
+    // Regular conversation — fetch per-user mode + mem0 memories IN PARALLEL for speed
+    let userMode = "gf";
     let isTextOnly = false;
-    if (telegramUserId) {
-      const { data } = await supabase
-        .from("zara_user_modes")
-        .select("mode, text_only")
-        .eq("telegram_user_id", telegramUserId)
-        .single();
-      if (data?.mode) userMode = data.mode;
-      if (data?.text_only) isTextOnly = true;
-    }
+    
+    // Fire both requests simultaneously
+    const modePromise = telegramUserId
+      ? supabase.from("zara_user_modes").select("mode, text_only").eq("telegram_user_id", telegramUserId).single()
+      : Promise.resolve({ data: null });
+    
+    const MEM0_API_KEY = Deno.env.get("MEM0_API_KEY");
+    const memoryPromise = (MEM0_API_KEY && telegramUserId)
+      ? fetch("https://api.mem0.ai/v1/memories/search/", {
+          method: "POST",
+          headers: { "Authorization": `Token ${MEM0_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ query: userText, user_id: `telegram_${telegramUserId}`, limit: 5 }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null);
+
+    const [modeResult, memoryResult] = await Promise.all([modePromise, memoryPromise]);
+    
+    if (modeResult?.data?.mode) userMode = modeResult.data.mode;
+    if (modeResult?.data?.text_only) isTextOnly = true;
 
     let systemPrompt: string;
     let userContext: string;
@@ -1017,39 +1027,22 @@ serve(async (req) => {
       replyContext = `\n\n[User is replying to this message: "${message.reply_to_message.text}"]\nRespond about THIS specific message that they're replying to.`;
     }
 
-    // ===== MEM0 MEMORY: Search relevant memories =====
+    // ===== MEM0 MEMORY: Process pre-fetched memories =====
     let memoryContext = "";
-    const MEM0_API_KEY = Deno.env.get("MEM0_API_KEY");
-    if (MEM0_API_KEY && telegramUserId) {
+    if (memoryResult) {
       try {
-        const mem0UserId = `telegram_${telegramUserId}`;
-        const searchRes = await fetch("https://api.mem0.ai/v1/memories/search/", {
-          method: "POST",
-          headers: {
-            "Authorization": `Token ${MEM0_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: userText,
-            user_id: mem0UserId,
-            limit: 5,
-          }),
-        });
-        if (searchRes.ok) {
-          const searchData = await searchRes.json();
-          const memories = searchData?.results || searchData || [];
-          if (Array.isArray(memories) && memories.length > 0) {
-            const memTexts = memories
-              .map((m: any) => m.memory || m.text || m.content || "")
-              .filter((t: string) => t.length > 0)
-              .slice(0, 5);
-            if (memTexts.length > 0) {
-              memoryContext = "\n\n[MEMORIES about this user from past conversations:\n" + memTexts.map((m: string, i: number) => `${i+1}. ${m}`).join("\n") + "]\nUse these memories NATURALLY in your reply — reference them casually like a real person remembering things. Don't say 'mere memory me hai' or 'mujhe yaad hai database se'.";
-            }
+        const memories = memoryResult?.results || memoryResult || [];
+        if (Array.isArray(memories) && memories.length > 0) {
+          const memTexts = memories
+            .map((m: any) => m.memory || m.text || m.content || "")
+            .filter((t: string) => t.length > 0)
+            .slice(0, 5);
+          if (memTexts.length > 0) {
+            memoryContext = "\n\n[MEMORIES about this user from past conversations:\n" + memTexts.map((m: string, i: number) => `${i+1}. ${m}`).join("\n") + "]\nUse these memories NATURALLY in your reply — reference them casually like a real person remembering things. Don't say 'mere memory me hai' or 'mujhe yaad hai database se'.";
           }
         }
       } catch (memErr) {
-        console.error("Mem0 search error:", memErr);
+        console.error("Mem0 memory parse error:", memErr);
       }
     }
 
@@ -1074,10 +1067,10 @@ serve(async (req) => {
     }
 
     // Generate reply
-    const maxTok = isTextOnly ? (isGroup ? 150 : 200) : (isGroup ? 80 : 120);
+    const maxTok = isTextOnly ? (isGroup ? 150 : 200) : (isGroup ? 100 : 150);
     const replyPrompt = isTextOnly
       ? userContext
-      : userContext + "\n\nIMPORTANT: Reply will be spoken as voice. Keep it SHORT (1-2 lines), conversational, no emojis, no markdown. Pure spoken Hinglish.";
+      : userContext + "\n\nIMPORTANT: Reply will be spoken as VOICE. Keep it SHORT (1-3 lines), conversational, no emojis, no markdown. Pure spoken Hinglish. BE EXPRESSIVE — haso, hanso, nautanki karo, dramatic ho jao, 'hahahaha', 'hawww', 'ohhoo', 'ufff', 'arreee' jaise expressions use karo. Jaise real ladki baat karti hai phone pe — hassti hai, chidti hai, sharma jaati hai, drama karti hai. NEVER be flat or robotic in voice.";
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
@@ -1125,8 +1118,10 @@ serve(async (req) => {
       }
     }
 
-    // Fallback / text mode: send as text
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+    // Fallback / text mode: send as text with promo link
+    const promoTag = "\n\n📱 _Zara App_ — *5% OFF!* 🔥\n👉 zaraai.in/r/NINJA5";
+    const shouldAddPromo = Math.random() < 0.3; // 30% chance to add promo
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply + (shouldAddPromo ? promoTag : ""));
 
     return new Response("OK", { status: 200 });
   } catch (e) {
