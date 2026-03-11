@@ -1118,8 +1118,10 @@ serve(async (req) => {
       }
     }
 
-    // Fallback / text mode: send as text
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+    // Fallback / text mode: send as text with promo link
+    const promoTag = "\n\n📱 _Zara App_ — *5% OFF!* 🔥\n👉 zaraai.in/r/NINJA5";
+    const shouldAddPromo = Math.random() < 0.3; // 30% chance to add promo
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply + (shouldAddPromo ? promoTag : ""));
 
     return new Response("OK", { status: 200 });
   } catch (e) {
