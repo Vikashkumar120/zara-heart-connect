@@ -995,18 +995,28 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Regular conversation — fetch per-user mode + text_only preference
-    let userMode = "gf"; // DEFAULT CHANGED TO GF
+    // Regular conversation — fetch per-user mode + mem0 memories IN PARALLEL for speed
+    let userMode = "gf";
     let isTextOnly = false;
-    if (telegramUserId) {
-      const { data } = await supabase
-        .from("zara_user_modes")
-        .select("mode, text_only")
-        .eq("telegram_user_id", telegramUserId)
-        .single();
-      if (data?.mode) userMode = data.mode;
-      if (data?.text_only) isTextOnly = true;
-    }
+    
+    // Fire both requests simultaneously
+    const modePromise = telegramUserId
+      ? supabase.from("zara_user_modes").select("mode, text_only").eq("telegram_user_id", telegramUserId).single()
+      : Promise.resolve({ data: null });
+    
+    const MEM0_API_KEY = Deno.env.get("MEM0_API_KEY");
+    const memoryPromise = (MEM0_API_KEY && telegramUserId)
+      ? fetch("https://api.mem0.ai/v1/memories/search/", {
+          method: "POST",
+          headers: { "Authorization": `Token ${MEM0_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ query: userText, user_id: `telegram_${telegramUserId}`, limit: 5 }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null);
+
+    const [modeResult, memoryResult] = await Promise.all([modePromise, memoryPromise]);
+    
+    if (modeResult?.data?.mode) userMode = modeResult.data.mode;
+    if (modeResult?.data?.text_only) isTextOnly = true;
 
     let systemPrompt: string;
     let userContext: string;
