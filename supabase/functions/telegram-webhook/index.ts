@@ -348,6 +348,21 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== CHANNEL POST: Auto-save channel ID =====
+    if (update?.channel_post || update?.my_chat_member?.chat?.type === "channel") {
+      const channelChat = update?.channel_post?.chat || update?.my_chat_member?.chat;
+      if (channelChat) {
+        try {
+          await supabase.from("zara_channels").upsert(
+            { channel_id: channelChat.id, channel_title: channelChat.title || "Unknown" },
+            { onConflict: "channel_id" }
+          );
+          console.log("Channel saved:", channelChat.id, channelChat.title);
+        } catch (e) { console.log("Channel save error:", e); }
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== INLINE QUERY SUPPORT =====
     if (update?.inline_query) {
       const inlineQuery = update.inline_query;
