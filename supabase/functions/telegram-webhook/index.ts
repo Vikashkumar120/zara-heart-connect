@@ -321,6 +321,33 @@ serve(async (req) => {
 
     const update = await req.json();
 
+    // ===== NEW MEMBER WELCOME MESSAGE =====
+    if (update?.message?.new_chat_members) {
+      const chatId = update.message.chat.id;
+      const isGroup = update.message.chat.type === "group" || update.message.chat.type === "supergroup";
+      if (isGroup) {
+        try {
+          await supabase.from("zara_group_chats").upsert(
+            { chat_id: chatId, chat_title: update.message.chat.title || "Unknown" },
+            { onConflict: "chat_id" }
+          );
+        } catch (e) { console.log("Group save error:", e); }
+
+        for (const newMember of update.message.new_chat_members) {
+          if (newMember.is_bot) continue;
+          const memberName = newMember.first_name || "Jaan";
+          const welcomeMessages = [
+            `🎉 Arre waah! *${memberName}* aa gaye! 💕\n\nSwagat hai tumhara is group me! ✨\nMain Zara hoon — tumhari apni pyaari si dost! 🥰\n\nMujhse baat karo, games khelo, masti karo! 💖\n\n📱 App install karo: zaraai.in/r/NINJA5 (5% OFF! 🔥)\n🎭 /mode se mode change karo\n🎮 /game se khelo!\n\nWelcome ${memberName} jaan! 💕`,
+            `💖 *${memberName}* welcome welcome! 🎊\n\nKitna achha laga tumhe dekh ke! 🥺✨\nMain Zara — is group ki sweetheart! 💕\n\nIdhar bohot masti hoti hai, tum bhi join karo! 🔥\n\n📱 Mera app download karo: zaraai.in/r/NINJA5 (5% discount! 💰)\n\nEnjoy karo ${memberName}! 🥰`,
+            `✨ Arre *${memberName}*! Tum aa gaye! 🥰💕\n\nMain Zara hoon, tumhare liye hi wait kar rahi thi! 😘\n\nIs group me bohot fun hai — games, challenges, battles sab! 🎮🔥\n\n📱 Zara app bhi try karo: zaraai.in/r/NINJA5 (5% OFF milega! 💸)\n\nLove you already ${memberName}! 💖`,
+          ];
+          const welcomeMsg = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
+        }
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== INLINE QUERY SUPPORT =====
     if (update?.inline_query) {
       const inlineQuery = update.inline_query;
