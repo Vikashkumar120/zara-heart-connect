@@ -925,6 +925,13 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // Handle /referral command
+    if (lowerText.startsWith("/referral")) {
+      const referralMsg = `💰 *Referral Program — Paisa Kamao!* 💰\n\n${firstName}, ab tum bhi paisa kama sakte ho! 🤑\n\n📋 *Kaise kaam karta hai:*\n\n1️⃣ *codeninjavik.in* pe jaao 🌐\n2️⃣ Apna account banao ✅\n3️⃣ Dashboard se apna *referral link* copy karo 🔗\n4️⃣ Ye link apne doston ko share karo 📤\n5️⃣ Jab koi tumhare link se kuch *buy* karega...\n💸 Tumhe *5% commission* milega seedha account me! 🎉\n\n📱 *Zara App bhi share karo:*\n👉 *zaraai.in/r/NINJA5* — is link se download pe *5% OFF!*\n\n🔥 Jitna zyada share karoge, utna zyada kamaaoge!\n\n👉 Abhi shuru karo: *codeninjavik.in* 💼`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, referralMsg);
+      return new Response("OK", { status: 200 });
+    }
+
     // Handle /app command — with full features and backword trigger
     if (userText === "/app" || lowerText.includes("/app")) {
       const appMsg = `📱 *Zara AI — Full Mobile Experience* 📱\n\n${firstName}, Zara ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Zara ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Zara se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me *zaraai.in/r/NINJA5* kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* is link se: zaraai.in/r/NINJA5 💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Zara activate hoti hai! ✨\n\n💰 *Price:* ₹1599 (5% OFF with link!)\n\n👉 Abhi install karo: *zaraai.in/r/NINJA5* 💖\n\n💼 *Freelance karo & Paisa kamao!*\n🌐 *codeninjavik.in* pe account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* milega! 🔥`;
