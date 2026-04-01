@@ -984,6 +984,15 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== ZARA QUERY DETECTION — send app + referral links =====
+    const zaraQueryKeywords = ["zara kya hai", "zara kaun hai", "zara ke bare", "zara ke baare", "zara about", "what is zara", "who is zara", "zara kya krti", "zara kya karti", "zara bot", "ye zara kya hai"];
+    const isZaraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
+    if (isZaraQuery) {
+      const zaraInfoMsg = `💕 *Zara AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Zara hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n\n📱 *App Download karo:*\n👉 *zaraai.in/r/NINJA5* — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, zaraInfoMsg);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== MOOD-BASED MUSIC DETECTION =====
     const moodMatch = detectMood(userText);
     const looksLikeMusicRequest = /\b(song|gaana|gaane|music|sunao|bajao|play|chahiye)\b/i.test(userText);
