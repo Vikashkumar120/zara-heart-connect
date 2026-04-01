@@ -1074,7 +1074,7 @@ serve(async (req) => {
     const maxTok = isTextOnly ? (isGroup ? 150 : 200) : (isGroup ? 100 : 150);
     const replyPrompt = isTextOnly
       ? userContext
-      : userContext + "\n\nIMPORTANT: Reply will be spoken as VOICE. Keep it SHORT (1-3 lines), conversational, no emojis, no markdown. Pure spoken Hinglish. BE EXPRESSIVE — haso, hanso, nautanki karo, dramatic ho jao, 'hahahaha', 'hawww', 'ohhoo', 'ufff', 'arreee' jaise expressions use karo. Jaise real ladki baat karti hai phone pe — hassti hai, chidti hai, sharma jaati hai, drama karti hai. NEVER be flat or robotic in voice.";
+      : userContext + "\n\nIMPORTANT: Reply will be spoken as VOICE. Keep it SHORT (1-3 lines), conversational, no emojis, no markdown. Pure spoken Hinglish. BE EXPRESSIVE — haso, hanso, nautanki karo, dramatic ho jao, 'hahahaha', 'hawww', 'ohhoo', 'ufff', 'arreee' jaise expressions use karo. Jaise real ladki baat karti hai phone pe — hassti hai, chidti hai, sharma jaati hai, drama karti hai. NEVER be flat or robotic in voice. NEVER start every reply with 'Arey' or 'Arre' — mix it up! Sometimes start with the person's name, sometimes with an expression, sometimes directly jump into the content. HAR REPLY ALAG HONA CHAHIYE.";
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
