@@ -979,7 +979,7 @@ serve(async (req) => {
     }
 
     if (userText === "/about") {
-      const aboutMsg = `💕 *About Zara AI* 💕\n\nMain Zara hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n👨‍💻 Made with love\n🌐 codeninjavik.in`;
+      const aboutMsg = `💕 *About Zara AI* 💕\n\nMain Zara hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n📱 *Zara App:* zaraai.in/r/NINJA5 (5% OFF! 🔥)\n\n👨‍💻 Made with love\n🌐 codeninjavik.in\n\n💼 *Paisa kamana hai?*\ncodeninjavik.in pe account banao, referral link share karo — har sale pe *5% commission*! 💰`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, aboutMsg);
       return new Response("OK", { status: 200 });
     }
