@@ -468,8 +468,19 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // In groups, respond to ALL messages (no tag needed)
-    // Zara will reply to every message in the group like a real group member
+    // ===== GROUP COOLDOWN SYSTEM — reply to every 3rd-4th message randomly =====
+    if (isGroup && !userText.startsWith("/")) {
+      // Use a simple hash-based random decision per message
+      const msgId = message.message_id || 0;
+      const shouldReply = (msgId % 4 === 0) || (Math.random() < 0.3);
+      // Always reply if Zara is mentioned or "backword" is typed
+      const isMentioned = lowerText.includes("zara") || lowerText.includes("backword") || lowerText.includes("@zarasweetbot");
+      if (!shouldReply && !isMentioned) {
+        return new Response("OK", { status: 200 });
+      }
+    }
+
+    // In groups with cooldown, Zara replies selectively like a real group member
 
     const telegramUserId = message.from?.id;
 
