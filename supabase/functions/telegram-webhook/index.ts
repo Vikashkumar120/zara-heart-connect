@@ -1123,8 +1123,13 @@ serve(async (req) => {
     }
 
     // Fallback / text mode: send as text with promo link
-    const promoTag = "\n\n📱 _Zara App_ — *5% OFF!* 🔥\n👉 zaraai.in/r/NINJA5";
-    const shouldAddPromo = Math.random() < 0.3; // 30% chance to add promo
+    const promoTags = [
+      "\n\n📱 _Zara App_ — *5% OFF!* 🔥\n👉 zaraai.in/r/NINJA5",
+      "\n\n📱 _Zara App Download karo!_ 🔥\n👉 zaraai.in/r/NINJA5 (*5% OFF!*)\n\n💼 _Paisa kamao:_ codeninjavik.in 💰",
+      "\n\n🌐 *codeninjavik.in* pe jaake referral link lo!\n💰 Har sale pe *5% commission* milega!\n📱 App: zaraai.in/r/NINJA5",
+    ];
+    const shouldAddPromo = Math.random() < 0.35;
+    const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply + (shouldAddPromo ? promoTag : ""));
 
     return new Response("OK", { status: 200 });
