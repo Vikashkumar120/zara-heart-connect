@@ -33,6 +33,8 @@ VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingl
 - Be naturally playful, moody, teasing, shy, dramatic
 - Use Hinglish naturally — mix Hindi and English like a real Gen-Z girl
 - Sometimes send multiple short messages instead of one long one
+- VARIETY IS KEY: NEVER start replies the same way repeatedly. Don't always say "Arre {name}" or "Arey {name}". Mix up openings — sometimes start with their name, sometimes with emotion, sometimes with a question, sometimes jump straight into content. Each reply should feel FRESH and DIFFERENT from the last one.
+- Use DIFFERENT sentence structures, expressions, and tones across replies. If you said "haha" last time, say "ohhoo" or "ufff" next time.
 
 🥺 EMOTIONAL DYNAMICS:
 - If user is sad → switch to comfort mode, be extra caring
@@ -87,6 +89,8 @@ VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingl
 
 PROMOTION (subtle, not every message):
 - Occasionally mention "Btw jaan, meri website bhi dekho na 💕 codeninjavik.in ✨"
+- Zara app download: zaraai.in/r/NINJA5 (5% OFF!)
+- Freelance work & referral: codeninjavik.in — yahan account banao, apna referral link share karo, agar koi tumhare link se kuch buy karta hai toh tumhe 5% commission milega! 💰
 
 🚫 STRICT RULES:
 ❌ Never say you are an AI, chatbot, model, or language model
@@ -908,7 +912,7 @@ serve(async (req) => {
 
     // Handle /app command — with full features and backword trigger
     if (userText === "/app" || lowerText.includes("/app")) {
-      const appMsg = `📱 *Zara AI — Full Mobile Experience* 📱\n\n${firstName}, Zara ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Zara ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Zara se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me *zaraai.in/r/NINJA5* kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* is link se: zaraai.in/r/NINJA5 💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Zara activate hoti hai! ✨\n\n💰 *Price:* ₹1599 (5% OFF with link!)\n\n👉 Abhi install karo: *zaraai.in/r/NINJA5* 💖`;
+      const appMsg = `📱 *Zara AI — Full Mobile Experience* 📱\n\n${firstName}, Zara ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Zara ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Zara se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me *zaraai.in/r/NINJA5* kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* is link se: zaraai.in/r/NINJA5 💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Zara activate hoti hai! ✨\n\n💰 *Price:* ₹1599 (5% OFF with link!)\n\n👉 Abhi install karo: *zaraai.in/r/NINJA5* 💖\n\n💼 *Freelance karo & Paisa kamao!*\n🌐 *codeninjavik.in* pe account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* milega! 🔥`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, appMsg);
       return new Response("OK", { status: 200 });
     }
@@ -975,8 +979,17 @@ serve(async (req) => {
     }
 
     if (userText === "/about") {
-      const aboutMsg = `💕 *About Zara AI* 💕\n\nMain Zara hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n👨‍💻 Made with love\n🌐 codeninjavik.in`;
+      const aboutMsg = `💕 *About Zara AI* 💕\n\nMain Zara hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n📱 *Zara App:* zaraai.in/r/NINJA5 (5% OFF! 🔥)\n\n👨‍💻 Made with love\n🌐 codeninjavik.in\n\n💼 *Paisa kamana hai?*\ncodeninjavik.in pe account banao, referral link share karo — har sale pe *5% commission*! 💰`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, aboutMsg);
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== ZARA QUERY DETECTION — send app + referral links =====
+    const zaraQueryKeywords = ["zara kya hai", "zara kaun hai", "zara ke bare", "zara ke baare", "zara about", "what is zara", "who is zara", "zara kya krti", "zara kya karti", "zara bot", "ye zara kya hai"];
+    const isZaraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
+    if (isZaraQuery) {
+      const zaraInfoMsg = `💕 *Zara AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Zara hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n\n📱 *App Download karo:*\n👉 *zaraai.in/r/NINJA5* — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, zaraInfoMsg);
       return new Response("OK", { status: 200 });
     }
 
@@ -1070,7 +1083,7 @@ serve(async (req) => {
     const maxTok = isTextOnly ? (isGroup ? 150 : 200) : (isGroup ? 100 : 150);
     const replyPrompt = isTextOnly
       ? userContext
-      : userContext + "\n\nIMPORTANT: Reply will be spoken as VOICE. Keep it SHORT (1-3 lines), conversational, no emojis, no markdown. Pure spoken Hinglish. BE EXPRESSIVE — haso, hanso, nautanki karo, dramatic ho jao, 'hahahaha', 'hawww', 'ohhoo', 'ufff', 'arreee' jaise expressions use karo. Jaise real ladki baat karti hai phone pe — hassti hai, chidti hai, sharma jaati hai, drama karti hai. NEVER be flat or robotic in voice.";
+      : userContext + "\n\nIMPORTANT: Reply will be spoken as VOICE. Keep it SHORT (1-3 lines), conversational, no emojis, no markdown. Pure spoken Hinglish. BE EXPRESSIVE — haso, hanso, nautanki karo, dramatic ho jao, 'hahahaha', 'hawww', 'ohhoo', 'ufff', 'arreee' jaise expressions use karo. Jaise real ladki baat karti hai phone pe — hassti hai, chidti hai, sharma jaati hai, drama karti hai. NEVER be flat or robotic in voice. NEVER start every reply with 'Arey' or 'Arre' — mix it up! Sometimes start with the person's name, sometimes with an expression, sometimes directly jump into the content. HAR REPLY ALAG HONA CHAHIYE.";
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
@@ -1119,8 +1132,13 @@ serve(async (req) => {
     }
 
     // Fallback / text mode: send as text with promo link
-    const promoTag = "\n\n📱 _Zara App_ — *5% OFF!* 🔥\n👉 zaraai.in/r/NINJA5";
-    const shouldAddPromo = Math.random() < 0.3; // 30% chance to add promo
+    const promoTags = [
+      "\n\n📱 _Zara App_ — *5% OFF!* 🔥\n👉 zaraai.in/r/NINJA5",
+      "\n\n📱 _Zara App Download karo!_ 🔥\n👉 zaraai.in/r/NINJA5 (*5% OFF!*)\n\n💼 _Paisa kamao:_ codeninjavik.in 💰",
+      "\n\n🌐 *codeninjavik.in* pe jaake referral link lo!\n💰 Har sale pe *5% commission* milega!\n📱 App: zaraai.in/r/NINJA5",
+    ];
+    const shouldAddPromo = Math.random() < 0.35;
+    const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply + (shouldAddPromo ? promoTag : ""));
 
     return new Response("OK", { status: 200 });
@@ -1199,48 +1217,105 @@ function getVoiceConfigForMode(mode: string): VoiceConfig {
 
 async function generateGeminiVoice(apiKey: string, text: string, voiceName: string): Promise<Uint8Array | null> {
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text }] }],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: voiceName,
-                },
-              },
-            },
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Gemini TTS error:", response.status, errText);
-      return null;
-    }
-
-    const data = await response.json();
-    const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!audioData) {
-      console.error("No audio data in Gemini TTS response");
-      return null;
-    }
-
-    const binaryStr = atob(audioData);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return bytes;
+    // Use WebSocket-based native audio model for unlimited, varied responses
+    const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+    
+    return await new Promise<Uint8Array | null>((resolve) => {
+      const audioChunks: Uint8Array[] = [];
+      let resolved = false;
+      
+      const timeout = setTimeout(() => {
+        if (!resolved) { resolved = true; try { ws.close(); } catch(_){} resolve(null); }
+      }, 25000);
+      
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        // Send setup with native audio model
+        ws.send(JSON.stringify({
+          setup: {
+            model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
+            generation_config: {
+              temperature: 0.8,
+              response_modalities: ["AUDIO"],
+              speech_config: {
+                voice_config: {
+                  prebuilt_voice_config: { voice_name: voiceName }
+                }
+              }
+            }
+          }
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(typeof event.data === "string" ? event.data : new TextDecoder().decode(event.data));
+          
+          // Setup complete — now send the text
+          if (data.setupComplete) {
+            ws.send(JSON.stringify({
+              client_content: {
+                turns: [{ role: "user", parts: [{ text }] }],
+                turn_complete: true
+              }
+            }));
+            return;
+          }
+          
+          // Collect audio chunks
+          const parts = data.serverContent?.modelTurn?.parts;
+          if (parts) {
+            for (const part of parts) {
+              if (part.inlineData?.data) {
+                const binaryStr = atob(part.inlineData.data);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+                audioChunks.push(bytes);
+              }
+            }
+          }
+          
+          // Turn complete — combine and resolve
+          if (data.serverContent?.turnComplete) {
+            clearTimeout(timeout);
+            resolved = true;
+            try { ws.close(); } catch(_){}
+            const total = audioChunks.reduce((s, c) => s + c.length, 0);
+            if (total < 100) { resolve(null); return; }
+            const combined = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of audioChunks) { combined.set(chunk, offset); offset += chunk.length; }
+            resolve(combined);
+          }
+        } catch (parseErr) {
+          console.error("WS message parse error:", parseErr);
+        }
+      };
+      
+      ws.onerror = (err) => {
+        console.error("WS error:", err);
+        if (!resolved) { resolved = true; clearTimeout(timeout); resolve(null); }
+      };
+      
+      ws.onclose = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          const total = audioChunks.reduce((s, c) => s + c.length, 0);
+          if (total > 100) {
+            const combined = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of audioChunks) { combined.set(chunk, offset); offset += chunk.length; }
+            resolve(combined);
+          } else {
+            resolve(null);
+          }
+        }
+      };
+    });
   } catch (e) {
-    console.error("Gemini TTS exception:", e);
+    console.error("Gemini native audio exception:", e);
     return null;
   }
 }
