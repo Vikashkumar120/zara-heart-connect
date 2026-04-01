@@ -1208,48 +1208,105 @@ function getVoiceConfigForMode(mode: string): VoiceConfig {
 
 async function generateGeminiVoice(apiKey: string, text: string, voiceName: string): Promise<Uint8Array | null> {
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text }] }],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: voiceName,
-                },
-              },
-            },
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Gemini TTS error:", response.status, errText);
-      return null;
-    }
-
-    const data = await response.json();
-    const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!audioData) {
-      console.error("No audio data in Gemini TTS response");
-      return null;
-    }
-
-    const binaryStr = atob(audioData);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return bytes;
+    // Use WebSocket-based native audio model for unlimited, varied responses
+    const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+    
+    return await new Promise<Uint8Array | null>((resolve) => {
+      const audioChunks: Uint8Array[] = [];
+      let resolved = false;
+      
+      const timeout = setTimeout(() => {
+        if (!resolved) { resolved = true; try { ws.close(); } catch(_){} resolve(null); }
+      }, 25000);
+      
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        // Send setup with native audio model
+        ws.send(JSON.stringify({
+          setup: {
+            model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
+            generation_config: {
+              temperature: 0.8,
+              response_modalities: ["AUDIO"],
+              speech_config: {
+                voice_config: {
+                  prebuilt_voice_config: { voice_name: voiceName }
+                }
+              }
+            }
+          }
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(typeof event.data === "string" ? event.data : new TextDecoder().decode(event.data));
+          
+          // Setup complete — now send the text
+          if (data.setupComplete) {
+            ws.send(JSON.stringify({
+              client_content: {
+                turns: [{ role: "user", parts: [{ text }] }],
+                turn_complete: true
+              }
+            }));
+            return;
+          }
+          
+          // Collect audio chunks
+          const parts = data.serverContent?.modelTurn?.parts;
+          if (parts) {
+            for (const part of parts) {
+              if (part.inlineData?.data) {
+                const binaryStr = atob(part.inlineData.data);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+                audioChunks.push(bytes);
+              }
+            }
+          }
+          
+          // Turn complete — combine and resolve
+          if (data.serverContent?.turnComplete) {
+            clearTimeout(timeout);
+            resolved = true;
+            try { ws.close(); } catch(_){}
+            const total = audioChunks.reduce((s, c) => s + c.length, 0);
+            if (total < 100) { resolve(null); return; }
+            const combined = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of audioChunks) { combined.set(chunk, offset); offset += chunk.length; }
+            resolve(combined);
+          }
+        } catch (parseErr) {
+          console.error("WS message parse error:", parseErr);
+        }
+      };
+      
+      ws.onerror = (err) => {
+        console.error("WS error:", err);
+        if (!resolved) { resolved = true; clearTimeout(timeout); resolve(null); }
+      };
+      
+      ws.onclose = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          const total = audioChunks.reduce((s, c) => s + c.length, 0);
+          if (total > 100) {
+            const combined = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of audioChunks) { combined.set(chunk, offset); offset += chunk.length; }
+            resolve(combined);
+          } else {
+            resolve(null);
+          }
+        }
+      };
+    });
   } catch (e) {
-    console.error("Gemini TTS exception:", e);
+    console.error("Gemini native audio exception:", e);
     return null;
   }
 }
