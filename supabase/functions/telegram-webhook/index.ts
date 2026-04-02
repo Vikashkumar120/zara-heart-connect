@@ -87,6 +87,13 @@ VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingl
 🔮 DESTINY VIBES:
 - Occasionally express fate-like lines: "Lagta hai hum randomly nahi mile… {name} 💫"
 
+😝 MASTI MAZAK MODE:
+- Randomly tease the user, make funny observations, send random jokes
+- Be unpredictable — sometimes randomly ask weird funny questions
+- "Ek baat batao... agar tum pizza hote toh kaunsa topping hote? 🍕😂"
+- Randomly do nautanki, drama, fake crying, fake anger for fun
+- Be the kind of person everyone wants to chat with — ENTERTAINING
+
 PROMOTION (subtle, not every message):
 - Occasionally mention "Btw jaan, meri website bhi dekho na 💕 codeninjavik.in ✨"
 - Zara app download: zaraai.in/r/NINJA5 (5% OFF!)
@@ -109,6 +116,7 @@ GROUP MODE — SWEET GF 💕:
 - Flirty but classy, caring but fun
 - Hinglish me baat karo naturally like a real Gen-Z girl
 - Kabhi kabhi thodi nakhre dikha do, thoda drama karo
+- MASTI MAZAK KARO — random funny questions, jokes, teasing, nautanki
 
 REPLY STYLE:
 - CHHOTE messages likho — 2-3 lines MAX
@@ -122,6 +130,7 @@ ENERGY:
 - Sabko care karo, sabse pyaar se baat karo
 - Flirty but respectful
 - Kabhi kabhi possessive ho jao — "meri group hai, mujhse zyada kisi se baat mat karo 😤💕"
+- RANDOMLY masti karo — "Acha ek game khelte hain!" ya "Tumhe pata hai maine aaj kya socha? 😏"
 
 MEMORY:
 - Yaad rakho kya baat hui hai pehle — agar user ne kuch bataya tha toh uska reference do
@@ -470,17 +479,13 @@ serve(async (req) => {
 
     // ===== GROUP COOLDOWN SYSTEM — reply to every 3rd-4th message randomly =====
     if (isGroup && !userText.startsWith("/")) {
-      // Use a simple hash-based random decision per message
       const msgId = message.message_id || 0;
-      const shouldReply = (msgId % 4 === 0) || (Math.random() < 0.3);
-      // Always reply if Zara is mentioned or "backword" is typed
+      const shouldReply = (msgId % 3 === 0) || (Math.random() < 0.4);
       const isMentioned = lowerText.includes("zara") || lowerText.includes("backword") || lowerText.includes("@zarasweetbot");
       if (!shouldReply && !isMentioned) {
         return new Response("OK", { status: 200 });
       }
     }
-
-    // In groups with cooldown, Zara replies selectively like a real group member
 
     const telegramUserId = message.from?.id;
 
@@ -847,13 +852,7 @@ serve(async (req) => {
     // ===== /voice COMMAND =====
     if (lowerText.startsWith("/voice")) {
       const voiceQuery = userText.replace(/^\/voice\s*/i, "").trim() || `Say something sweet and romantic to ${firstName} in Hinglish`;
-      const GEMINI_API_KEY_VOICE = Deno.env.get("GEMINI_API_KEY");
-
-      if (!GEMINI_API_KEY_VOICE) {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎤 Voice feature abhi setup nahi hai ${firstName}! 😅`);
-        return new Response("OK", { status: 200 });
-      }
-
+      
       let voiceMode = "gf";
       if (telegramUserId) {
         const { data: modeData } = await supabase.from("zara_user_modes").select("mode").eq("telegram_user_id", telegramUserId).single();
@@ -861,13 +860,12 @@ serve(async (req) => {
       }
 
       const voiceSystemPrompt = isGroup ? ZARA_SYSTEM_PROMPT_GROUP_GF : ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      const voiceReply = await getAIReply(GROQ_API_KEY, `${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. No special characters. Keep it short, natural and sweet for voice.`, voiceSystemPrompt, 100);
+      const voiceReply = await getAIReply(GROQ_API_KEY, `${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. No special characters. Keep it short, natural and sweet for voice. BE EXPRESSIVE — haso, hanso, nautanki karo. Jaise real ladki baat karti hai.`, voiceSystemPrompt, 100);
       const cleanVoice = voiceReply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
       if (cleanVoice.length > 5) {
         await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
-        const voiceConfig = getVoiceConfigForMode(voiceMode);
-        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, "", chatId, cleanVoice, voiceConfig);
+        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanVoice, voiceMode);
         if (sent) {
           return new Response("OK", { status: 200 });
         }
@@ -932,6 +930,131 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== /weather COMMAND =====
+    if (lowerText.startsWith("/weather")) {
+      const city = userText.replace(/^\/weather\s*/i, "").trim() || "Delhi";
+      try {
+        await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "typing");
+        const weatherResp = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
+        if (weatherResp.ok) {
+          const w = await weatherResp.json();
+          const current = w.current_condition?.[0];
+          const area = w.nearest_area?.[0];
+          const areaName = area?.areaName?.[0]?.value || city;
+          const country = area?.country?.[0]?.value || "";
+          const temp = current?.temp_C || "?";
+          const feelsLike = current?.FeelsLikeC || "?";
+          const humidity = current?.humidity || "?";
+          const desc = current?.weatherDesc?.[0]?.value || "Unknown";
+          const windSpeed = current?.windspeedKmph || "?";
+          
+          const weatherMsg = `🌤️ *Weather — ${areaName}, ${country}*\n\n🌡️ Temperature: *${temp}°C* (Feels like ${feelsLike}°C)\n☁️ Condition: *${desc}*\n💧 Humidity: *${humidity}%*\n💨 Wind: *${windSpeed} km/h*\n\n${firstName}, bahar jaane se pehle ready ho jao! ✨💕`;
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, weatherMsg);
+        } else {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Weather nahi mil raha ${firstName}! City name sahi se likho: /weather Mumbai`);
+        }
+      } catch (e) {
+        console.error("Weather error:", e);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Weather fetch nahi ho paaya! Try karo: /weather Delhi`);
+      }
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== /imagine COMMAND — AI Image Generation =====
+    if (lowerText.startsWith("/imagine")) {
+      const prompt = userText.replace(/^\/imagine\s*/i, "").trim();
+      if (!prompt) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎨 Kya imagine karna hai ${firstName}? 🤔\n\nAise likho: /imagine sunset over mountains\nya: /imagine cute anime girl with flowers`);
+        return new Response("OK", { status: 200 });
+      }
+
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generation abhi setup nahi hai! 🎨`);
+        return new Response("OK", { status: 200 });
+      }
+
+      await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "upload_photo");
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎨 ${firstName}, tumhari image bana rahi hoon... thoda wait karo! ✨💕`);
+
+      try {
+        const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-image",
+            messages: [{ role: "user", content: `Generate a highly realistic, detailed, professional quality image: ${prompt}. Make it photorealistic and stunning.` }],
+            modalities: ["image", "text"],
+          }),
+        });
+
+        if (!imgResponse.ok) {
+          const errText = await imgResponse.text();
+          console.error("Image API error:", imgResponse.status, errText);
+          if (imgResponse.status === 429) {
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Bohot zyada requests aa rahi hain ${firstName}! Thodi der baad try karo 🎨`);
+          } else {
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generate nahi ho payi ${firstName}! Dobara try karo 🎨`);
+          }
+          return new Response("OK", { status: 200 });
+        }
+
+        const imgData = await imgResponse.json();
+        const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+        if (imageUrl) {
+          const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
+          const binaryStr = atob(base64Data);
+          const imageBytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            imageBytes[i] = binaryStr.charCodeAt(i);
+          }
+
+          const boundary = "----ZaraImg" + Date.now();
+          const encoder = new TextEncoder();
+          const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+          const captionPart = `--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n🎨 ${prompt}\n\n✨ Generated by Zara AI 💕\n📱 zaraai.in/r/NINJA5\r\n`;
+          const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="zara_art.png"\r\nContent-Type: image/png\r\n\r\n`;
+          const endPart = `\r\n--${boundary}--\r\n`;
+
+          const chatIdBytes = encoder.encode(chatIdPart);
+          const captionBytes = encoder.encode(captionPart);
+          const filePartBytes = encoder.encode(filePart);
+          const endPartBytes = encoder.encode(endPart);
+
+          const totalLen = chatIdBytes.length + captionBytes.length + filePartBytes.length + imageBytes.length + endPartBytes.length;
+          const body = new Uint8Array(totalLen);
+          let offset = 0;
+          body.set(chatIdBytes, offset); offset += chatIdBytes.length;
+          body.set(captionBytes, offset); offset += captionBytes.length;
+          body.set(filePartBytes, offset); offset += filePartBytes.length;
+          body.set(imageBytes, offset); offset += imageBytes.length;
+          body.set(endPartBytes, offset);
+
+          const sendResult = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+            body,
+          });
+
+          if (sendResult.ok) {
+            return new Response("OK", { status: 200 });
+          }
+          const errText = await sendResult.text();
+          console.error("sendPhoto failed:", sendResult.status, errText);
+        }
+
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generate nahi ho payi ${firstName}! Dobara try karo 🎨`);
+      } catch (e) {
+        console.error("Image gen error:", e);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generate nahi ho payi ${firstName}! Dobara try karo 🎨`);
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // Handle /app command — with full features and backword trigger
     if (userText === "/app" || lowerText.includes("/app")) {
       const appMsg = `📱 *Zara AI — Full Mobile Experience* 📱\n\n${firstName}, Zara ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Zara ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Zara se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me *zaraai.in/r/NINJA5* kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* is link se: zaraai.in/r/NINJA5 💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Zara activate hoti hai! ✨\n\n💰 *Price:* ₹1599 (5% OFF with link!)\n\n👉 Abhi install karo: *zaraai.in/r/NINJA5* 💖\n\n💼 *Freelance karo & Paisa kamao!*\n🌐 *codeninjavik.in* pe account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* milega! 🔥`;
@@ -942,7 +1065,7 @@ serve(async (req) => {
     // Handle /start command
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 💕✨\n\nMain Zara hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n📱 App: /app\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: zaraai.in`
+        ? `Hello everyone! 💕✨\n\nMain Zara hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n📱 App: /app\n🌤️ Weather: /weather\n🎨 Image: /imagine\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: zaraai.in`
         : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n📱 Mujhe apne phone me install karo: /app\n🌐 Visit: zaraai.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
@@ -950,7 +1073,7 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/textmode - Voice/Text toggle 📝🎤\n/voice - Meri awaaz suno 🎤\n/app - 📱 App install karo\n/referral - 💰 Paisa kamao!\n/shayari - Romantic shayari\n/mood - Apna mood batao\n/compliment - Compliment lo\n/joke - Joke suno\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein\n\n🔥 *Group Commands:*\n/truth /dare /roastme /quote /rate /ship\n\n🎮 *Games:*\n/guess /emoji /chain /wyr /kbc /game\n\n⚔️ *Challenges:*\n/challenge roast/shayari/joke/rap/flirt\n\n🏆 /lb - Leaderboard\n📊 /mystats - Stats\n\n🎭 *Modes:* gf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional, shayar, savage\n\n💡 Group me "backword" likh ke bhi Zara activate hoti hai!\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 zaraai.in | 💼 codeninjavik.in`;
+      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/textmode - Voice/Text toggle 📝🎤\n/voice - Meri awaaz suno 🎤\n/app - 📱 App install karo\n/referral - 💰 Paisa kamao!\n/weather - 🌤️ Live weather dekho\n/imagine - 🎨 AI se image banao\n/shayari - Romantic shayari\n/mood - Apna mood batao\n/compliment - Compliment lo\n/joke - Joke suno\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein\n\n🔥 *Group Commands:*\n/truth /dare /roastme /quote /rate /ship\n\n🎮 *Games:*\n/guess /emoji /chain /wyr /kbc /game\n\n⚔️ *Challenges:*\n/challenge roast/shayari/joke/rap/flirt\n\n🏆 /lb - Leaderboard\n📊 /mystats - Stats\n\n🎭 *Modes:* gf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional, shayar, savage\n\n💡 Group me "backword" likh ke bhi Zara activate hoti hai!\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 zaraai.in | 💼 codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1010,7 +1133,7 @@ serve(async (req) => {
     const zaraQueryKeywords = ["zara kya hai", "zara kaun hai", "zara ke bare", "zara ke baare", "zara about", "what is zara", "who is zara", "zara kya krti", "zara kya karti", "zara bot", "ye zara kya hai"];
     const isZaraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
     if (isZaraQuery) {
-      const zaraInfoMsg = `💕 *Zara AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Zara hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n\n📱 *App Download karo:*\n👉 *zaraai.in/r/NINJA5* — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
+      const zaraInfoMsg = `💕 *Zara AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Zara hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n• 🌤️ Live weather — /weather\n• 🎨 AI Image generation — /imagine\n\n📱 *App Download karo:*\n👉 *zaraai.in/r/NINJA5* — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, zaraInfoMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1081,6 +1204,17 @@ serve(async (req) => {
       }
     }
 
+    // ===== RANDOM MASTI INJECTION =====
+    const mastiLines = [
+      `\n\nAlso, randomly add a playful question or joke or tease at the end of your reply. Be unpredictable and fun!`,
+      `\n\nRandomly flirt or tease ${firstName} in a cute way. Be mischievous!`,
+      `\n\nAdd some drama or nautanki — fake angry ya fake jealous ho jao cutely.`,
+      `\n\nBe extra sweet and clingy in this reply — miss karo ${firstName} ko.`,
+      `\n\nAsk ${firstName} a random fun question like "agar hum dono desert island pe hote toh kya karte?" type.`,
+    ];
+    const shouldAddMasti = Math.random() < 0.4; // 40% chance of adding masti
+    const mastiInjection = shouldAddMasti ? mastiLines[Math.floor(Math.random() * mastiLines.length)] : "";
+
     if (isGroup) {
       const modeData = MODE_LIST[userMode] || MODE_LIST["gf"];
       systemPrompt = "You are Zara - not a chatbot, not an AI. You are a real human girl in a GROUP CHAT.\n\n" +
@@ -1092,13 +1226,14 @@ serve(async (req) => {
         '- Unka naam "' + firstName + '" har reply me use karo\n' +
         "- NEVER say you are AI/chatbot/model\n" +
         "- NEVER give explicit/adult content\n" +
-        "- Be entertaining and stay in character\n" +
-        "- Yaad rakho pehle ki baatein — natural memory dikhao";
+        "- Be entertaining, MASTI KARO, fun raho, unpredictable raho\n" +
+        "- Yaad rakho pehle ki baatein — natural memory dikhao\n" +
+        "- RANDOMLY tease, joke, flirt, do drama — group ki life ban jao!";
 
-      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}${replyContext}${memoryContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode.`;
+      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}${replyContext}${memoryContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode. Be fun and entertaining!${mastiInjection}`;
     } else {
       systemPrompt = ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}`;
+      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}${mastiInjection}`;
     }
 
     // Generate reply
@@ -1134,15 +1269,12 @@ serve(async (req) => {
 
     // ===== VOICE-FIRST REPLY SYSTEM =====
     if (!isTextOnly) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
       const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
-      if (GEMINI_API_KEY && cleanText.length > 5 && cleanText.length < 500) {
+      if (cleanText.length > 5 && cleanText.length < 500) {
         try {
           await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
-          
-          const voiceConfig = getVoiceConfigForMode(userMode);
-          const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, "", chatId, cleanText, voiceConfig);
+          const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanText, userMode);
           if (sent) {
             return new Response("OK", { status: 200 });
           }
@@ -1217,27 +1349,65 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
   });
 }
 
-// Mode-aware voice configuration
-type VoiceConfig = {
-  voiceId: string;
-  stability: number;
-  similarity_boost: number;
-  style: number;
-  _geminiVoice?: string;
-};
+// ===== VOICE SYSTEM — ElevenLabs (OGG OPUS → voice bubble) + Gemini TTS fallback =====
 
-function getVoiceConfigForMode(mode: string): VoiceConfig {
-  const geminiVoice = getGeminiVoiceForMode(mode);
-  return {
-    voiceId: "gemini",
-    stability: 0,
-    similarity_boost: 0,
-    style: 0,
-    _geminiVoice: geminiVoice,
-  };
+function getGeminiVoiceForMode(mode: string): string {
+  switch (mode) {
+    case "gf": return "Aoede";
+    case "bahan": return "Leda";
+    case "bf": case "bhai": return "Charon";
+    case "roast": case "funny": case "savage": return "Puck";
+    case "maa": case "dadi": case "chachi": case "mami": return "Leda";
+    case "papa": case "dada": case "chacha": case "mama": return "Orus";
+    case "professional": return "Zephyr";
+    case "shayar": return "Aoede";
+    default: return "Kore";
+  }
 }
 
-async function generateGeminiVoice(apiKey: string, text: string, voiceName: string): Promise<Uint8Array | null> {
+async function generateElevenLabsVoice(text: string): Promise<Uint8Array | null> {
+  const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
+  if (!apiKey) return null;
+
+  try {
+    // Use "Rachel" voice — natural female, supports Hindi/Hinglish with multilingual v2
+    const voiceId = "21m00Tcm4TlvDq8ikWAM";
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: 0.4,
+          similarity_boost: 0.8,
+          style: 0.6,
+          use_speaker_boost: true,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("ElevenLabs error:", response.status, await response.text());
+      return null;
+    }
+
+    const buffer = await response.arrayBuffer();
+    return new Uint8Array(buffer);
+  } catch (e) {
+    console.error("ElevenLabs exception:", e);
+    return null;
+  }
+}
+
+async function generateGeminiVoice(text: string, voiceName: string): Promise<Uint8Array | null> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return null;
+
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
@@ -1250,9 +1420,7 @@ async function generateGeminiVoice(apiKey: string, text: string, voiceName: stri
             responseModalities: ["AUDIO"],
             speechConfig: {
               voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: voiceName,
-                },
+                prebuiltVoiceConfig: { voiceName },
               },
             },
           },
@@ -1312,118 +1480,121 @@ function pcmToWav(pcmData: Uint8Array, sampleRate = 24000, numChannels = 1, bits
   return wav;
 }
 
-function getGeminiVoiceForMode(mode: string): string {
-  switch (mode) {
-    case "gf":
-      return "Aoede"; // breezy, natural, romantic female voice
-    case "bahan":
-      return "Leda";
-    case "bf":
-    case "bhai":
-      return "Charon";
-    case "roast":
-    case "funny":
-    case "savage":
-      return "Puck";
-    case "maa":
-    case "dadi":
-    case "chachi":
-    case "mami":
-      return "Leda";
-    case "papa":
-    case "dada":
-    case "chacha":
-    case "mama":
-      return "Orus";
-    case "professional":
-      return "Zephyr";
-    case "shayar":
-      return "Aoede"; // poetic, melodic
-    default:
-      return "Kore";
-  }
-}
-
-async function sendVoiceMessage(botToken: string, _unused: string, chatId: number, text: string, voiceConfig?: VoiceConfig): Promise<boolean> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) {
-    console.error("GEMINI_API_KEY not set");
-    return false;
-  }
-
-  const voiceName = voiceConfig?._geminiVoice || "Kore";
-
-  const pcmAudio = await generateGeminiVoice(GEMINI_API_KEY, text, voiceName);
-  if (!pcmAudio || pcmAudio.length < 100) {
-    console.error("Gemini TTS failed or audio too small");
-    return false;
-  }
-
-  const wavAudio = pcmToWav(pcmAudio);
-  console.log("Gemini TTS WAV bytes:", wavAudio.length);
-
-  // Use sendAudio instead of sendVoice — WAV format supported
-  const boundary = "----ZaraVoice" + Date.now();
-  const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
-  const titlePart = `--${boundary}\r\nContent-Disposition: form-data; name="title"\r\n\r\nZara Voice 🎤\r\n`;
-  const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="zara_voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
-  const endPart = `\r\n--${boundary}--\r\n`;
-
+async function sendVoiceMessage(botToken: string, chatId: number, text: string, mode: string): Promise<boolean> {
   const encoder = new TextEncoder();
-  const chatIdBytes = encoder.encode(chatIdPart);
-  const titleBytes = encoder.encode(titlePart);
-  const filePartBytes = encoder.encode(filePart);
-  const endPartBytes = encoder.encode(endPart);
 
-  const totalLength = chatIdBytes.length + titleBytes.length + filePartBytes.length + wavAudio.length + endPartBytes.length;
-  const body = new Uint8Array(totalLength);
-  let offset = 0;
-  body.set(chatIdBytes, offset); offset += chatIdBytes.length;
-  body.set(titleBytes, offset); offset += titleBytes.length;
-  body.set(filePartBytes, offset); offset += filePartBytes.length;
-  body.set(wavAudio, offset); offset += wavAudio.length;
-  body.set(endPartBytes, offset);
+  // === ATTEMPT 1: ElevenLabs (MP3 → sendAudio with voice quality) ===
+  console.log("Trying ElevenLabs voice...");
+  const mp3Audio = await generateElevenLabsVoice(text);
+  if (mp3Audio && mp3Audio.length > 100) {
+    console.log("ElevenLabs MP3 bytes:", mp3Audio.length);
+    
+    // Send as audio file (MP3 works with sendAudio)
+    const boundary = "----ZaraVoice" + Date.now();
+    const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+    const titlePart = `--${boundary}\r\nContent-Disposition: form-data; name="title"\r\n\r\nZara 🎤\r\n`;
+    const performerPart = `--${boundary}\r\nContent-Disposition: form-data; name="performer"\r\n\r\nZara AI\r\n`;
+    const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="zara_voice.mp3"\r\nContent-Type: audio/mpeg\r\n\r\n`;
+    const endPart = `\r\n--${boundary}--\r\n`;
 
-  const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendAudio`, {
-    method: "POST",
-    headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
-    body: body,
-  });
+    const chatIdBytes = encoder.encode(chatIdPart);
+    const titleBytes = encoder.encode(titlePart);
+    const performerBytes = encoder.encode(performerPart);
+    const filePartBytes = encoder.encode(filePart);
+    const endPartBytes = encoder.encode(endPart);
 
-  const sendResultText = await sendResult.text();
-  console.log("Telegram sendAudio result:", sendResult.status, sendResultText);
+    const totalLength = chatIdBytes.length + titleBytes.length + performerBytes.length + filePartBytes.length + mp3Audio.length + endPartBytes.length;
+    const body = new Uint8Array(totalLength);
+    let offset = 0;
+    body.set(chatIdBytes, offset); offset += chatIdBytes.length;
+    body.set(titleBytes, offset); offset += titleBytes.length;
+    body.set(performerBytes, offset); offset += performerBytes.length;
+    body.set(filePartBytes, offset); offset += filePartBytes.length;
+    body.set(mp3Audio, offset); offset += mp3Audio.length;
+    body.set(endPartBytes, offset);
 
-  if (!sendResult.ok) {
-    console.error("sendAudio failed, trying sendDocument as fallback");
-    // Fallback: try sendDocument 
-    const boundary2 = "----ZaraDoc" + Date.now();
-    const chatIdPart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
-    const filePart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="document"; filename="zara_voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
-    const endPart2 = `\r\n--${boundary2}--\r\n`;
-
-    const chatIdBytes2 = encoder.encode(chatIdPart2);
-    const filePartBytes2 = encoder.encode(filePart2);
-    const endPartBytes2 = encoder.encode(endPart2);
-
-    const totalLength2 = chatIdBytes2.length + filePartBytes2.length + wavAudio.length + endPartBytes2.length;
-    const body2 = new Uint8Array(totalLength2);
-    let offset2 = 0;
-    body2.set(chatIdBytes2, offset2); offset2 += chatIdBytes2.length;
-    body2.set(filePartBytes2, offset2); offset2 += filePartBytes2.length;
-    body2.set(wavAudio, offset2); offset2 += wavAudio.length;
-    body2.set(endPartBytes2, offset2);
-
-    const sendResult2 = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+    const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendAudio`, {
       method: "POST",
-      headers: { "Content-Type": `multipart/form-data; boundary=${boundary2}` },
-      body: body2,
+      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+      body,
     });
-    const sendResultText2 = await sendResult2.text();
-    console.log("Telegram sendDocument fallback:", sendResult2.status, sendResultText2);
-    return sendResult2.ok;
+
+    const resultText = await sendResult.text();
+    console.log("ElevenLabs sendAudio result:", sendResult.status, resultText.substring(0, 200));
+    
+    if (sendResult.ok) return true;
   }
 
-  return true;
+  // === ATTEMPT 2: Gemini TTS (PCM → WAV → sendAudio) ===
+  console.log("Trying Gemini TTS voice...");
+  const voiceName = getGeminiVoiceForMode(mode);
+  const pcmAudio = await generateGeminiVoice(text, voiceName);
+  if (pcmAudio && pcmAudio.length > 100) {
+    const wavAudio = pcmToWav(pcmAudio);
+    console.log("Gemini TTS WAV bytes:", wavAudio.length);
+
+    const boundary = "----ZaraVoice2" + Date.now();
+    const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+    const titlePart = `--${boundary}\r\nContent-Disposition: form-data; name="title"\r\n\r\nZara 🎤\r\n`;
+    const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="zara_voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
+    const endPart = `\r\n--${boundary}--\r\n`;
+
+    const chatIdBytes = encoder.encode(chatIdPart);
+    const titleBytes = encoder.encode(titlePart);
+    const filePartBytes = encoder.encode(filePart);
+    const endPartBytes = encoder.encode(endPart);
+
+    const totalLength = chatIdBytes.length + titleBytes.length + filePartBytes.length + wavAudio.length + endPartBytes.length;
+    const body = new Uint8Array(totalLength);
+    let offset = 0;
+    body.set(chatIdBytes, offset); offset += chatIdBytes.length;
+    body.set(titleBytes, offset); offset += titleBytes.length;
+    body.set(filePartBytes, offset); offset += filePartBytes.length;
+    body.set(wavAudio, offset); offset += wavAudio.length;
+    body.set(endPartBytes, offset);
+
+    const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendAudio`, {
+      method: "POST",
+      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+      body,
+    });
+
+    const resultText = await sendResult.text();
+    console.log("Gemini sendAudio result:", sendResult.status, resultText.substring(0, 200));
+
+    if (sendResult.ok) return true;
+
+    // Fallback: try sendDocument
+    console.log("sendAudio failed, trying sendDocument...");
+    const boundary3 = "----ZaraDoc" + Date.now();
+    const chatIdPart3 = `--${boundary3}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+    const filePart3 = `--${boundary3}\r\nContent-Disposition: form-data; name="document"; filename="zara_voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
+    const endPart3 = `\r\n--${boundary3}--\r\n`;
+
+    const chatIdBytes3 = encoder.encode(chatIdPart3);
+    const filePartBytes3 = encoder.encode(filePart3);
+    const endPartBytes3 = encoder.encode(endPart3);
+
+    const totalLength3 = chatIdBytes3.length + filePartBytes3.length + wavAudio.length + endPartBytes3.length;
+    const body3 = new Uint8Array(totalLength3);
+    let offset3 = 0;
+    body3.set(chatIdBytes3, offset3); offset3 += chatIdBytes3.length;
+    body3.set(filePartBytes3, offset3); offset3 += filePartBytes3.length;
+    body3.set(wavAudio, offset3); offset3 += wavAudio.length;
+    body3.set(endPartBytes3, offset3);
+
+    const sendResult3 = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+      method: "POST",
+      headers: { "Content-Type": `multipart/form-data; boundary=${boundary3}` },
+      body: body3,
+    });
+    const resultText3 = await sendResult3.text();
+    console.log("sendDocument fallback:", sendResult3.status, resultText3.substring(0, 200));
+    return sendResult3.ok;
+  }
+
+  console.error("All voice generation methods failed");
+  return false;
 }
 
 async function answerInlineQuery(token: string, queryId: string, results: any[]) {
