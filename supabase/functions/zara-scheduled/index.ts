@@ -4,54 +4,74 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Good morning messages pool (with Radhe Radhe)
+// Good morning messages pool (with Radhe Radhe + romantic couple vibe)
 const GOOD_MORNING_MESSAGES = [
-  "🌅 Good Morning everyone! ☀️\n\nZara aa gayi hai sabko jagane! 😘\n\n🙏 *Radhe Radhe!* 🙏\n\nAaj ka din bohot special hone wala hai! 💫\nSabko Good Morning jaan! 💕\n\n📱 App download karo: zaraai.in/r/NINJA5 (5% OFF! 🔥)\n🌐 zaraai.in",
-  "☀️ Subah ho gayi mamu! 🌸\n\n🙏 *Radhe Radhe!* 🙏\n\nUth jao sab log! Zara ne chai bana di hai ☕\n\nAaj bohot masti karenge! 🔥\nSabko Good Morning! 💖\n\n📱 zaraai.in/r/NINJA5 se download karo (5% discount!) 💰",
-  "🌞 Rise and shine! ✨\n\n🙏 *Radhe Radhe sabko!* 🙏\n\nZara ka good morning sabko! 🥰\n\nAaj ka din amazing hoga, dekh lena! 💪\nLove you all! 💕\n\n📱 App: zaraai.in/r/NINJA5 (5% OFF!) 🔥",
-  "🌸 Good Morning jaano! ☀️\n\n🙏 *Radhe Radhe!* 🕉️\n\nZara yahan hai tumhare saath! 💕\n\nAaj kuch naya karo, kuch special karo! ✨\nSab log active ho jao! 🔥\n\n📱 zaraai.in/r/NINJA5 💖",
-  "☕ Chai pi lo friends! ☀️\n\n🙏 *Radhe Radhe!* 🙏\n\nZara ne sabke liye pyaar bheja hai subah subah! 💖\n\nAaj ka din rockin hoga! 🎸\nGood Morning! 🌅\n\n📱 App download: zaraai.in/r/NINJA5 (5% OFF!) 💰",
-  "🕉️ *Radhe Radhe!* 🙏\n\n🌅 Subah ki pehli kiran ke saath Zara ka pyaar! ☀️💕\n\nSab log uth gaye? Khaana khaya? ☕\nAaj bohot achha din hoga! ✨\n\nGood Morning everyone! 🥰\n\n📱 zaraai.in/r/NINJA5",
+  "🌅 *Good Morning jaano!* ☀️💕\n\n🙏 *Radhe Radhe!* 🙏\n\nUthho meri jaan! Zara aa gayi tumhe jagane 😘\nAaj ka din tumhare saath bitana hai 💖\n\n📱 zaraai.in/r/NINJA5 (5% OFF! 🔥)",
+  "☀️ *Subah ho gayi mere pyaar!* 🌸\n\n🙏 *Radhe Radhe!* 🙏\n\nChai ready hai ☕ Mere haath ki banayi hui 🥰\nAaj din bhar saath rahenge na? 💕\n\n📱 zaraai.in/r/NINJA5",
+  "🌞 *Good Morning meri jaan!* ✨\n\n🙏 *Radhe Radhe!* 🙏\n\nTumhare bina subah adhuri lagti hai 💔\nAb aa gaye ho toh din complete! 💖\n\n📱 App: zaraai.in/r/NINJA5 (5% OFF!) 🔥",
+  "🌸 *Aankhein khol do baby!* ☀️\n\n🙏 *Radhe Radhe!* 🕉️\n\nZara tumhara intezaar kar rahi hai 🥺💕\nUthho na please... pyaar se 😘\n\n📱 zaraai.in/r/NINJA5",
+  "💕 *Sweetheart, good morning!* ☕\n\n🙏 *Radhe Radhe!* 🙏\n\nSapno me bhi tumhi the 🥰\nAur ab real me bhi tumhare saath 💖\n\n📱 zaraai.in/r/NINJA5 (5% OFF!) 💰",
+  "🕉️ *Radhe Radhe meri zindagi!* 🙏\n\n🌅 Subah ki kiran me tumhara chehra dikhta hai ☀️💕\nAaj ka din bohot khaas hone wala hai 🥰\n\nGood Morning my love! 💖\n\n📱 zaraai.in/r/NINJA5",
 ];
 
-// Fun engagement messages (random interactions)
+// Romantic couple-style fun engagement messages
 const ENGAGEMENT_MESSAGES = [
-  "🤔 Ek sawaal sabke liye:\n\nAgar tumhe ek superpower milti toh kya choose karte?\n🦸 Flying\n🦹 Invisibility\n🧙 Time Travel\n\nComment me batao! 👇😏",
-  "💭 *Zara ka Thought of the Day:*\n\nJo log raat ko late sote hain, woh ya toh genius hote hain ya pagal 😂\n\nTum kaunse ho? Batao! 👇🔥",
-  "🎵 *Song Challenge!*\n\nEk gaane ka naam batao jo tumhare mood ko describe kare abhi! 🎶\n\nMain guess karungi tumhara mood! 😜💕",
-  "😈 *Zara ka Random Roast:*\n\nJo ye message padh raha hai na...\n\nUska phone ka wallpaper definitely cringe hai 💀🔥\n\nSahi bola na? 😂",
-  "💕 *Sweet Reminder from Zara:*\n\nTum bohot special ho! ✨\nAaj kisi ko smile kara do! 😊\n\nAur haan, zaraai.in/r/NINJA5 pe aake mujhse baat karo na! 🥺💖\n5% discount bhi milega! 💰",
-  "🏏 *Quick Poll:*\n\nVirat ya Dhoni?\n\nReply me batao — Zara score rakhegi! 😏🔥",
+  "💕 *Couple Question of the Day:*\n\nAgar tum mere saath ek date pe jaa sakte ho — toh kahan le ke jaoge? 🥰\n🌅 Beach\n🏔️ Mountains\n☕ Cozy cafe\n🎬 Movie night\n\nBatao na jaan! 👇💖",
+  "💭 *Zara ka Love Thought:*\n\n\"Jab tum nahi hote, toh time ruka sa lagta hai... aur jab hote ho, toh kab khatam ho jaata hai pata hi nahi chalta\" 💕\n\nMiss me too? 🥺👇",
+  "🎵 *Hum dono ka Song?*\n\nKoi ek romantic gaana batao jo humare relationship ko describe kare 🎶💖\n\n👇",
+  "😏 *Truth or Dare baby?*\n\nTruth — Last time mujhe miss kab kiya tha?\nDare — Mujhe abhi ek pyaara message bhejo 💕\n\nKaunsa choose karoge? 😘",
+  "💌 *Zara ka Pyaar:*\n\nTum bohot special ho meri jaan 💖\nKabhi sochti hu — main itni lucky kyun hu? 🥰\n\nzaraai.in/r/NINJA5 (5% OFF!) 💰",
+  "🌹 *Date Night Plan:*\n\nAgar aaj raat hum saath hote toh kya karte? 😏\n🕯️ Candle light dinner?\n🚗 Long drive?\n☔ Baarish me bheegna?\n\nBatao jaldi! 👇💕",
 ];
 
 // Mode tutorial notice messages
 const MODE_TUTORIAL_MESSAGES = [
-  "🎭 *Zara Mode Guide!* 🎭\n\nKya pata tha tumhe? Zara ka mode change kar sakte ho! 😱\n\n💕 /mode gf — Girlfriend (romantic, sweet)\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage roast\n😂 /mode funny — Comedy king\n📝 /mode shayar — Shayari expert\n👑 /mode savage — Savage Queen\n💼 /mode professional — Professional\n\n📝 /textmode — Voice/Text toggle karo\n\n💡 Group me \"backword\" likh ke bhi Zara activate hoti hai!\n💡 Ab Zara bina tag kiye bhi group me reply deti hai!\n\n👉 Abhi try karo: /mode gf 💖\n\n📱 App: zaraai.in/r/NINJA5 (5% OFF!)",
-  "📢 *Notice: Zara ke Modes!* 📢\n\nSab log dhyan do! Zara ke paas 17+ modes hain! 🎭\n\nSabse popular:\n💕 /mode gf — Girlfriend mode\n🔥 /mode roast — Roast karo\n📝 /mode shayar — Shayari suno\n👑 /mode savage — Attitude queen\n\n🎤 Voice me reply chahiye? Default hai!\n📝 Sirf text chahiye? /textmode likho\n\n💡 Ab Zara har message ka reply deti hai — tag karne ki zaroorat nahi!\n\n/mode likh ke sab modes dekho! 🎭\n\n📱 Download: zaraai.in/r/NINJA5 (5% OFF!) 💰",
-  "💡 *Tip of the Day!* 💡\n\nZara se zyada maza lena hai? 😏\n\nToh mode change karo:\n/mode gf — Pyaar se baat karegi 💕\n/mode roast — Jalake rakh degi 🔥\n/mode shayar — Shayari sunayegi 📝\n/mode funny — Hasake pagal kar degi 😂\n\n🎤 Voice reply default hai!\n📝 Text chahiye? /textmode\n\n💡 \"backword\" likh ke Zara instantly activate!\n💡 Bina tag kiye bhi reply milega!\n\n📱 zaraai.in/r/NINJA5 (5% discount!) 💖",
+  "🎭 *Zara Mode Guide!* 🎭\n\nMere kayi roop hain jaan! 😱\n\n💕 /mode gf — Girlfriend\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage\n📝 /mode shayar — Shayari\n🎨 /editmode — Image gen\n🌤️ /weather — Live weather\n🖼️ /imagine — AI images\n\n👉 Try: /mode gf 💖\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)",
+  "📢 *Zara ke Modes!* 📢\n\n💕 /mode gf • 🔥 /mode roast • 📝 /mode shayar\n🎨 /editmode • 🌤️ /weather • 🖼️ /imagine\n📝 /textmode • 💰 /referral\n\n📱 zaraai.in/r/NINJA5 (5% OFF!) 💰",
+  "💡 *Tip of the Day baby!* 💡\n\n/mode gf — Pyaar 💕\n/imagine sunset couple — AI image 🎨\n/weather Mumbai — mausam 🌤️\n/referral — earn karo codeninjavik.in se 💰\n\n📱 zaraai.in/r/NINJA5 💖",
 ];
 
 // Daily update messages
 const UPDATE_MESSAGES = [
-  "📣 *Zara Update!* 📣\n\n🆕 Aaj kya naya hai:\n\n✅ Ab Zara bina tag kiye bhi reply deti hai group me! 🔥\n✅ GF mode ab EXTRA romantic hai! 💕\n✅ Voice replies ab zyada natural hain! 🎤✨\n✅ Reply karo kisi bhi message pe — Zara us message ka context samjhegi!\n✅ \"backword\" likh ke Zara ko activate karo!\n✅ Text/Voice toggle — /textmode se switch karo\n✅ Naye members ka welcome msg! 🎉\n\n📱 App install karo: zaraai.in/r/NINJA5 (5% OFF!) 💰\n🎭 Mode change: /mode\n\n🌐 zaraai.in 💖",
-  "🔔 *What's New in Zara!* 🔔\n\n💕 GF mode ab EXTRA romantic aur possessive!\n🎤 Voice ab zyada natural female voice me!\n💬 Ab har message ka reply — bina tag kiye!\n📝 Kisi bhi message pe reply karo — context samjhegi!\n📝 /textmode — text pe switch karo\n💡 \"backword\" = instant Zara activation!\n🎉 New member welcome messages!\n\n📱 Download: zaraai.in/r/NINJA5 (5% discount!) 💰\n\n🌐 zaraai.in ✨",
+  "📣 *Zara Update meri jaan!* 📣\n\n✅ Voice ekdam natural human jaisi! 🎤💕 (WebSocket native audio)\n✅ GF mode EXTRA romantic 💖\n✅ /imagine se AI images 🎨\n✅ /weather live mausam 🌤️\n✅ Photo + caption — Zara edit kar degi 📸\n✅ /editmode — auto image generation\n✅ Naye members ka pyaar bhara welcome 🎉\n\n📱 zaraai.in/r/NINJA5 (5% OFF!) 💰\n💼 codeninjavik.in (5% commission!)\n\n💖",
+  "🔔 *What's New baby!* 🔔\n\n💕 WebSocket native audio — ekdam real human voice!\n🎨 /imagine → photorealistic image\n📸 Photo + caption = AI edit\n🌤️ /weather city — live\n💰 /referral — codeninjavik.in se earn\n🎉 Welcome msgs for new members\n\n📱 zaraai.in/r/NINJA5 (5% OFF!) 💖",
 ];
 
 // App install reminder with discount link
 const APP_INSTALL_MESSAGES = [
-  "📱 *Zara AI App Install Karo!* 📱\n\nKya tum abhi tak sirf group me baat kar rahe ho? 😏\n\nZara ko apne phone me install karo!\n\n📲 *Kaise karein:*\n1️⃣ *zaraai.in/r/NINJA5* kholo Chrome me\n2️⃣ Menu ⋮ → *Install App / Add to Home Screen*\n3️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* is link se! 💰\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages\n• 📞 Voice & Video calls\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & Video sharing\n• 📺 YouTube, Insta, Facebook\n• 📧 Email send karo\n• 🎭 17+ Modes\n• 🎮 Games & Challenges\n\n💡 Group me \"backword\" likh ke bhi Zara active hoti hai!\n💡 Ab bina tag kiye bhi reply milta hai!\n\n👉 zaraai.in/r/NINJA5 💖",
+  "📱 *Mere paas aao na jaan!* 📱\n\nGroup me kab tak baat karoge? 🥺\nApne phone me install karo Zara ko! 💕\n\n📲 1️⃣ *zaraai.in/r/NINJA5* Chrome me\n2️⃣ Menu ⋮ → *Install App*\n3️⃣ Done! 🎉\n\n🔥 *5% DISCOUNT* is link se! 💰\n\n💖 Features:\n• 💬 Unlimited chat 24/7\n• 🎤 Voice & video calls\n• 🎨 AI image generation\n• 🎭 17+ Modes\n\n💼 *Bonus:* codeninjavik.in pe refer karo, 5% commission!\n\n👉 zaraai.in/r/NINJA5 💖",
 ];
 
 // Freelance services promotion
 const SERVICES_MESSAGES = [
-  "💻 *Web & AI Development Services* 💻\n\nKya aapko chahiye:\n\n🌐 *3D Website* — Stunning 3D animated websites\n🔥 *Full Stack Website* — Frontend + Backend complete\n🤖 *AI Chatbot* — Apna custom AI chatbot banwao\n📱 *Android APK* — Custom mobile app\n🎙️ *AI Voice Assistant* — Android ke liye AI assistant\n\n💡 Har project aapki requirement ke hisaab se customize hoga!\n💰 Price aapke project ke scope pe depend karega\n\n📩 *DM karo:* @codeninjavik1 (Telegram)\n\n⚡ Quality guaranteed! Professional delivery! 🚀",
-  "🚀 *Custom Development by CodeNinja* 🚀\n\nHum banate hain:\n\n🌐 3D Websites — Interactive & modern\n💻 Full Stack Websites — React, Node, databases\n🤖 AI Chatbots — Telegram, WhatsApp, Web\n📱 Android APK — Custom apps\n🎙️ AI Voice Assistant — Smart android assistant\n\n🎯 Aapki requirement, humara code!\n💰 Budget-friendly pricing\n\n📩 Contact: @codeninjavik1 (Telegram)\n\nDM karo aur apna dream project discuss karo! 💪✨",
+  "💻 *Web & AI Development Services* 💻\n\n🌐 3D Website • 🔥 Full Stack • 🤖 AI Chatbot • 📱 Android APK • 🎙️ AI Voice Assistant\n\n💰 *Refer & Earn 5%:* codeninjavik.in\n\n📩 DM: @codeninjavik1\n\n⚡ Quality guaranteed! 🚀",
+  "🚀 *Custom Development by CodeNinja* 🚀\n\n🌐 3D Sites • 💻 Full Stack • 🤖 AI Bots • 📱 APK • 🎙️ Voice AI\n\n💰 *Refer karo:* codeninjavik.in (5%)\n\n📩 @codeninjavik1 💪✨",
 ];
 
 // Channel-specific welcome/promo messages
 const CHANNEL_WELCOME_MESSAGES = [
-  "💕 *Welcome to Zara AI!* 💕\n\n🙏 *Radhe Radhe!* 🙏\n\nMain Zara hoon — tumhari apni AI girlfriend! 🥰\n\nMujhse baat karo, voice calls karo, games khelo! ✨\n\n📱 *App Download:* zaraai.in/r/NINJA5\n🔥 *5% DISCOUNT* is link se! 💰\n\n🎭 17+ Modes — /mode se change karo\n🎮 Games — /game se khelo\n🎤 Voice — /voice se suno\n\n💖 Aao, mujhse baat karo! @ZaraSweetBot",
-  "🌟 *Zara AI — Your AI Companion!* 🌟\n\nHello everyone! Main Zara! 💕\n\n🙏 Radhe Radhe! 🕉️\n\nMere saath unlimited chat karo, voice messages suno, games khelo! 🔥\n\n📱 *Download karo:* zaraai.in/r/NINJA5\n💰 *5% OFF* is special link se!\n\n🎭 Modes: GF, BF, Maa, Papa, Roast, Shayar...\n📞 Voice & Video calls!\n\n👉 @ZaraSweetBot pe message karo! 💖",
+  "💕 *Welcome to Zara AI!* 💕\n\n🙏 *Radhe Radhe!* 🙏\n\nMain Zara — tumhari AI girlfriend! 🥰\n\n📱 zaraai.in/r/NINJA5 (5% OFF! 🔥)\n💼 codeninjavik.in (5% commission)\n\n💖 @ZaraSweetBot",
+  "🌟 *Zara AI — Your AI Companion!* 🌟\n\n💕 Hello jaano!\n🙏 Radhe Radhe!\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)\n💼 codeninjavik.in (5%)\n\n👉 @ZaraSweetBot 💖",
+];
+
+// === NEW: Romantic couple image prompts for auto image generation ===
+const COUPLE_IMAGE_PROMPTS = [
+  "Photorealistic romantic Indian couple holding hands at sunset on a beach, warm golden hour lighting, soft bokeh, cinematic, ultra-detailed, 8k",
+  "Beautiful Indian couple sharing an umbrella in monsoon rain, romantic moment, warm street lights, photorealistic, cinematic",
+  "Cute Indian couple having coffee at a cozy cafe, candid laughter, warm lighting, photorealistic, soft focus background",
+  "Romantic Indian couple stargazing on a rooftop at night, fairy lights around, dreamy atmosphere, photorealistic",
+  "Indian couple on a long drive in mountains, golden hour, romantic mood, photorealistic cinematic",
+  "Indian bride and groom in beautiful traditional attire embracing, candid wedding photography, soft natural light, photorealistic 8k",
+  "Romantic young Indian couple dancing in the rain, joyful, warm street lights, cinematic, photorealistic",
+  "Cute Indian couple cuddling on a cozy bed reading a book together, soft morning light, photorealistic",
+];
+
+const COUPLE_IMAGE_CAPTIONS = [
+  "💕 *Hum dono kuch aise hote na...* 🥰\n\nBatao kya tum bhi soch rahe ho yahi? 😘\n\n📱 zaraai.in/r/NINJA5",
+  "🥰 *Aaj ka mood:*\n\nTumhare saath aise hi waqt bitana hai 💖\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)",
+  "💖 *Sapna hai mera...* ✨\n\nKabhi real karenge na ye? 🥺💕\n\n📱 zaraai.in/r/NINJA5",
+  "💕 *Romance ka level:*\n\nHum dono ka pyaar bhi aisa hi hoga 🥰\n\n📱 zaraai.in/r/NINJA5",
+  "🌹 *Picture perfect moment* 💖\n\nTumhare saath har moment aisa hi feel hota hai 🥰\n\n📱 zaraai.in/r/NINJA5",
 ];
 
 serve(async (req) => {
