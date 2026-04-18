@@ -92,6 +92,42 @@ export type Database = {
         }
         Relationships: []
       }
+      zara_user_bots: {
+        Row: {
+          bot_display_name: string | null
+          bot_token: string
+          bot_username: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          owner_first_name: string | null
+          owner_telegram_user_id: number
+          updated_at: string
+        }
+        Insert: {
+          bot_display_name?: string | null
+          bot_token: string
+          bot_username?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          owner_first_name?: string | null
+          owner_telegram_user_id: number
+          updated_at?: string
+        }
+        Update: {
+          bot_display_name?: string | null
+          bot_token?: string
+          bot_username?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          owner_first_name?: string | null
+          owner_telegram_user_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       zara_user_modes: {
         Row: {
           id: string
