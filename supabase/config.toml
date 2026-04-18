@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.zara-scheduled]
 verify_jwt = false
+
+[functions.user-bot-webhook]
+verify_jwt = false
