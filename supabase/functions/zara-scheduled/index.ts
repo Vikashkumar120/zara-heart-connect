@@ -99,6 +99,7 @@ serve(async (req) => {
     const hour = (now.getUTCHours() + 5.5) % 24; // IST
 
     let messagePool: string[];
+    let isCoupleImage = false;
     
     if (messageType === "morning" || (messageType === "auto" && hour >= 6 && hour < 9)) {
       messagePool = GOOD_MORNING_MESSAGES;
@@ -114,11 +115,17 @@ serve(async (req) => {
       messagePool = SERVICES_MESSAGES;
     } else if (messageType === "channel_welcome") {
       messagePool = CHANNEL_WELCOME_MESSAGES;
+    } else if (messageType === "couple_image") {
+      messagePool = COUPLE_IMAGE_CAPTIONS;
+      isCoupleImage = true;
     } else {
       // Auto: based on time of day
       if (hour >= 10 && hour < 12) {
         messagePool = MODE_TUTORIAL_MESSAGES;
-      } else if (hour >= 12 && hour < 14) {
+      } else if (hour >= 12 && hour < 13) {
+        messagePool = COUPLE_IMAGE_CAPTIONS;
+        isCoupleImage = true;
+      } else if (hour >= 13 && hour < 14) {
         messagePool = ENGAGEMENT_MESSAGES;
       } else if (hour >= 14 && hour < 15) {
         messagePool = SERVICES_MESSAGES;
@@ -129,7 +136,8 @@ serve(async (req) => {
       } else if (hour >= 18 && hour < 19) {
         messagePool = UPDATE_MESSAGES;
       } else if (hour >= 19 && hour < 20) {
-        messagePool = SERVICES_MESSAGES;
+        messagePool = COUPLE_IMAGE_CAPTIONS;
+        isCoupleImage = true;
       } else if (hour >= 20 && hour < 21) {
         messagePool = ENGAGEMENT_MESSAGES;
       } else if (hour >= 21 && hour < 22) {
@@ -140,6 +148,42 @@ serve(async (req) => {
     }
 
     const message = messagePool[Math.floor(Math.random() * messagePool.length)];
+
+    // === Generate romantic couple image if needed ===
+    let coupleImageBase64: string | null = null;
+    if (isCoupleImage) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (LOVABLE_API_KEY) {
+        try {
+          const prompt = COUPLE_IMAGE_PROMPTS[Math.floor(Math.random() * COUPLE_IMAGE_PROMPTS.length)];
+          console.log("Generating couple image:", prompt);
+          const imgResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-image",
+              messages: [{ role: "user", content: prompt }],
+              modalities: ["image", "text"],
+            }),
+          });
+          if (imgResp.ok) {
+            const imgData = await imgResp.json();
+            const url: string | undefined = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+            if (url && url.startsWith("data:image")) {
+              coupleImageBase64 = url.split(",")[1] ?? null;
+            }
+            console.log("Couple image generated:", coupleImageBase64 ? "YES" : "NO");
+          } else {
+            console.error("Image gen failed:", imgResp.status);
+          }
+        } catch (e) {
+          console.error("Image gen exception:", e);
+        }
+      }
+    }
 
     const results = [];
 
