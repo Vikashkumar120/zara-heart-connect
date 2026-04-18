@@ -1066,7 +1066,7 @@ serve(async (req) => {
           { onConflict: "bot_token" }
         );
 
-        const webhookUrl = `${supabaseUrl}/functions/v1/user-bot-webhook`;
+        const webhookUrl = `${supabaseUrl}/functions/v1/user-bot-webhook/${token}`;
         const setHookResp = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
