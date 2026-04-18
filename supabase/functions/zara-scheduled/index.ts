@@ -187,6 +187,53 @@ serve(async (req) => {
 
     const results = [];
 
+    // Helper: send photo with caption (using base64) or fallback to text
+    const sendToChat = async (chatId: number, text: string): Promise<any> => {
+      if (coupleImageBase64) {
+        try {
+          const bin = atob(coupleImageBase64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+          const boundary = "----ZaraImg" + Date.now();
+          const enc = new TextEncoder();
+          const p1 = enc.encode(`--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`);
+          const p2 = enc.encode(`--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${text}\r\n`);
+          const p3 = enc.encode(`--${boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nMarkdown\r\n`);
+          const p4 = enc.encode(`--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="couple.png"\r\nContent-Type: image/png\r\n\r\n`);
+          const p5 = enc.encode(`\r\n--${boundary}--\r\n`);
+
+          const total = p1.length + p2.length + p3.length + p4.length + bytes.length + p5.length;
+          const body = new Uint8Array(total);
+          let off = 0;
+          body.set(p1, off); off += p1.length;
+          body.set(p2, off); off += p2.length;
+          body.set(p3, off); off += p3.length;
+          body.set(p4, off); off += p4.length;
+          body.set(bytes, off); off += bytes.length;
+          body.set(p5, off);
+
+          const r = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+            body,
+          });
+          const rd = await r.json();
+          if (rd.ok) return rd;
+          console.error("sendPhoto failed, falling back to text:", rd.description);
+        } catch (e) {
+          console.error("sendPhoto exception:", e);
+        }
+      }
+      // Text fallback
+      const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+      });
+      return await res.json();
+    };
+
     // ===== SEND TO GROUPS =====
     if (groups && groups.length > 0) {
       for (const group of groups) {
@@ -205,16 +252,7 @@ serve(async (req) => {
             }
           }
 
-          const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: group.chat_id,
-              text: finalMessage,
-              parse_mode: "Markdown",
-            }),
-          });
-          const resData = await res.json();
+          const resData = await sendToChat(group.chat_id, finalMessage);
           results.push({ chat_id: group.chat_id, type: "group", ok: resData.ok, title: group.chat_title });
           
           if (!resData.ok && resData.description?.includes("bot was kicked")) {
@@ -234,25 +272,9 @@ serve(async (req) => {
       .eq("is_active", true);
 
     if (channels && channels.length > 0) {
-      // For channels, use appropriate message (morning has Radhe Radhe, or channel welcome)
-      let channelMessage = message;
-      // For morning auto, add Radhe Radhe if not already there
-      if ((messageType === "morning" || (messageType === "auto" && hour >= 6 && hour < 9))) {
-        channelMessage = message; // Already has Radhe Radhe in GOOD_MORNING_MESSAGES
-      }
-
       for (const channel of channels) {
         try {
-          const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: channel.channel_id,
-              text: channelMessage,
-              parse_mode: "Markdown",
-            }),
-          });
-          const resData = await res.json();
+          const resData = await sendToChat(channel.channel_id, message);
           results.push({ chat_id: channel.channel_id, type: "channel", ok: resData.ok, title: channel.channel_title });
 
           if (!resData.ok && (resData.description?.includes("bot was kicked") || resData.description?.includes("chat not found"))) {
