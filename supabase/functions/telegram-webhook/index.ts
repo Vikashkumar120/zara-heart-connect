@@ -1322,30 +1322,68 @@ serve(async (req) => {
 });
 
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number): Promise<string> {
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage },
-      ],
-      temperature: 0.95,
-      ...(maxTokens ? { max_tokens: maxTokens } : {}),
-    }),
-  });
+  // Try Groq first (fast)
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        temperature: 0.95,
+        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+      }),
+    });
 
-  if (!response.ok) {
-    console.error("AI error:", response.status);
-    return "Jaan abhi thodi busy hoon 🥺 Thodi der baad baat karte hain na? 💕";
+    if (response.ok) {
+      const data = await response.json();
+      const txt = data.choices?.[0]?.message?.content;
+      if (txt) return txt;
+    } else {
+      console.error("Groq error:", response.status, "— falling back to Lovable AI");
+    }
+  } catch (e) {
+    console.error("Groq exception, falling back:", e);
   }
 
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || "Hmm... kuch samajh nahi aaya 🥺";
+  // Fallback: Lovable AI Gateway (Gemini)
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (LOVABLE_API_KEY) {
+    try {
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const txt = d.choices?.[0]?.message?.content;
+        if (txt) return txt;
+      } else {
+        console.error("Lovable AI error:", r.status);
+      }
+    } catch (e) {
+      console.error("Lovable AI exception:", e);
+    }
+  }
+
+  return "Hehe 😄 Ek baar phir bolo na jaan, sun nahi paayi! 💕";
 }
 
 async function sendChatAction(token: string, chatId: number, action: string) {
