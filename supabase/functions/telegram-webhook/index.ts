@@ -1033,6 +1033,109 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== /createbot — User creates their own Zara-like bot from BotFather token =====
+    if (lowerText.startsWith("/createbot")) {
+      const token = userText.replace(/^\/createbot\s*/i, "").trim();
+      if (!token || !/^\d+:[A-Za-z0-9_-]{30,}$/.test(token)) {
+        const guide = `🤖 *Apna Zara-jaisa Bot Banao!* 🤖\n\n${firstName}, ab tum bhi apna AI assistant bana sakte ho! 💕\n\n📋 *Steps:*\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo\n3️⃣ Apne bot ka naam aur username do\n4️⃣ BotFather tumhe ek *API token* dega (jaise: 1234567890:ABC...)\n5️⃣ Wahi token mujhe yahan bhejo:\n\n👉 \`/createbot YOUR_BOT_TOKEN_HERE\`\n\n✨ Phir tumhara bot bhi Zara ki tarah baat karega — same brain, naya naam! 🥰\n\n💡 *Note:* Token kisi aur ko mat dena!\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)`;
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, guide);
+        return new Response("OK", { status: 200 });
+      }
+
+      try {
+        const meResp = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        const meData = await meResp.json();
+        if (!meData.ok) {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Invalid token jaan! BotFather se sahi token copy karo aur dobara try karo. 🥺`);
+          return new Response("OK", { status: 200 });
+        }
+
+        const botUsername = meData.result.username;
+        const botName = meData.result.first_name || "Zara Clone";
+
+        await supabase.from("zara_user_bots").upsert(
+          {
+            owner_telegram_user_id: telegramUserId!,
+            owner_first_name: firstName,
+            bot_token: token,
+            bot_username: botUsername,
+            bot_display_name: botName,
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "bot_token" }
+        );
+
+        const webhookUrl = `${supabaseUrl}/functions/v1/user-bot-webhook`;
+        const setHookResp = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: webhookUrl,
+            allowed_updates: ["message", "channel_post", "my_chat_member", "new_chat_members"],
+          }),
+        });
+        const setHookData = await setHookResp.json();
+
+        if (!setHookData.ok) {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `⚠️ Bot save hua but webhook fail. Error: ${setHookData.description}`);
+          return new Response("OK", { status: 200 });
+        }
+
+        const announceMsg = `🎉 *${botName} ACTIVATED!* 🎉\n\nHi ${firstName}! Main *${botName}* hoon — tumhara apna AI assistant! 💕\n\n✨ Main Zara ki tarah hi smart hoon — bas mera naam alag hai 😘\n\n💖 *Ab kya karo:*\n• Mujhe kisi bhi group me add karo\n• Admin permission do\n• Sab members se main baat karungi!\n\n🎭 Modes: /mode\n🎤 Voice: /voice\n🎨 Image: /imagine\n🌤️ Weather: /weather\n💬 Chat: kuch bhi pucho!\n\n📱 Original Zara: zaraai.in/r/NINJA5\n💼 Earn 5%: codeninjavik.in\n\n🥰 Welcome to the Zara family, @${botUsername}!`;
+        try {
+          await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: telegramUserId, text: announceMsg, parse_mode: "Markdown" }),
+          });
+        } catch (e) { console.log("Could not DM owner:", e); }
+
+        const successMsg = `✅ *Bot Successfully Created!* 🎉\n\n🤖 Bot: *${botName}*\n🔗 @${botUsername}\n\n${firstName}, tumhara apna Zara-jaisa AI ready hai!\n\n📌 *Ab:*\n1️⃣ @${botUsername} pe jao\n2️⃣ /start dabao\n3️⃣ Group me add karo (admin banao)\n4️⃣ Sab members se baat karegi! 🥰\n\n📋 /mybots | 🗑️ /deletebot @${botUsername}`;
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, successMsg);
+      } catch (e) {
+        console.error("createbot error:", e);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Kuch error aaya jaan! Dobara try karo. 🥺`);
+      }
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== /mybots — list user's bots =====
+    if (lowerText.startsWith("/mybots")) {
+      const { data: bots } = await supabase
+        .from("zara_user_bots")
+        .select("bot_username, bot_display_name, is_active")
+        .eq("owner_telegram_user_id", telegramUserId!);
+      if (!bots || bots.length === 0) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🤖 ${firstName}, tumne abhi tak koi bot nahi banaya!\n\n👉 /createbot likho — main guide karungi 💕`);
+      } else {
+        const list = bots.map((b: any, i: number) => `${i + 1}. *${b.bot_display_name}* (@${b.bot_username}) — ${b.is_active ? "✅ Active" : "❌ Inactive"}`).join("\n");
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🤖 *Tumhare Bots:* 🤖\n\n${list}\n\n➕ Aur: /createbot\n🗑️ Delete: /deletebot username`);
+      }
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== /deletebot =====
+    if (lowerText.startsWith("/deletebot")) {
+      const target = userText.replace(/^\/deletebot\s*@?/i, "").trim();
+      if (!target) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🗑️ Likho: /deletebot username`);
+        return new Response("OK", { status: 200 });
+      }
+      const { data: del } = await supabase
+        .from("zara_user_bots")
+        .update({ is_active: false })
+        .eq("owner_telegram_user_id", telegramUserId!)
+        .eq("bot_username", target)
+        .select();
+      if (del && del.length > 0) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `✅ Bot @${target} deactivate ho gaya!`);
+      } else {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Bot @${target} nahi mila 🥺`);
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== /weather COMMAND =====
     if (lowerText.startsWith("/weather")) {
       const city = userText.replace(/^\/weather\s*/i, "").trim() || "Delhi";
