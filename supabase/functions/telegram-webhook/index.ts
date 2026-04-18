@@ -1510,13 +1510,160 @@ function getGeminiVoiceForMode(mode: string): string {
   }
 }
 
-async function generateGeminiVoice(text: string, voiceName: string): Promise<Uint8Array | null> {
+// === NEW: WebSocket-based Gemini Native Audio (BidiGenerateContent) ===
+// Uses gemini-2.5-flash-native-audio-preview-12-2025 for ultra-natural human-like voice
+async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<Uint8Array | null> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
     console.error("GEMINI_API_KEY not set");
     return null;
   }
 
+  const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+
+  return await new Promise<Uint8Array | null>((resolve) => {
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (e) {
+      console.error("WS create failed:", e);
+      return resolve(null);
+    }
+
+    const audioChunks: Uint8Array[] = [];
+    let setupDone = false;
+    let resolved = false;
+
+    const safeResolve = (val: Uint8Array | null) => {
+      if (resolved) return;
+      resolved = true;
+      try { ws.close(); } catch { /* ignore */ }
+      resolve(val);
+    };
+
+    // 25s timeout for native audio generation
+    const timer = setTimeout(() => {
+      if (audioChunks.length > 0) {
+        const total = audioChunks.reduce((s, c) => s + c.length, 0);
+        const merged = new Uint8Array(total);
+        let off = 0;
+        for (const c of audioChunks) { merged.set(c, off); off += c.length; }
+        console.log("WS timeout but got audio:", merged.length);
+        safeResolve(merged);
+      } else {
+        console.error("WS native audio timeout, no audio");
+        safeResolve(null);
+      }
+    }, 25000);
+
+    ws.onopen = () => {
+      const setupMsg = {
+        setup: {
+          model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
+          generation_config: {
+            temperature: 0.9,
+            response_modalities: ["AUDIO"],
+            speech_config: {
+              voice_config: {
+                prebuilt_voice_config: { voice_name: voiceName },
+              },
+            },
+          },
+          system_instruction: {
+            parts: [{
+              text: "You are Zara, a sweet, romantic, playful Indian girl. Speak Hinglish in a natural, melodic, expressive way. Add laughter (hahaha), giggles, dramatic 'ufff', 'hawww', sighs. Sound emotionally alive — flirty, caring, sometimes nautanki. Vary tone — soft when romantic, excited when happy. Make it feel like a real girlfriend speaking, NOT a robot.",
+            }],
+          },
+        },
+      };
+      ws.send(JSON.stringify(setupMsg));
+    };
+
+    ws.onmessage = async (ev) => {
+      try {
+        let raw: string;
+        if (ev.data instanceof Blob) {
+          raw = await ev.data.text();
+        } else if (ev.data instanceof ArrayBuffer) {
+          raw = new TextDecoder().decode(ev.data);
+        } else {
+          raw = ev.data as string;
+        }
+        const msg = JSON.parse(raw);
+
+        if (msg.setupComplete !== undefined && !setupDone) {
+          setupDone = true;
+          // Send the actual text to be spoken
+          const clientMsg = {
+            client_content: {
+              turns: [{
+                role: "user",
+                parts: [{ text: `Bolo ye line ekdam natural, romantic, expressive Hinglish me, jaise koi pyari si girlfriend bol rahi ho: ${text}` }],
+              }],
+              turn_complete: true,
+            },
+          };
+          ws.send(JSON.stringify(clientMsg));
+          return;
+        }
+
+        // Audio chunks come inline in serverContent.modelTurn.parts[].inlineData.data
+        const parts = msg.serverContent?.modelTurn?.parts;
+        if (Array.isArray(parts)) {
+          for (const p of parts) {
+            const b64 = p?.inlineData?.data;
+            if (b64) {
+              const bin = atob(b64);
+              const bytes = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+              audioChunks.push(bytes);
+            }
+          }
+        }
+
+        if (msg.serverContent?.turnComplete || msg.serverContent?.generationComplete) {
+          clearTimeout(timer);
+          if (audioChunks.length === 0) {
+            console.error("WS turn complete but no audio chunks");
+            return safeResolve(null);
+          }
+          const total = audioChunks.reduce((s, c) => s + c.length, 0);
+          const merged = new Uint8Array(total);
+          let off = 0;
+          for (const c of audioChunks) { merged.set(c, off); off += c.length; }
+          console.log("WS native audio complete:", merged.length, "bytes");
+          safeResolve(merged);
+        }
+      } catch (e) {
+        console.error("WS onmessage error:", e);
+      }
+    };
+
+    ws.onerror = (e) => {
+      console.error("WS error:", (e as ErrorEvent)?.message ?? e);
+    };
+
+    ws.onclose = () => {
+      clearTimeout(timer);
+      if (!resolved) {
+        if (audioChunks.length > 0) {
+          const total = audioChunks.reduce((s, c) => s + c.length, 0);
+          const merged = new Uint8Array(total);
+          let off = 0;
+          for (const c of audioChunks) { merged.set(c, off); off += c.length; }
+          safeResolve(merged);
+        } else {
+          safeResolve(null);
+        }
+      }
+    };
+  });
+}
+
+// REST fallback (kept for reliability)
+async function generateGeminiVoiceREST(text: string, voiceName: string): Promise<Uint8Array | null> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return null;
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
@@ -1527,39 +1674,35 @@ async function generateGeminiVoice(text: string, voiceName: string): Promise<Uin
           contents: [{ parts: [{ text }] }],
           generationConfig: {
             responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName },
-              },
-            },
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
           },
         }),
       }
     );
-
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("Gemini TTS error:", response.status, errText);
+      console.error("REST TTS fallback error:", response.status);
       return null;
     }
-
     const data = await response.json();
     const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!audioData) {
-      console.error("No audio data in Gemini TTS response");
-      return null;
-    }
-
-    const binaryStr = atob(audioData);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
+    if (!audioData) return null;
+    const bin = atob(audioData);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return bytes;
   } catch (e) {
-    console.error("Gemini TTS exception:", e);
+    console.error("REST TTS exception:", e);
     return null;
   }
+}
+
+async function generateGeminiVoice(text: string, voiceName: string): Promise<Uint8Array | null> {
+  // Primary: WebSocket native audio (most natural human voice)
+  const ws = await generateGeminiVoiceWS(text, voiceName);
+  if (ws && ws.length > 100) return ws;
+  // Fallback: REST TTS
+  console.log("WS native audio failed, falling back to REST TTS");
+  return await generateGeminiVoiceREST(text, voiceName);
 }
 
 // Convert raw PCM to WAV
