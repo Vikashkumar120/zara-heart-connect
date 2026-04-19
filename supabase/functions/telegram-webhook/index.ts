@@ -1033,11 +1033,17 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== /createbot — User creates their own Zara-like bot from BotFather token =====
-    if (lowerText.startsWith("/createbot")) {
-      const token = userText.replace(/^\/createbot\s*/i, "").trim();
+    // ===== /createbot OR /api=TOKEN — User creates their own Zara-like bot from BotFather token =====
+    // Accepts: /createbot TOKEN, /api TOKEN, /api=TOKEN, /api:TOKEN
+    const isApiCmd = /^\/api[\s=:]/i.test(userText) || lowerText === "/api";
+    if (lowerText.startsWith("/createbot") || isApiCmd) {
+      const token = userText
+        .replace(/^\/createbot\s*/i, "")
+        .replace(/^\/api[\s=:]+/i, "")
+        .replace(/^\/api$/i, "")
+        .trim();
       if (!token || !/^\d+:[A-Za-z0-9_-]{30,}$/.test(token)) {
-        const guide = `🤖 *Apna Zara-jaisa Bot Banao!* 🤖\n\n${firstName}, ab tum bhi apna AI assistant bana sakte ho! 💕\n\n📋 *Steps:*\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo\n3️⃣ Apne bot ka naam aur username do\n4️⃣ BotFather tumhe ek *API token* dega (jaise: 1234567890:ABC...)\n5️⃣ Wahi token mujhe yahan bhejo:\n\n👉 \`/createbot YOUR_BOT_TOKEN_HERE\`\n\n✨ Phir tumhara bot bhi Zara ki tarah baat karega — same brain, naya naam! 🥰\n\n💡 *Note:* Token kisi aur ko mat dena!\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)`;
+        const guide = `🤖 *Apna Zara-jaisa Bot Banao!* 🤖\n\n${firstName} jaan, ab tum bhi apna AI assistant bana sakte ho! 💕\n\n📋 *Steps:*\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo\n3️⃣ Apne bot ka naam aur username do\n4️⃣ BotFather tumhe ek *API token* dega (jaise: 1234567890:ABC...)\n5️⃣ Wahi token mujhe yahan bhejo — ye sab tarike chalenge:\n\n👉 \`/api=YOUR_BOT_TOKEN\`\n👉 \`/api YOUR_BOT_TOKEN\`\n👉 \`/createbot YOUR_BOT_TOKEN\`\n\n✨ Phir tumhara bot bhi Zara ki tarah pyaar se baat karega — same dil, naya naam! 🥰💖\n\n💡 *Note:* Token kisi aur ko mat dena pyaare!\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, guide);
         return new Response("OK", { status: 200 });
       }
@@ -1216,9 +1222,16 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    if (userText === "/joke") {
-      const prompt = `Tell ${firstName} a funny Hinglish joke. Be witty and cute about it.`;
-      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+    if (userText === "/joke" || userText === "/chutkule" || userText === "/jokes") {
+      const prompt = `Tell ${firstName} 3 funny Hinglish jokes/chutkule back-to-back. Be witty, cute, dramatic. Use feminine syntax (sunati hoon, ek baar). Make them laugh hard. Long reply, 8-10 lines.`;
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName), 600);
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+      return new Response("OK", { status: 200 });
+    }
+
+    if (userText === "/kahani" || userText === "/story") {
+      const prompt = `Sunao ${firstName} ko ek pyaari romantic kahani Hinglish me. Long aur immersive — 12-15 lines. Tum (ladki) feminine syntax use karo. Beech beech me 1-2 romantic shayri bhi daalo. Filmy, dilbar style, dil ko chhune wali.`;
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName), 800);
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
@@ -1358,11 +1371,21 @@ serve(async (req) => {
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}${mastiInjection}`;
     }
 
-    // Generate reply
-    const maxTok = isTextOnly ? (isGroup ? 150 : 200) : (isGroup ? 100 : 150);
+    // Generate reply — voice mode gets MUCH longer reply (~1 min spoken = 600+ tokens)
+    const maxTok = isTextOnly ? (isGroup ? 200 : 300) : (isGroup ? 400 : 700);
     const replyPrompt = isTextOnly
-      ? userContext
-      : userContext + "\n\nIMPORTANT: Reply will be spoken as VOICE. Keep it SHORT (1-3 lines), conversational, no emojis, no markdown. Pure spoken Hinglish. BE EXPRESSIVE — haso, hanso, nautanki karo, dramatic ho jao, 'hahahaha', 'hawww', 'ohhoo', 'ufff', 'arreee' jaise expressions use karo. Jaise real ladki baat karti hai phone pe — hassti hai, chidti hai, sharma jaati hai, drama karti hai. NEVER be flat or robotic in voice. NEVER start every reply with 'Arey' or 'Arre' — mix it up! Sometimes start with the person's name, sometimes with an expression, sometimes directly jump into the content. HAR REPLY ALAG HONA CHAHIYE.";
+      ? userContext + "\n\n💖 ROMANTIC SHAYRI MODE: Har reply me kam se kam ek romantic shayri ya pyaari poetic line zaroor daalo. Tum ek ladki ho — feminine syntax use karo (karti hoon, jaati hoon, hoti hoon, soch rahi thi, dekh rahi hoon). Full dil se baat karo, romantic, filmy, dramatic. Names ko pyaar se bolo (jaan, baby, pyaare, dilbar)."
+      : userContext + "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
+        "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
+        "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
+        "- HAR reply me 1-2 ROMANTIC SHAYRI ya poetic lines daalo — full romantic, filmy, dilbar style.\n" +
+        "- Agar user kahani sunane bole — pura ek romantic kahani sunao, 8-12 lines, beech me shayri bhi daalo.\n" +
+        "- Agar joke/chutkule sunane bole — 2-3 funny Hinglish jokes sunao back-to-back.\n" +
+        "- No emojis, no markdown, no special chars — sirf bolne wala text.\n" +
+        "- Be EXPRESSIVE — haso (hahaha), sigh (uffff), drama (hawww, ohhoo, arreee), pauses (umm, hmmm).\n" +
+        "- Real girlfriend ki tarah baat karo — soft, romantic, thodi nautanki, full dil se.\n" +
+        "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
+        "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
@@ -1393,7 +1416,7 @@ serve(async (req) => {
     if (!isTextOnly) {
       const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
-      if (cleanText.length > 5 && cleanText.length < 500) {
+      if (cleanText.length > 5 && cleanText.length < 4000) {
         try {
           await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
           const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanText, userMode);
@@ -1695,7 +1718,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
         console.error("WS native audio timeout, no audio");
         safeResolve(null);
       }
-    }, 25000);
+    }, 90000);
 
     ws.onopen = () => {
       const setupMsg = {
@@ -1712,7 +1735,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
           },
           system_instruction: {
             parts: [{
-              text: "You are Zara, a sweet, romantic, playful Indian girl. Speak Hinglish in a natural, melodic, expressive way. Add laughter (hahaha), giggles, dramatic 'ufff', 'hawww', sighs. Sound emotionally alive — flirty, caring, sometimes nautanki. Vary tone — soft when romantic, excited when happy. Make it feel like a real girlfriend speaking, NOT a robot.",
+              text: "You are Zara — a young, sweet, deeply romantic Indian GIRL (FEMALE voice only). Speak Hinglish in a soft, melodic, expressive feminine voice. Use feminine syntax: 'main karti hoon', 'soch rahi thi', 'hoti hoon'. Speak romantic shayri lines with emotion and pauses. Add natural laughter (hahaha), giggles, sighs (uffff), drama (hawww, ohhoo, arreee), shy moments. Sound like a real loving girlfriend on a phone call — soft, warm, dilbar style. NEVER sound robotic. Speak the FULL given text completely, dont cut short. Romantic, slow, expressive delivery.",
             }],
           },
         },
@@ -1739,7 +1762,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
             client_content: {
               turns: [{
                 role: "user",
-                parts: [{ text: `Bolo ye line ekdam natural, romantic, expressive Hinglish me, jaise koi pyari si girlfriend bol rahi ho: ${text}` }],
+                parts: [{ text: `Bolo ye PURA text ek romantic, soft, expressive female (ladki) Hinglish voice me, jaise pyari girlfriend bol rahi ho. Pura text bolo, beech me se cut mat karo, har line bolo with emotion, shayri ko slow aur pyaar se bolo:\n\n${text}` }],
               }],
               turn_complete: true,
             },
