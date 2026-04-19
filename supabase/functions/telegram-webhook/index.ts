@@ -1755,7 +1755,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
             client_content: {
               turns: [{
                 role: "user",
-                parts: [{ text: `Bolo ye line ekdam natural, romantic, expressive Hinglish me, jaise koi pyari si girlfriend bol rahi ho: ${text}` }],
+                parts: [{ text: `Bolo ye PURA text ek romantic, soft, expressive female (ladki) Hinglish voice me, jaise pyari girlfriend bol rahi ho. Pura text bolo, beech me se cut mat karo, har line bolo with emotion, shayri ko slow aur pyaar se bolo:\n\n${text}` }],
               }],
               turn_complete: true,
             },
