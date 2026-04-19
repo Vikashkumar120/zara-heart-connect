@@ -1222,9 +1222,16 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    if (userText === "/joke") {
-      const prompt = `Tell ${firstName} a funny Hinglish joke. Be witty and cute about it.`;
-      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName));
+    if (userText === "/joke" || userText === "/chutkule" || userText === "/jokes") {
+      const prompt = `Tell ${firstName} 3 funny Hinglish jokes/chutkule back-to-back. Be witty, cute, dramatic. Use feminine syntax (sunati hoon, ek baar). Make them laugh hard. Long reply, 8-10 lines.`;
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName), 600);
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
+      return new Response("OK", { status: 200 });
+    }
+
+    if (userText === "/kahani" || userText === "/story") {
+      const prompt = `Sunao ${firstName} ko ek pyaari romantic kahani Hinglish me. Long aur immersive — 12-15 lines. Tum (ladki) feminine syntax use karo. Beech beech me 1-2 romantic shayri bhi daalo. Filmy, dilbar style, dil ko chhune wali.`;
+      const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName), 800);
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
       return new Response("OK", { status: 200 });
     }
