@@ -1711,7 +1711,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
         console.error("WS native audio timeout, no audio");
         safeResolve(null);
       }
-    }, 25000);
+    }, 90000);
 
     ws.onopen = () => {
       const setupMsg = {
