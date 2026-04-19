@@ -1409,7 +1409,7 @@ serve(async (req) => {
     if (!isTextOnly) {
       const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
-      if (cleanText.length > 5 && cleanText.length < 500) {
+      if (cleanText.length > 5 && cleanText.length < 4000) {
         try {
           await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
           const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanText, userMode);
