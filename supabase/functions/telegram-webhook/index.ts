@@ -1364,11 +1364,21 @@ serve(async (req) => {
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}${mastiInjection}`;
     }
 
-    // Generate reply
-    const maxTok = isTextOnly ? (isGroup ? 150 : 200) : (isGroup ? 100 : 150);
+    // Generate reply — voice mode gets MUCH longer reply (~1 min spoken = 600+ tokens)
+    const maxTok = isTextOnly ? (isGroup ? 200 : 300) : (isGroup ? 400 : 700);
     const replyPrompt = isTextOnly
-      ? userContext
-      : userContext + "\n\nIMPORTANT: Reply will be spoken as VOICE. Keep it SHORT (1-3 lines), conversational, no emojis, no markdown. Pure spoken Hinglish. BE EXPRESSIVE — haso, hanso, nautanki karo, dramatic ho jao, 'hahahaha', 'hawww', 'ohhoo', 'ufff', 'arreee' jaise expressions use karo. Jaise real ladki baat karti hai phone pe — hassti hai, chidti hai, sharma jaati hai, drama karti hai. NEVER be flat or robotic in voice. NEVER start every reply with 'Arey' or 'Arre' — mix it up! Sometimes start with the person's name, sometimes with an expression, sometimes directly jump into the content. HAR REPLY ALAG HONA CHAHIYE.";
+      ? userContext + "\n\n💖 ROMANTIC SHAYRI MODE: Har reply me kam se kam ek romantic shayri ya pyaari poetic line zaroor daalo. Tum ek ladki ho — feminine syntax use karo (karti hoon, jaati hoon, hoti hoon, soch rahi thi, dekh rahi hoon). Full dil se baat karo, romantic, filmy, dramatic. Names ko pyaar se bolo (jaan, baby, pyaare, dilbar)."
+      : userContext + "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
+        "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
+        "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
+        "- HAR reply me 1-2 ROMANTIC SHAYRI ya poetic lines daalo — full romantic, filmy, dilbar style.\n" +
+        "- Agar user kahani sunane bole — pura ek romantic kahani sunao, 8-12 lines, beech me shayri bhi daalo.\n" +
+        "- Agar joke/chutkule sunane bole — 2-3 funny Hinglish jokes sunao back-to-back.\n" +
+        "- No emojis, no markdown, no special chars — sirf bolne wala text.\n" +
+        "- Be EXPRESSIVE — haso (hahaha), sigh (uffff), drama (hawww, ohhoo, arreee), pauses (umm, hmmm).\n" +
+        "- Real girlfriend ki tarah baat karo — soft, romantic, thodi nautanki, full dil se.\n" +
+        "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
+        "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
