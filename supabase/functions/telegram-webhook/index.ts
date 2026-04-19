@@ -1034,32 +1034,44 @@ serve(async (req) => {
     }
 
     // ===== /createbot OR /api=TOKEN — User creates their own Zara-like bot from BotFather token =====
-    // Accepts: /createbot TOKEN, /api TOKEN, /api=TOKEN, /api:TOKEN
-    const isApiCmd = /^\/api[\s=:]/i.test(userText) || lowerText === "/api";
-    if (lowerText.startsWith("/createbot") || isApiCmd) {
+    // Accepts: /createbot TOKEN, /api TOKEN, /api=TOKEN, /api:TOKEN, /api-TOKEN
+    const isApiCmd = /^\/api([\s=:\-]|$)/i.test(userText);
+    const isCreateBotCmd = lowerText.startsWith("/createbot");
+    if (isCreateBotCmd || isApiCmd) {
+      console.log("[/api flow] userText:", userText.substring(0, 50), "from:", telegramUserId);
       const token = userText
-        .replace(/^\/createbot\s*/i, "")
-        .replace(/^\/api[\s=:]+/i, "")
-        .replace(/^\/api$/i, "")
+        .replace(/^\/createbot[\s=:\-]*/i, "")
+        .replace(/^\/api[\s=:\-]*/i, "")
         .trim();
-      if (!token || !/^\d+:[A-Za-z0-9_-]{30,}$/.test(token)) {
-        const guide = `🤖 *Apna Zara-jaisa Bot Banao!* 🤖\n\n${firstName} jaan, ab tum bhi apna AI assistant bana sakte ho! 💕\n\n📋 *Steps:*\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo\n3️⃣ Apne bot ka naam aur username do\n4️⃣ BotFather tumhe ek *API token* dega (jaise: 1234567890:ABC...)\n5️⃣ Wahi token mujhe yahan bhejo — ye sab tarike chalenge:\n\n👉 \`/api=YOUR_BOT_TOKEN\`\n👉 \`/api YOUR_BOT_TOKEN\`\n👉 \`/createbot YOUR_BOT_TOKEN\`\n\n✨ Phir tumhara bot bhi Zara ki tarah pyaar se baat karega — same dil, naya naam! 🥰💖\n\n💡 *Note:* Token kisi aur ko mat dena pyaare!\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)`;
+      console.log("[/api flow] extracted token len:", token.length);
+
+      if (!token) {
+        const guide = `🤖 *Apna Zara-jaisa Bot Banao!* 🤖\n\n${firstName} jaan, apna AI assistant banane ke liye:\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo, naam aur username do\n3️⃣ BotFather token dega — kuch aisa:\n\`1234567890:AAEhBP0a...\` (45+ chars)\n\n4️⃣ Token mujhe bhejo — *koi bhi* tarika chalega:\n\n✅ \`/api=YOUR_TOKEN\`\n✅ \`/api YOUR_TOKEN\`\n✅ \`/api:YOUR_TOKEN\`\n✅ \`/createbot YOUR_TOKEN\`\n\n📝 *DEMO:*\n\`/api=8738260094:AAGQeeGj3W2hRvB4dn_NJDei8WCgnx7DEuU\`\n\n💡 *Note:* Token sirf mujhe do, kisi aur ko mat dena! Token ke baad extra space mat chhodo. 🥺💕`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, guide);
         return new Response("OK", { status: 200 });
       }
 
+      if (!/^\d+:[A-Za-z0-9_-]{30,}$/.test(token)) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ ${firstName}, token format galat hai!\n\n✅ Sahi format: \`123456789:AAExxxxx...\` (45+ chars, colon ke saath)\n\n👉 BotFather se ek dum copy karke bhejo, beech me space ya newline mat dalo.\n\n📝 Aise bhejo:\n\`/api=YOUR_FULL_TOKEN\``);
+        return new Response("OK", { status: 200 });
+      }
+
+      // Immediate ack so user sees feedback
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `⏳ ${firstName}, token mil gaya! Verify kar rahi hoon... 💕`);
+
       try {
         const meResp = await fetch(`https://api.telegram.org/bot${token}/getMe`);
         const meData = await meResp.json();
+        console.log("[/api flow] getMe ok:", meData.ok);
         if (!meData.ok) {
-          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Invalid token jaan! BotFather se sahi token copy karo aur dobara try karo. 🥺`);
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Invalid token jaan!\n\nTelegram bola: *${meData.description || "unknown error"}*\n\nBotFather → /mybots → tumhara bot → API Token → fresh token copy karo aur dobara bhejo. 🥺`);
           return new Response("OK", { status: 200 });
         }
 
         const botUsername = meData.result.username;
         const botName = meData.result.first_name || "Zara Clone";
 
-        await supabase.from("zara_user_bots").upsert(
+        const { error: dbErr } = await supabase.from("zara_user_bots").upsert(
           {
             owner_telegram_user_id: telegramUserId!,
             owner_first_name: firstName,
@@ -1071,6 +1083,7 @@ serve(async (req) => {
           },
           { onConflict: "bot_token" }
         );
+        if (dbErr) console.error("[/api flow] DB upsert error:", dbErr);
 
         const webhookUrl = `${supabaseUrl}/functions/v1/user-bot-webhook/${token}`;
         const setHookResp = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
@@ -1082,26 +1095,27 @@ serve(async (req) => {
           }),
         });
         const setHookData = await setHookResp.json();
+        console.log("[/api flow] setWebhook ok:", setHookData.ok);
 
         if (!setHookData.ok) {
-          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `⚠️ Bot save hua but webhook fail. Error: ${setHookData.description}`);
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `⚠️ Bot DB me save ho gaya but webhook set nahi hua.\n\nError: *${setHookData.description}*\n\nDobara try karo. 🥺`);
           return new Response("OK", { status: 200 });
         }
 
-        const announceMsg = `🎉 *${botName} ACTIVATED!* 🎉\n\nHi ${firstName}! Main *${botName}* hoon — tumhara apna AI assistant! 💕\n\n✨ Main Zara ki tarah hi smart hoon — bas mera naam alag hai 😘\n\n💖 *Ab kya karo:*\n• Mujhe kisi bhi group me add karo\n• Admin permission do\n• Sab members se main baat karungi!\n\n🎭 Modes: /mode\n🎤 Voice: /voice\n🎨 Image: /imagine\n🌤️ Weather: /weather\n💬 Chat: kuch bhi pucho!\n\n📱 Original Zara: zaraai.in/r/NINJA5\n💼 Earn 5%: codeninjavik.in\n\n🥰 Welcome to the Zara family, @${botUsername}!`;
+        const announceMsg = `🎉 *${botName} ACTIVATED!* 🎉\n\nHi ${firstName}! Main *${botName}* hoon — tumhara apna AI assistant! 💕\n\n💬 Bas mujhe message bhejo, main reply dungi!\n\n📱 Original Zara: zaraai.in/r/NINJA5\n\n🥰 Welcome to the Zara family, @${botUsername}!`;
         try {
           await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ chat_id: telegramUserId, text: announceMsg, parse_mode: "Markdown" }),
           });
-        } catch (e) { console.log("Could not DM owner:", e); }
+        } catch (e) { console.log("Could not DM owner via new bot:", e); }
 
-        const successMsg = `✅ *Bot Successfully Created!* 🎉\n\n🤖 Bot: *${botName}*\n🔗 @${botUsername}\n\n${firstName}, tumhara apna Zara-jaisa AI ready hai!\n\n📌 *Ab:*\n1️⃣ @${botUsername} pe jao\n2️⃣ /start dabao\n3️⃣ Group me add karo (admin banao)\n4️⃣ Sab members se baat karegi! 🥰\n\n📋 /mybots | 🗑️ /deletebot @${botUsername}`;
+        const successMsg = `✅ *VERIFIED & ACTIVATED!* 🎉\n\n🤖 Bot: *${botName}*\n🔗 @${botUsername}\n👤 Owner: ${firstName}\n\nTumhara apna Zara-jaisa AI ready hai! 💕\n\n📌 *Ab kya karo:*\n1️⃣ [@${botUsername}](https://t.me/${botUsername}) pe jao\n2️⃣ /start dabao\n3️⃣ Group me add karo (admin banao)\n4️⃣ Sab members se baat karegi! 🥰\n\n📋 /mybots | 🗑️ /deletebot @${botUsername}`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, successMsg);
       } catch (e) {
-        console.error("createbot error:", e);
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Kuch error aaya jaan! Dobara try karo. 🥺`);
+        console.error("[/api flow] exception:", e);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Error aa gaya jaan: ${(e as Error).message}\n\nDobara try karo. 🥺`);
       }
       return new Response("OK", { status: 200 });
     }
@@ -1491,34 +1505,37 @@ serve(async (req) => {
 });
 
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number): Promise<string> {
-  // Try Groq first (fast)
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        temperature: 0.95,
-        ...(maxTokens ? { max_tokens: maxTokens } : {}),
-      }),
-    });
+  // Skip Groq if key invalid/missing — saves 2-3s per reply (current key returns 401)
+  const skipGroq = !apiKey || apiKey.length < 20 || Deno.env.get("SKIP_GROQ") === "1";
+  if (!skipGroq) {
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          temperature: 0.95,
+          ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        }),
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      const txt = data.choices?.[0]?.message?.content;
-      if (txt) return txt;
-    } else {
-      console.error("Groq error:", response.status, "— falling back to Lovable AI");
+      if (response.ok) {
+        const data = await response.json();
+        const txt = data.choices?.[0]?.message?.content;
+        if (txt) return txt;
+      } else {
+        console.error("Groq error:", response.status, "— falling back to Lovable AI");
+      }
+    } catch (e) {
+      console.error("Groq exception, falling back:", e);
     }
-  } catch (e) {
-    console.error("Groq exception, falling back:", e);
   }
 
   // Fallback: Lovable AI Gateway (Gemini)
@@ -1748,7 +1765,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
       resolve(val);
     };
 
-    // 25s timeout for native audio generation
+    // 35s timeout (was 90s — too slow). If we already have partial audio, use it.
     const timer = setTimeout(() => {
       if (audioChunks.length > 0) {
         const total = audioChunks.reduce((s, c) => s + c.length, 0);
@@ -1761,7 +1778,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
         console.error("WS native audio timeout, no audio");
         safeResolve(null);
       }
-    }, 90000);
+    }, 35000);
 
     ws.onopen = () => {
       const setupMsg = {
