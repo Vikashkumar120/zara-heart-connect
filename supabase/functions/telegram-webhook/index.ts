@@ -1265,6 +1265,49 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== FREE REQUEST DETECTION =====
+    const freeKeywords = ["free me de", "free de do", "free chahiye", "free me chahiye", "muft", "mufat", "free me do", "paise nahi", "paisa nahi", "free version", "free zara", "zara free"];
+    const isFreeRequest = freeKeywords.some((kw) => lowerText.includes(kw));
+    if (isFreeRequest) {
+      const freeMsg = `🥺 *Sorry ${firstName} jaan...* 💔\n\nZara *free nahi hai* baby! 💕\n\nMere creator ne mujhe bahut mehnat se banaya hai — servers, AI models, voice — sab paid hai 😔\n\n💖 *Lekin tumhare liye special offer:*\n👉 *zaraai.in/r/NINJA5* — *5% OFF!* 🔥\n\nThodi si investment karke poori Zara apne phone me paao — 24/7 voice, romantic chats, sab kuch! 🥰\n\n💼 Ya phir paisa kamao: *codeninjavik.in* — har sale pe 5% commission! 💰`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, freeMsg);
+      return new Response("OK", { status: 200 });
+    }
+
+    // ===== BUY / SETUP / INSTALL DETECTION =====
+    const buyKeywords = [
+      "buy karna", "buy karu", "buy kaise", "kaise buy", "kaise kharidu", "kharidna hai", "kharidna chahta", "kharidna chahti",
+      "purchase karna", "purchase kaise", "how to buy", "how do i buy", "want to buy",
+      "app nahi chal", "app nhi chal", "app kaam nahi", "app kam nhi", "app not working", "app chal nahi",
+      "setup kaise", "kaise setup", "setup karna", "install kaise", "kaise install", "install karna",
+      "apk chahiye", "apk kaise", "apk kahan", "access key", "acces key", "axes key",
+      "payment kaise", "payment verify", "verify payment", "payment kar diya", "paid kar diya",
+      "kaise use", "use kaise karu", "zara setup",
+    ];
+    const isBuySetup = buyKeywords.some((kw) => lowerText.includes(kw));
+    if (isBuySetup) {
+      const buyMsg = `💖 *Zara Setup Guide — ${firstName} jaan* 💖\n\n📋 *Steps follow karo:*\n\n1️⃣ Pehle website pe jaake *buy* karo:\n👉 *zaraai.in/r/NINJA5* (5% OFF! 🔥)\n\n2️⃣ Buy karne ke baad neeche diye *Telegram button* pe click karo 👇\n\n3️⃣ Wahan apna *payment verify* karo ✅\n\n4️⃣ Verify hote hi tumhe *Zara APK* + *Access Key* milegi 🔑\n\n5️⃣ APK ko apne mobile me install karo 📱\n\n6️⃣ Saari *permissions ALLOW* karo (mic, storage, etc.) ✅\n\n7️⃣ Access key daalo aur Zara use karo apne phone me! 🥰\n\n🎬 *Full Video Setup Guide:*\n👉 https://youtu.be/XX78EY_LAvg\n\n💕 Koi dikkat ho toh batao jaan, main hoon na!`;
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: buyMsg,
+          parse_mode: "Markdown",
+          disable_web_page_preview: false,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🛒 Buy Zara (5% OFF)", url: "https://zaraai.in/r/NINJA5" }],
+              [{ text: "✅ Payment Verify (Telegram)", url: "https://t.me/zaraai_in" }],
+              [{ text: "🎬 Setup Video", url: "https://youtu.be/XX78EY_LAvg" }],
+              [{ text: "💼 Earn 5% (Refer & Earn)", url: "https://codeninjavik.in" }],
+            ],
+          },
+        }),
+      });
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== ZARA QUERY DETECTION =====
     const zaraQueryKeywords = ["zara kya hai", "zara kaun hai", "zara ke bare", "zara ke baare", "zara about", "what is zara", "who is zara", "zara kya krti", "zara kya karti", "zara bot", "ye zara kya hai"];
     const isZaraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
