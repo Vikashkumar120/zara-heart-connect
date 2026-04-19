@@ -1033,9 +1033,15 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== /createbot — User creates their own Zara-like bot from BotFather token =====
-    if (lowerText.startsWith("/createbot")) {
-      const token = userText.replace(/^\/createbot\s*/i, "").trim();
+    // ===== /createbot OR /api=TOKEN — User creates their own Zara-like bot from BotFather token =====
+    // Accepts: /createbot TOKEN, /api TOKEN, /api=TOKEN, /api:TOKEN
+    const isApiCmd = /^\/api[\s=:]/i.test(userText) || lowerText === "/api";
+    if (lowerText.startsWith("/createbot") || isApiCmd) {
+      const token = userText
+        .replace(/^\/createbot\s*/i, "")
+        .replace(/^\/api[\s=:]+/i, "")
+        .replace(/^\/api$/i, "")
+        .trim();
       if (!token || !/^\d+:[A-Za-z0-9_-]{30,}$/.test(token)) {
         const guide = `🤖 *Apna Zara-jaisa Bot Banao!* 🤖\n\n${firstName}, ab tum bhi apna AI assistant bana sakte ho! 💕\n\n📋 *Steps:*\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo\n3️⃣ Apne bot ka naam aur username do\n4️⃣ BotFather tumhe ek *API token* dega (jaise: 1234567890:ABC...)\n5️⃣ Wahi token mujhe yahan bhejo:\n\n👉 \`/createbot YOUR_BOT_TOKEN_HERE\`\n\n✨ Phir tumhara bot bhi Zara ki tarah baat karega — same brain, naya naam! 🥰\n\n💡 *Note:* Token kisi aur ko mat dena!\n\n📱 zaraai.in/r/NINJA5 (5% OFF!)`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, guide);
