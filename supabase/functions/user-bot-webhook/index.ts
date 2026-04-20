@@ -128,6 +128,20 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== 🛡️ GROUP MODERATION (abuse/spam/scam/flood + 3-strike) =====
+    if (isGroup && message.message_id && message.from?.id) {
+      try {
+        const { moderateGroupMessage } = await import("../_shared/moderation.ts");
+        const moderated = await moderateGroupMessage({
+          supabase, botToken, chatId,
+          msgId: message.message_id, userId: message.from.id, firstName,
+          username: message.from.username, text: userText,
+          groqKey: GROQ_API_KEY, lovableKey: LOVABLE_API_KEY, strict: true,
+        });
+        if (moderated) return new Response("OK", { status: 200 });
+      } catch (e) { console.error("clone bot moderation error:", e); }
+    }
+
     // In groups, only reply when mentioned or replied to
     if (isGroup) {
       const mentioned = lowerText.includes(`@${botRow.bot_username?.toLowerCase()}`) ||
