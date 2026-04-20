@@ -534,6 +534,20 @@ serve(async (req) => {
 
     const lowerText = userText.toLowerCase();
 
+    // ===== 🛡️ GROUP MODERATION (abuse/spam/scam/flood + 3-strike) =====
+    if (isGroup && userText && telegramUserId && message.message_id && !isVoiceMsg) {
+      try {
+        const { moderateGroupMessage } = await import("../_shared/moderation.ts");
+        const moderated = await moderateGroupMessage({
+          supabase, botToken: TELEGRAM_BOT_TOKEN, chatId,
+          msgId: message.message_id, userId: telegramUserId, firstName, username,
+          text: userText, groqKey: GROQ_API_KEY, lovableKey: Deno.env.get("LOVABLE_API_KEY") || "",
+          strict: true,
+        });
+        if (moderated) return new Response("OK", { status: 200 });
+      } catch (e) { console.error("moderation error:", e); }
+    }
+
     // Auto-save group chat IDs
     if (isGroup) {
       try {

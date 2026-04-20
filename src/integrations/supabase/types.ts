@@ -92,6 +92,111 @@ export type Database = {
         }
         Relationships: []
       }
+      zara_mod_events: {
+        Row: {
+          bot_token: string | null
+          chat_id: number
+          created_at: string
+          event_type: string
+          first_name: string | null
+          id: string
+          message_text: string | null
+          reason: string | null
+          telegram_user_id: number
+        }
+        Insert: {
+          bot_token?: string | null
+          chat_id: number
+          created_at?: string
+          event_type: string
+          first_name?: string | null
+          id?: string
+          message_text?: string | null
+          reason?: string | null
+          telegram_user_id: number
+        }
+        Update: {
+          bot_token?: string | null
+          chat_id?: number
+          created_at?: string
+          event_type?: string
+          first_name?: string | null
+          id?: string
+          message_text?: string | null
+          reason?: string | null
+          telegram_user_id?: number
+        }
+        Relationships: []
+      }
+      zara_mod_warnings: {
+        Row: {
+          ban_count: number
+          bot_token: string | null
+          chat_id: number
+          created_at: string
+          first_name: string | null
+          id: string
+          last_reason: string | null
+          last_warned_at: string | null
+          mute_count: number
+          telegram_user_id: number
+          updated_at: string
+          warning_count: number
+        }
+        Insert: {
+          ban_count?: number
+          bot_token?: string | null
+          chat_id: number
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_reason?: string | null
+          last_warned_at?: string | null
+          mute_count?: number
+          telegram_user_id: number
+          updated_at?: string
+          warning_count?: number
+        }
+        Update: {
+          ban_count?: number
+          bot_token?: string | null
+          chat_id?: number
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_reason?: string | null
+          last_warned_at?: string | null
+          mute_count?: number
+          telegram_user_id?: number
+          updated_at?: string
+          warning_count?: number
+        }
+        Relationships: []
+      }
+      zara_msg_buffer: {
+        Row: {
+          bot_token: string | null
+          chat_id: number
+          created_at: string
+          id: string
+          telegram_user_id: number
+        }
+        Insert: {
+          bot_token?: string | null
+          chat_id: number
+          created_at?: string
+          id?: string
+          telegram_user_id: number
+        }
+        Update: {
+          bot_token?: string | null
+          chat_id?: number
+          created_at?: string
+          id?: string
+          telegram_user_id?: number
+        }
+        Relationships: []
+      }
       zara_user_bots: {
         Row: {
           bot_display_name: string | null

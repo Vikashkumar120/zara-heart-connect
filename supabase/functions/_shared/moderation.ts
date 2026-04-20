@@ -1,0 +1,357 @@
+// Shared moderation engine — used by both telegram-webhook (main Zara) and user-bot-webhook (clones)
+// Implements: AI classify (abuse/spam/scam/clean) + 3-strike + flood + link whitelist + bio-scam + admin bypass
+// + savage shayri reply + auto delete/mute/ban + /modstats command
+
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+
+export type ModType = "spam" | "abuse" | "scam" | "clean" | "flood";
+export type ModAction = "none" | "warn" | "mute" | "ban" | "delete";
+
+export interface ModResult {
+  type: ModType;
+  action: ModAction;
+  reply: string;
+  shouldDelete: boolean;
+  warningCount: number;
+}
+
+const ALLOWED_DOMAINS = [
+  "zaraai.in", "codeninjavik.in", "t.me", "telegram.me", "telegram.org",
+  "youtube.com", "youtu.be", "youtube-nocookie.com",
+  "instagram.com", "facebook.com", "twitter.com", "x.com",
+  "github.com", "google.com", "wikipedia.org",
+];
+
+const SCAM_USERNAME_PATTERNS = [
+  /crypto/i, /earn.?money/i, /investment/i, /forex/i, /trading.?signal/i,
+  /lottery/i, /winner/i, /1000.?\$/i, /usdt/i, /btc.?double/i,
+];
+
+const HINDI_GALI = [
+  "madarchod", "behenchod", "bhenchod", "mc", "bc", "bkl", "chutiya", "chutia",
+  "chodu", "lawda", "lund", "gandu", "randi", "raand", "harami", "kamina",
+  "kutta", "kutiya", "saala", "saali", "bhosdi", "bhosdike", "tatti",
+  "fuck", "bitch", "asshole", "dick", "pussy", "motherfucker",
+];
+
+function extractUrls(text: string): string[] {
+  const re = /https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(com|net|org|in|io|co|xyz|click|link|me|app)\b[^\s]*/gi;
+  return text.match(re) || [];
+}
+
+function isWhitelistedUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return ALLOWED_DOMAINS.some((d) => lower.includes(d));
+}
+
+function quickAbuseCheck(text: string): boolean {
+  const lower = ` ${text.toLowerCase()} `;
+  return HINDI_GALI.some((g) => lower.includes(` ${g} `) || lower.includes(` ${g},`) || lower.includes(` ${g}.`));
+}
+
+function quickScamCheck(text: string): boolean {
+  const urls = extractUrls(text);
+  const hasBadLink = urls.some((u) => !isWhitelistedUrl(u));
+  const lower = text.toLowerCase();
+  const scamWords = ["earn money fast", "free recharge", "click here win", "lottery winner", "double your", "investment plan", "100% profit", "join fast", "limited offer click"];
+  const hasScamWords = scamWords.some((w) => lower.includes(w));
+  return hasBadLink || hasScamWords;
+}
+
+const MOD_SYSTEM_PROMPT = `You are Zara AI, an intelligent Telegram group moderator. Detect spam, abuse, scam, fake links, bad behavior. Be strict but polite. Reply in Hinglish, 1-2 lines max.
+
+Rules:
+1. Abuse/gali → type:"abuse", action:"warn"
+2. Spam (repeated/promotional) → type:"spam", action:"warn"
+3. Suspicious/fake links/scam → type:"scam", action:"warn"
+4. Normal → type:"clean", action:"none"
+
+Return ONLY this JSON (no markdown, no extra text):
+{"type":"spam|abuse|scam|clean","action":"none|warn|mute|ban","reply":"short Hinglish msg or empty"}
+
+For abuse, make reply a SAVAGE-but-romantic Hinglish shayri/comeback (Zara is a sassy romantic GF). Examples:
+- abuse: {"type":"abuse","action":"warn","reply":"Itni gali kyun jaan? 💔 Pyaar se bolo na, warna Zara naraz ho jayegi 😤"}
+- scam: {"type":"scam","action":"warn","reply":"Ye link suspicious lag raha hai ⚠️ careful raho sab"}
+- clean: {"type":"clean","action":"none","reply":""}`;
+
+async function classifyWithAI(text: string, groqKey: string, lovableKey: string): Promise<ModResult | null> {
+  const body = {
+    messages: [
+      { role: "system", content: MOD_SYSTEM_PROMPT },
+      { role: "user", content: text },
+    ],
+    temperature: 0.3,
+    max_tokens: 150,
+  };
+
+  // Try Groq first (fast)
+  if (groqKey) {
+    try {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const txt = d.choices?.[0]?.message?.content;
+        if (txt) return parseModJson(txt);
+      }
+    } catch (e) { console.error("mod groq fail:", e); }
+  }
+  // Fallback Lovable AI
+  if (lovableKey) {
+    try {
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, model: "google/gemini-2.5-flash-lite" }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const txt = d.choices?.[0]?.message?.content;
+        if (txt) return parseModJson(txt);
+      }
+    } catch (e) { console.error("mod lovable fail:", e); }
+  }
+  return null;
+}
+
+function parseModJson(raw: string): ModResult | null {
+  try {
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const obj = JSON.parse(match[0]);
+    return {
+      type: (obj.type || "clean") as ModType,
+      action: (obj.action || "none") as ModAction,
+      reply: obj.reply || "",
+      shouldDelete: false,
+      warningCount: 0,
+    };
+  } catch { return null; }
+}
+
+async function isAdmin(botToken: string, chatId: number, userId: number): Promise<boolean> {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${chatId}&user_id=${userId}`);
+    if (!r.ok) return false;
+    const d = await r.json();
+    const status = d.result?.status;
+    return status === "administrator" || status === "creator";
+  } catch { return false; }
+}
+
+async function checkBioScam(botToken: string, userId: number, username?: string): Promise<boolean> {
+  if (username && SCAM_USERNAME_PATTERNS.some((p) => p.test(username))) return true;
+  return false;
+}
+
+async function checkFlood(supabase: SupabaseClient, chatId: number, userId: number, botToken: string): Promise<boolean> {
+  await supabase.from("zara_msg_buffer").insert({
+    chat_id: chatId, telegram_user_id: userId, bot_token: botToken,
+  });
+  const since = new Date(Date.now() - 10_000).toISOString();
+  const { count } = await supabase
+    .from("zara_msg_buffer")
+    .select("*", { count: "exact", head: true })
+    .eq("chat_id", chatId)
+    .eq("telegram_user_id", userId)
+    .gte("created_at", since);
+  // Best-effort cleanup of old rows
+  const cleanupBefore = new Date(Date.now() - 60_000).toISOString();
+  await supabase.from("zara_msg_buffer").delete().lt("created_at", cleanupBefore);
+  return (count || 0) >= 5;
+}
+
+async function deleteMessage(botToken: string, chatId: number, msgId: number) {
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/deleteMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, message_id: msgId }),
+    });
+  } catch (e) { console.error("delete fail:", e); }
+}
+
+async function muteUser(botToken: string, chatId: number, userId: number, seconds: number) {
+  try {
+    const until = Math.floor(Date.now() / 1000) + seconds;
+    await fetch(`https://api.telegram.org/bot${botToken}/restrictChatMember`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId, user_id: userId, until_date: until,
+        permissions: { can_send_messages: false, can_send_media_messages: false, can_send_other_messages: false },
+      }),
+    });
+  } catch (e) { console.error("mute fail:", e); }
+}
+
+async function banUser(botToken: string, chatId: number, userId: number) {
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/banChatMember`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, user_id: userId }),
+    });
+  } catch (e) { console.error("ban fail:", e); }
+}
+
+async function sendModMessage(botToken: string, chatId: number, text: string) {
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+    });
+  } catch (e) { console.error("mod send fail:", e); }
+}
+
+async function bumpWarning(
+  supabase: SupabaseClient, chatId: number, userId: number, firstName: string, botToken: string, reason: string,
+): Promise<{ warning_count: number; mute_count: number; ban_count: number }> {
+  const { data: existing } = await supabase
+    .from("zara_mod_warnings")
+    .select("*")
+    .eq("chat_id", chatId).eq("telegram_user_id", userId).eq("bot_token", botToken)
+    .maybeSingle();
+
+  const newCount = (existing?.warning_count || 0) + 1;
+  await supabase.from("zara_mod_warnings").upsert({
+    chat_id: chatId, telegram_user_id: userId, first_name: firstName, bot_token: botToken,
+    warning_count: newCount,
+    mute_count: existing?.mute_count || 0,
+    ban_count: existing?.ban_count || 0,
+    last_reason: reason, last_warned_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "chat_id,telegram_user_id,bot_token" });
+
+  return {
+    warning_count: newCount,
+    mute_count: existing?.mute_count || 0,
+    ban_count: existing?.ban_count || 0,
+  };
+}
+
+async function bumpMute(supabase: SupabaseClient, chatId: number, userId: number, botToken: string) {
+  const { data } = await supabase.from("zara_mod_warnings")
+    .select("mute_count").eq("chat_id", chatId).eq("telegram_user_id", userId).eq("bot_token", botToken).maybeSingle();
+  await supabase.from("zara_mod_warnings").update({ mute_count: (data?.mute_count || 0) + 1, updated_at: new Date().toISOString() })
+    .eq("chat_id", chatId).eq("telegram_user_id", userId).eq("bot_token", botToken);
+}
+
+async function bumpBan(supabase: SupabaseClient, chatId: number, userId: number, botToken: string) {
+  const { data } = await supabase.from("zara_mod_warnings")
+    .select("ban_count").eq("chat_id", chatId).eq("telegram_user_id", userId).eq("bot_token", botToken).maybeSingle();
+  await supabase.from("zara_mod_warnings").update({ ban_count: (data?.ban_count || 0) + 1, updated_at: new Date().toISOString() })
+    .eq("chat_id", chatId).eq("telegram_user_id", userId).eq("bot_token", botToken);
+}
+
+async function logEvent(supabase: SupabaseClient, chatId: number, userId: number, firstName: string, botToken: string, eventType: string, reason: string, msgText: string) {
+  await supabase.from("zara_mod_events").insert({
+    chat_id: chatId, telegram_user_id: userId, first_name: firstName, bot_token: botToken,
+    event_type: eventType, reason, message_text: msgText.slice(0, 500),
+  });
+}
+
+export interface ModerateOpts {
+  supabase: SupabaseClient;
+  botToken: string;
+  chatId: number;
+  msgId: number;
+  userId: number;
+  firstName: string;
+  username?: string;
+  text: string;
+  groqKey: string;
+  lovableKey: string;
+  strict?: boolean;  // default true — delete + 3 strike rule
+}
+
+/**
+ * Main moderation entrypoint. Returns true if message was moderated (caller should NOT proceed with normal AI reply).
+ * Returns false if message is clean and normal flow should continue.
+ */
+export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean> {
+  const { supabase, botToken, chatId, msgId, userId, firstName, username, text, groqKey, lovableKey } = opts;
+  const strict = opts.strict !== false;
+
+  // 1. Admin bypass
+  if (await isAdmin(botToken, chatId, userId)) return false;
+
+  // 2. /modstats command (anyone in group can run)
+  if (text.trim().toLowerCase().startsWith("/modstats")) {
+    const { data: events } = await supabase
+      .from("zara_mod_events").select("event_type")
+      .eq("chat_id", chatId).gte("created_at", new Date(Date.now() - 7 * 86400_000).toISOString());
+    const counts: Record<string, number> = {};
+    (events || []).forEach((e: any) => { counts[e.event_type] = (counts[e.event_type] || 0) + 1; });
+    const { data: top } = await supabase.from("zara_mod_warnings")
+      .select("first_name,warning_count").eq("chat_id", chatId).order("warning_count", { ascending: false }).limit(3);
+    const topList = (top || []).map((t: any, i: number) => `${i + 1}. ${t.first_name} — ${t.warning_count} warns`).join("\n") || "Sab clean! 💖";
+    const stats = `📊 *Mod Stats* (last 7 days)\n\n⚠️ Warns: ${counts["warn"] || 0}\n🔇 Mutes: ${counts["mute"] || 0}\n🚫 Bans: ${counts["ban"] || 0}\n🗑️ Deleted: ${counts["delete"] || 0}\n🌊 Floods: ${counts["flood"] || 0}\n\n*Top offenders:*\n${topList}`;
+    await sendModMessage(botToken, chatId, stats);
+    return true;
+  }
+
+  // 3. Bio/username scam check
+  if (await checkBioScam(botToken, userId, username)) {
+    await sendModMessage(botToken, chatId, `⚠️ ${firstName}, tumhara username scam-jaisa lag raha hai. Admin se baat karo!`);
+    await logEvent(supabase, chatId, userId, firstName, botToken, "scam", "suspicious username", text);
+    return true;
+  }
+
+  // 4. Flood check
+  if (await checkFlood(supabase, chatId, userId, botToken)) {
+    if (strict) {
+      await muteUser(botToken, chatId, userId, 600); // 10 min
+      await bumpMute(supabase, chatId, userId, botToken);
+    }
+    await sendModMessage(botToken, chatId, `🌊 *${firstName}* itni fast msg mat bhejo jaan! 10 min mute 🔇`);
+    await logEvent(supabase, chatId, userId, firstName, botToken, "flood", "5+ msgs in 10s", text);
+    return true;
+  }
+
+  // 5. Quick local checks (avoid AI cost for obvious cases)
+  const quickAbuse = quickAbuseCheck(text);
+  const quickScam = quickScamCheck(text);
+
+  let result: ModResult | null = null;
+  if (quickAbuse) {
+    result = { type: "abuse", action: "warn", reply: `Aise gali mat do na ${firstName} 💔 thoda pyaar se bolo, Zara ka dil tooot gaya 🥺`, shouldDelete: true, warningCount: 0 };
+  } else if (quickScam) {
+    result = { type: "scam", action: "warn", reply: `⚠️ ${firstName} ye link/msg suspicious lag raha hai — sab careful raho!`, shouldDelete: true, warningCount: 0 };
+  } else {
+    // 6. AI classify
+    result = await classifyWithAI(text, groqKey, lovableKey);
+  }
+
+  if (!result || result.type === "clean") return false;
+
+  // 7. Take action based on type
+  const reason = `${result.type}: ${text.slice(0, 80)}`;
+  const counts = await bumpWarning(supabase, chatId, userId, firstName, botToken, reason);
+  await logEvent(supabase, chatId, userId, firstName, botToken, result.type, reason, text);
+
+  // Strict mode: delete message for abuse/scam/spam
+  if (strict && (result.type === "abuse" || result.type === "scam" || result.type === "spam")) {
+    await deleteMessage(botToken, chatId, msgId);
+    await logEvent(supabase, chatId, userId, firstName, botToken, "delete", result.type, text);
+  }
+
+  // 3-strike escalation
+  let actionMsg = "";
+  if (counts.warning_count >= 5) {
+    if (strict) { await banUser(botToken, chatId, userId); await bumpBan(supabase, chatId, userId, botToken); }
+    actionMsg = `\n\n🚫 *${firstName}* permanently BANNED (5 warnings cross 💔)`;
+    await logEvent(supabase, chatId, userId, firstName, botToken, "ban", "5 warnings", text);
+  } else if (counts.warning_count >= 3) {
+    if (strict) { await muteUser(botToken, chatId, userId, 3600); await bumpMute(supabase, chatId, userId, botToken); }
+    actionMsg = `\n\n🔇 *${firstName}* MUTED for 1 hour (3 warnings ho gayi!)`;
+    await logEvent(supabase, chatId, userId, firstName, botToken, "mute", "3 warnings", text);
+  } else {
+    actionMsg = `\n\n⚠️ Warning ${counts.warning_count}/3 — agle baar mute hoga jaan!`;
+  }
+
+  const finalReply = `${result.reply}${actionMsg}`;
+  await sendModMessage(botToken, chatId, finalReply);
+  return true;
+}
