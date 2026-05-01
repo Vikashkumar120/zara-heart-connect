@@ -92,6 +92,39 @@ export type Database = {
         }
         Relationships: []
       }
+      zara_mod_config: {
+        Row: {
+          blacklisted_words: string[]
+          bot_token: string
+          chat_id: number
+          created_at: string
+          id: string
+          strictness: string
+          updated_at: string
+          whitelisted_words: string[]
+        }
+        Insert: {
+          blacklisted_words?: string[]
+          bot_token?: string
+          chat_id: number
+          created_at?: string
+          id?: string
+          strictness?: string
+          updated_at?: string
+          whitelisted_words?: string[]
+        }
+        Update: {
+          blacklisted_words?: string[]
+          bot_token?: string
+          chat_id?: number
+          created_at?: string
+          id?: string
+          strictness?: string
+          updated_at?: string
+          whitelisted_words?: string[]
+        }
+        Relationships: []
+      }
       zara_mod_events: {
         Row: {
           bot_token: string | null
