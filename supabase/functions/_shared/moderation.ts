@@ -264,6 +264,7 @@ export interface ModerateOpts {
   groqKey: string;
   lovableKey: string;
   strict?: boolean;  // default true — delete + 3 strike rule
+  replyToMessage?: any; // Telegram reply_to_message object
 }
 
 /**
