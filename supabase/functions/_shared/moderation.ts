@@ -272,23 +272,30 @@ export interface ModerateOpts {
  */
 export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean> {
   const { supabase, botToken, chatId, msgId, userId, firstName, username, text, groqKey, lovableKey } = opts;
-  const strict = opts.strict !== false;
-
-  // 1. Admin bypass
-  if (await isAdmin(botToken, chatId, userId)) return false;
-
-  // 2. Admin-only commands: /unwarn, /unmute, /resetwarns, /warnlist, /modconfig
   const trimLower = text.trim().toLowerCase();
+  const callerIsAdmin = await isAdmin(botToken, chatId, userId);
 
-  if (trimLower.startsWith("/unwarn") || trimLower.startsWith("/unmute") || trimLower.startsWith("/resetwarns") || trimLower.startsWith("/warnlist") || trimLower.startsWith("/modconfig")) {
-    // These commands require admin — re-check caller as admin
-    const callerIsAdmin = await isAdmin(botToken, chatId, userId);
-    // Actually we already bypassed admins above, so if we're here the user is NOT admin
-    await sendModMessage(botToken, chatId, `🚫 ${firstName}, ye command sirf group admins use kar sakte hain!`);
-    return true;
+  // 1. Admin commands: /unwarn, /unmute, /resetwarns, /warnlist, /modconfig
+  const adminCmds = ["/unwarn", "/unmute", "/resetwarns", "/warnlist", "/modconfig"];
+  if (adminCmds.some(c => trimLower.startsWith(c))) {
+    if (!callerIsAdmin) {
+      await sendModMessage(botToken, chatId, `🚫 ${firstName}, ye command sirf group admins use kar sakte hain!`);
+      return true;
+    }
+    // Caller IS admin — handle command
+    const msg = (opts as any).replyToMessage; // passed from webhook
+    return await handleAdminModCommand(supabase, botToken, chatId, userId, firstName, text, msg);
   }
 
-  // 2b. /modstats command (anyone in group can run)
+  // 2. Admin bypass for normal messages
+  if (callerIsAdmin) return false;
+
+  // 3. Get per-group strictness config
+  const configStrictness = await getGroupStrictness(supabase, chatId, botToken);
+  const strict = configStrictness === "strict";
+  const isSoft = configStrictness === "soft";
+
+  // 4. /modstats command (anyone in group can run)
   if (trimLower.startsWith("/modstats")) {
     const { data: events } = await supabase
       .from("zara_mod_events").select("event_type")
@@ -303,14 +310,14 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
     return true;
   }
 
-  // 3. Bio/username scam check
+  // 5. Bio/username scam check
   if (await checkBioScam(botToken, userId, username)) {
     await sendModMessage(botToken, chatId, `⚠️ ${firstName}, tumhara username scam-jaisa lag raha hai. Admin se baat karo!`);
     await logEvent(supabase, chatId, userId, firstName, botToken, "scam", "suspicious username", text);
     return true;
   }
 
-  // 4. Flood check
+  // 6. Flood check
   if (await checkFlood(supabase, chatId, userId, botToken)) {
     if (strict) {
       await muteUser(botToken, chatId, userId, 600); // 10 min
@@ -321,7 +328,28 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
     return true;
   }
 
-  // 5. Quick local checks (avoid AI cost for obvious cases)
+  // 6.5. Custom blacklist check
+  if (await checkCustomBlacklist(supabase, chatId, botToken, text)) {
+    const result: ModResult = { type: "spam", action: "warn", reply: `⚠️ ${firstName}, ye word allowed nahi hai is group me!`, shouldDelete: true, warningCount: 0 };
+    const reason = `blacklist: ${text.slice(0, 80)}`;
+    const counts = await bumpWarning(supabase, chatId, userId, firstName, botToken, reason);
+    await logEvent(supabase, chatId, userId, firstName, botToken, "blacklist", reason, text);
+    if (strict) { await deleteMessage(botToken, chatId, msgId); }
+    let actionMsg = "";
+    if (counts.warning_count >= 5) {
+      if (strict) { await banUser(botToken, chatId, userId); await bumpBan(supabase, chatId, userId, botToken); }
+      actionMsg = `\n\n🚫 *${firstName}* permanently BANNED (5 warnings cross 💔)`;
+    } else if (counts.warning_count >= 3) {
+      if (strict) { await muteUser(botToken, chatId, userId, 3600); await bumpMute(supabase, chatId, userId, botToken); }
+      actionMsg = `\n\n🔇 *${firstName}* MUTED for 1 hour (3 warnings ho gayi!)`;
+    } else {
+      actionMsg = `\n\n⚠️ Warning ${counts.warning_count}/3`;
+    }
+    await sendModMessage(botToken, chatId, `${result.reply}${actionMsg}`);
+    return true;
+  }
+
+  // 7. Quick local checks (avoid AI cost for obvious cases)
   const quickAbuse = quickAbuseCheck(text);
   const quickScam = quickScamCheck(text);
 
@@ -335,15 +363,28 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
     result = await classifyWithAI(text, groqKey, lovableKey);
   }
 
-  if (!result || result.type === "clean") return false;
+  if (!result || result.type === "clean") {
+    // Soft mode: don't act even on AI classify
+    return false;
+  }
 
-  // 7. Take action based on type
+  // Soft mode: only warn, no delete/mute/ban
+  if (isSoft) {
+    await sendModMessage(botToken, chatId, result.reply || `⚠️ ${firstName}, thoda dhyan se bolo jaan!`);
+    await logEvent(supabase, chatId, userId, firstName, botToken, result.type, `${result.type}: ${text.slice(0, 80)}`, text);
+    return true;
+  }
+
+  // 8. Take action based on type (medium/strict)
   const reason = `${result.type}: ${text.slice(0, 80)}`;
   const counts = await bumpWarning(supabase, chatId, userId, firstName, botToken, reason);
   await logEvent(supabase, chatId, userId, firstName, botToken, result.type, reason, text);
 
-  // Strict mode: delete message for abuse/scam/spam
+  // Strict mode: delete message; Medium: only delete scam
   if (strict && (result.type === "abuse" || result.type === "scam" || result.type === "spam")) {
+    await deleteMessage(botToken, chatId, msgId);
+    await logEvent(supabase, chatId, userId, firstName, botToken, "delete", result.type, text);
+  } else if (configStrictness === "medium" && result.type === "scam") {
     await deleteMessage(botToken, chatId, msgId);
     await logEvent(supabase, chatId, userId, firstName, botToken, "delete", result.type, text);
   }
