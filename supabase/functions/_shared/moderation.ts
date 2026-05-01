@@ -284,7 +284,7 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
       return true;
     }
     // Caller IS admin — handle command
-    const msg = (opts as any).replyToMessage; // passed from webhook
+    const msg = opts.replyToMessage;
     return await handleAdminModCommand(supabase, botToken, chatId, userId, firstName, text, msg);
   }
 
