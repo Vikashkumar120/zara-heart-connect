@@ -137,7 +137,7 @@ serve(async (req) => {
           msgId: message.message_id, userId: message.from.id, firstName,
           username: message.from.username, text: userText,
           groqKey: GROQ_API_KEY, lovableKey: LOVABLE_API_KEY, strict: true, replyToMessage: message.reply_to_message,
-        } as any);
+        });
         if (moderated) return new Response("OK", { status: 200 });
       } catch (e) { console.error("clone bot moderation error:", e); }
     }
