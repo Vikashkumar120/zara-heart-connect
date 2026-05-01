@@ -1,6 +1,6 @@
 // Shared moderation engine — used by both telegram-webhook (main Zara) and user-bot-webhook (clones)
 // Implements: AI classify (abuse/spam/scam/clean) + 3-strike + flood + link whitelist + bio-scam + admin bypass
-// + savage shayri reply + auto delete/mute/ban + /modstats command
+// + savage shayri reply + auto delete/mute/ban + /modstats command + /unwarn /unmute /resetwarns /warnlist /modconfig
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
@@ -264,6 +264,7 @@ export interface ModerateOpts {
   groqKey: string;
   lovableKey: string;
   strict?: boolean;  // default true — delete + 3 strike rule
+  replyToMessage?: any; // Telegram reply_to_message object
 }
 
 /**
@@ -272,13 +273,31 @@ export interface ModerateOpts {
  */
 export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean> {
   const { supabase, botToken, chatId, msgId, userId, firstName, username, text, groqKey, lovableKey } = opts;
-  const strict = opts.strict !== false;
+  const trimLower = text.trim().toLowerCase();
+  const callerIsAdmin = await isAdmin(botToken, chatId, userId);
 
-  // 1. Admin bypass
-  if (await isAdmin(botToken, chatId, userId)) return false;
+  // 1. Admin commands: /unwarn, /unmute, /resetwarns, /warnlist, /modconfig
+  const adminCmds = ["/unwarn", "/unmute", "/resetwarns", "/warnlist", "/modconfig"];
+  if (adminCmds.some(c => trimLower.startsWith(c))) {
+    if (!callerIsAdmin) {
+      await sendModMessage(botToken, chatId, `🚫 ${firstName}, ye command sirf group admins use kar sakte hain!`);
+      return true;
+    }
+    // Caller IS admin — handle command
+    const msg = opts.replyToMessage;
+    return await handleAdminModCommand(supabase, botToken, chatId, userId, firstName, text, msg);
+  }
 
-  // 2. /modstats command (anyone in group can run)
-  if (text.trim().toLowerCase().startsWith("/modstats")) {
+  // 2. Admin bypass for normal messages
+  if (callerIsAdmin) return false;
+
+  // 3. Get per-group strictness config
+  const configStrictness = await getGroupStrictness(supabase, chatId, botToken);
+  const strict = configStrictness === "strict";
+  const isSoft = configStrictness === "soft";
+
+  // 4. /modstats command (anyone in group can run)
+  if (trimLower.startsWith("/modstats")) {
     const { data: events } = await supabase
       .from("zara_mod_events").select("event_type")
       .eq("chat_id", chatId).gte("created_at", new Date(Date.now() - 7 * 86400_000).toISOString());
@@ -292,14 +311,14 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
     return true;
   }
 
-  // 3. Bio/username scam check
+  // 5. Bio/username scam check
   if (await checkBioScam(botToken, userId, username)) {
     await sendModMessage(botToken, chatId, `⚠️ ${firstName}, tumhara username scam-jaisa lag raha hai. Admin se baat karo!`);
     await logEvent(supabase, chatId, userId, firstName, botToken, "scam", "suspicious username", text);
     return true;
   }
 
-  // 4. Flood check
+  // 6. Flood check
   if (await checkFlood(supabase, chatId, userId, botToken)) {
     if (strict) {
       await muteUser(botToken, chatId, userId, 600); // 10 min
@@ -310,7 +329,28 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
     return true;
   }
 
-  // 5. Quick local checks (avoid AI cost for obvious cases)
+  // 6.5. Custom blacklist check
+  if (await checkCustomBlacklist(supabase, chatId, botToken, text)) {
+    const result: ModResult = { type: "spam", action: "warn", reply: `⚠️ ${firstName}, ye word allowed nahi hai is group me!`, shouldDelete: true, warningCount: 0 };
+    const reason = `blacklist: ${text.slice(0, 80)}`;
+    const counts = await bumpWarning(supabase, chatId, userId, firstName, botToken, reason);
+    await logEvent(supabase, chatId, userId, firstName, botToken, "blacklist", reason, text);
+    if (strict) { await deleteMessage(botToken, chatId, msgId); }
+    let actionMsg = "";
+    if (counts.warning_count >= 5) {
+      if (strict) { await banUser(botToken, chatId, userId); await bumpBan(supabase, chatId, userId, botToken); }
+      actionMsg = `\n\n🚫 *${firstName}* permanently BANNED (5 warnings cross 💔)`;
+    } else if (counts.warning_count >= 3) {
+      if (strict) { await muteUser(botToken, chatId, userId, 3600); await bumpMute(supabase, chatId, userId, botToken); }
+      actionMsg = `\n\n🔇 *${firstName}* MUTED for 1 hour (3 warnings ho gayi!)`;
+    } else {
+      actionMsg = `\n\n⚠️ Warning ${counts.warning_count}/3`;
+    }
+    await sendModMessage(botToken, chatId, `${result.reply}${actionMsg}`);
+    return true;
+  }
+
+  // 7. Quick local checks (avoid AI cost for obvious cases)
   const quickAbuse = quickAbuseCheck(text);
   const quickScam = quickScamCheck(text);
 
@@ -324,15 +364,28 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
     result = await classifyWithAI(text, groqKey, lovableKey);
   }
 
-  if (!result || result.type === "clean") return false;
+  if (!result || result.type === "clean") {
+    // Soft mode: don't act even on AI classify
+    return false;
+  }
 
-  // 7. Take action based on type
+  // Soft mode: only warn, no delete/mute/ban
+  if (isSoft) {
+    await sendModMessage(botToken, chatId, result.reply || `⚠️ ${firstName}, thoda dhyan se bolo jaan!`);
+    await logEvent(supabase, chatId, userId, firstName, botToken, result.type, `${result.type}: ${text.slice(0, 80)}`, text);
+    return true;
+  }
+
+  // 8. Take action based on type (medium/strict)
   const reason = `${result.type}: ${text.slice(0, 80)}`;
   const counts = await bumpWarning(supabase, chatId, userId, firstName, botToken, reason);
   await logEvent(supabase, chatId, userId, firstName, botToken, result.type, reason, text);
 
-  // Strict mode: delete message for abuse/scam/spam
+  // Strict mode: delete message; Medium: only delete scam
   if (strict && (result.type === "abuse" || result.type === "scam" || result.type === "spam")) {
+    await deleteMessage(botToken, chatId, msgId);
+    await logEvent(supabase, chatId, userId, firstName, botToken, "delete", result.type, text);
+  } else if (configStrictness === "medium" && result.type === "scam") {
     await deleteMessage(botToken, chatId, msgId);
     await logEvent(supabase, chatId, userId, firstName, botToken, "delete", result.type, text);
   }
@@ -354,4 +407,176 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
   const finalReply = `${result.reply}${actionMsg}`;
   await sendModMessage(botToken, chatId, finalReply);
   return true;
+}
+
+// ===== ADMIN COMMANDS (called from webhook after admin check) =====
+
+export async function handleAdminModCommand(
+  supabase: SupabaseClient, botToken: string, chatId: number, userId: number, firstName: string,
+  text: string, replyToMessage?: any
+): Promise<boolean> {
+  const trimLower = text.trim().toLowerCase();
+  const parts = text.trim().split(/\s+/);
+
+  // Helper to resolve target user from reply or @mention
+  function getTargetFromReply(): { targetUserId: number; targetName: string } | null {
+    if (replyToMessage?.from) {
+      return { targetUserId: replyToMessage.from.id, targetName: replyToMessage.from.first_name || "User" };
+    }
+    return null;
+  }
+
+  // /unwarn — remove 1 warning from replied user
+  if (trimLower.startsWith("/unwarn")) {
+    const target = getTargetFromReply();
+    if (!target) {
+      await sendModMessage(botToken, chatId, "⚠️ Kisi user ke message pe reply karke /unwarn likho!");
+      return true;
+    }
+    const { data } = await supabase.from("zara_mod_warnings")
+      .select("warning_count").eq("chat_id", chatId).eq("telegram_user_id", target.targetUserId).eq("bot_token", botToken).maybeSingle();
+    const current = data?.warning_count || 0;
+    const newCount = Math.max(0, current - 1);
+    await supabase.from("zara_mod_warnings").upsert({
+      chat_id: chatId, telegram_user_id: target.targetUserId, first_name: target.targetName, bot_token: botToken,
+      warning_count: newCount, updated_at: new Date().toISOString(),
+    }, { onConflict: "chat_id,telegram_user_id,bot_token" });
+    await logEvent(supabase, chatId, target.targetUserId, target.targetName, botToken, "unwarn", `Admin ${firstName} removed 1 warning`, "");
+    await sendModMessage(botToken, chatId, `✅ *${target.targetName}* ki 1 warning remove ki! Ab ${newCount} warnings hain.`);
+    return true;
+  }
+
+  // /unmute — unmute replied user
+  if (trimLower.startsWith("/unmute")) {
+    const target = getTargetFromReply();
+    if (!target) {
+      await sendModMessage(botToken, chatId, "⚠️ Kisi user ke message pe reply karke /unmute likho!");
+      return true;
+    }
+    try {
+      await fetch(`https://api.telegram.org/bot${botToken}/restrictChatMember`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId, user_id: target.targetUserId,
+          permissions: { can_send_messages: true, can_send_media_messages: true, can_send_other_messages: true, can_add_web_page_previews: true },
+        }),
+      });
+    } catch (e) { console.error("unmute fail:", e); }
+    await logEvent(supabase, chatId, target.targetUserId, target.targetName, botToken, "unmute", `Admin ${firstName} unmuted`, "");
+    await sendModMessage(botToken, chatId, `🔊 *${target.targetName}* ko unmute kar diya! Ab bol sakte hain 💕`);
+    return true;
+  }
+
+  // /resetwarns — reset all warnings for replied user
+  if (trimLower.startsWith("/resetwarns")) {
+    const target = getTargetFromReply();
+    if (!target) {
+      await sendModMessage(botToken, chatId, "⚠️ Kisi user ke message pe reply karke /resetwarns likho!");
+      return true;
+    }
+    await supabase.from("zara_mod_warnings").update({
+      warning_count: 0, mute_count: 0, ban_count: 0, updated_at: new Date().toISOString(),
+    }).eq("chat_id", chatId).eq("telegram_user_id", target.targetUserId).eq("bot_token", botToken);
+    await logEvent(supabase, chatId, target.targetUserId, target.targetName, botToken, "resetwarns", `Admin ${firstName} reset all warns`, "");
+    await sendModMessage(botToken, chatId, `🔄 *${target.targetName}* ki saari warnings reset ho gayi! Clean slate 💖`);
+    return true;
+  }
+
+  // /warnlist — show all warned users in group
+  if (trimLower.startsWith("/warnlist")) {
+    const { data: warns } = await supabase.from("zara_mod_warnings")
+      .select("first_name,warning_count,mute_count,ban_count")
+      .eq("chat_id", chatId).eq("bot_token", botToken)
+      .gt("warning_count", 0).order("warning_count", { ascending: false }).limit(15);
+    if (!warns || warns.length === 0) {
+      await sendModMessage(botToken, chatId, "✅ Is group me koi warned user nahi hai! Sab achhe hain 💖");
+      return true;
+    }
+    const list = warns.map((w: any, i: number) => `${i+1}. ${w.first_name} — ⚠️${w.warning_count} warns, 🔇${w.mute_count} mutes, 🚫${w.ban_count} bans`).join("\n");
+    await sendModMessage(botToken, chatId, `📋 *Warned Users:*\n\n${list}`);
+    return true;
+  }
+
+  // /modconfig — configure strictness and word lists
+  if (trimLower.startsWith("/modconfig")) {
+    // /modconfig strict|medium|soft
+    // /modconfig blacklist add <word>
+    // /modconfig blacklist remove <word>
+    // /modconfig whitelist add <word>
+    // /modconfig whitelist remove <word>
+    // /modconfig show
+    if (parts.length === 1 || parts[1] === "show") {
+      const { data: config } = await supabase.from("zara_mod_config")
+        .select("*").eq("chat_id", chatId).eq("bot_token", botToken).maybeSingle();
+      const strictness = config?.strictness || "strict";
+      const bl = (config?.blacklisted_words || []).join(", ") || "none";
+      const wl = (config?.whitelisted_words || []).join(", ") || "none";
+      await sendModMessage(botToken, chatId, `⚙️ *Mod Config:*\n\n🔹 Strictness: *${strictness}*\n🚫 Blacklist: ${bl}\n✅ Whitelist: ${wl}\n\n_Use:_\n/modconfig strict|medium|soft\n/modconfig blacklist add <word>\n/modconfig whitelist add <word>`);
+      return true;
+    }
+
+    const subCmd = parts[1]?.toLowerCase();
+    // Set strictness
+    if (["strict", "medium", "soft"].includes(subCmd)) {
+      await supabase.from("zara_mod_config").upsert({
+        chat_id: chatId, bot_token: botToken, strictness: subCmd, updated_at: new Date().toISOString(),
+      }, { onConflict: "chat_id,bot_token" });
+      const emoji = subCmd === "strict" ? "🔥" : subCmd === "medium" ? "⚡" : "😇";
+      await sendModMessage(botToken, chatId, `${emoji} Moderation set to *${subCmd}* mode!`);
+      return true;
+    }
+
+    // Blacklist/whitelist management
+    if ((subCmd === "blacklist" || subCmd === "whitelist") && parts.length >= 4) {
+      const action = parts[2]?.toLowerCase();
+      const word = parts.slice(3).join(" ").toLowerCase();
+      if (!word) { await sendModMessage(botToken, chatId, "⚠️ Word batao! Example: /modconfig blacklist add spam"); return true; }
+
+      const field = subCmd === "blacklist" ? "blacklisted_words" : "whitelisted_words";
+      const { data: config } = await supabase.from("zara_mod_config")
+        .select("*").eq("chat_id", chatId).eq("bot_token", botToken).maybeSingle();
+      let currentWords: string[] = config?.[field] || [];
+
+      if (action === "add") {
+        if (!currentWords.includes(word)) currentWords.push(word);
+        await supabase.from("zara_mod_config").upsert({
+          chat_id: chatId, bot_token: botToken, [field]: currentWords, updated_at: new Date().toISOString(),
+        }, { onConflict: "chat_id,bot_token" });
+        await sendModMessage(botToken, chatId, `✅ "${word}" added to ${subCmd}!`);
+      } else if (action === "remove") {
+        currentWords = currentWords.filter(w => w !== word);
+        await supabase.from("zara_mod_config").upsert({
+          chat_id: chatId, bot_token: botToken, [field]: currentWords, updated_at: new Date().toISOString(),
+        }, { onConflict: "chat_id,bot_token" });
+        await sendModMessage(botToken, chatId, `🗑️ "${word}" removed from ${subCmd}!`);
+      } else {
+        await sendModMessage(botToken, chatId, "⚠️ Use: /modconfig blacklist add|remove <word>");
+      }
+      return true;
+    }
+
+    await sendModMessage(botToken, chatId, "⚠️ Invalid config command. Use /modconfig show for help.");
+    return true;
+  }
+
+  return false;
+}
+
+// Get group moderation config (strictness level)
+export async function getGroupStrictness(supabase: SupabaseClient, chatId: number, botToken: string): Promise<string> {
+  const { data } = await supabase.from("zara_mod_config")
+    .select("strictness").eq("chat_id", chatId).eq("bot_token", botToken).maybeSingle();
+  return data?.strictness || "strict";
+}
+
+// Check custom blacklisted words
+export async function checkCustomBlacklist(supabase: SupabaseClient, chatId: number, botToken: string, text: string): Promise<boolean> {
+  const { data } = await supabase.from("zara_mod_config")
+    .select("blacklisted_words,whitelisted_words").eq("chat_id", chatId).eq("bot_token", botToken).maybeSingle();
+  if (!data) return false;
+  const lower = text.toLowerCase();
+  // If any whitelisted word matches, skip
+  if ((data.whitelisted_words || []).some((w: string) => lower.includes(w))) return false;
+  // If any blacklisted word matches, flag
+  return (data.blacklisted_words || []).some((w: string) => lower.includes(w));
 }

@@ -136,7 +136,7 @@ serve(async (req) => {
           supabase, botToken, chatId,
           msgId: message.message_id, userId: message.from.id, firstName,
           username: message.from.username, text: userText,
-          groqKey: GROQ_API_KEY, lovableKey: LOVABLE_API_KEY, strict: true,
+          groqKey: GROQ_API_KEY, lovableKey: LOVABLE_API_KEY, strict: true, replyToMessage: message.reply_to_message,
         });
         if (moderated) return new Response("OK", { status: 200 });
       } catch (e) { console.error("clone bot moderation error:", e); }

@@ -542,7 +542,7 @@ serve(async (req) => {
           supabase, botToken: TELEGRAM_BOT_TOKEN, chatId,
           msgId: message.message_id, userId: telegramUserId, firstName, username,
           text: userText, groqKey: GROQ_API_KEY, lovableKey: Deno.env.get("LOVABLE_API_KEY") || "",
-          strict: true,
+          strict: true, replyToMessage: message.reply_to_message,
         });
         if (moderated) return new Response("OK", { status: 200 });
       } catch (e) { console.error("moderation error:", e); }
