@@ -446,6 +446,49 @@ serve(async (req) => {
     // ===== PHOTO + CAPTION = IMAGE EDIT =====
     if (message.photo && message.photo.length > 0) {
       const caption = (message.caption || "").trim();
+      const captionLower = caption.toLowerCase();
+      const isEditIntent = captionLower.startsWith("edit") || captionLower.includes("/edit") ||
+        captionLower.includes("anime") || captionLower.includes("cyberpunk") || captionLower.includes("style") ||
+        (telegramUserId && imageEditModeUsers.has(telegramUserId));
+
+      // VISION (default for any non-edit photo): describe / answer about the image
+      if (!isEditIntent) {
+        try {
+          await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "typing");
+          const photoObj = message.photo[message.photo.length - 1];
+          const fileResp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${photoObj.file_id}`);
+          const fileData = await fileResp.json();
+          const filePath = fileData.result?.file_path;
+          if (filePath) {
+            const photoResp = await fetch(`https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`);
+            const photoBuffer = await photoResp.arrayBuffer();
+            const photoBase64 = btoa(String.fromCharCode(...new Uint8Array(photoBuffer)));
+            const dataUrl = `data:image/jpeg;base64,${photoBase64}`;
+            const { visionAsk } = await import("../_shared/openrouter.ts");
+            // Use forced model if set
+            let forced: string | undefined;
+            try {
+              const { data: mrow } = await supabase
+                .from("zara_user_model")
+                .select("model")
+                .eq("telegram_user_id", telegramUserId!)
+                .maybeSingle();
+              if (mrow?.model) forced = mrow.model;
+            } catch (_) {}
+            const sysVision = `You are Zara, sweet Hinglish AI girl. User ${firstName} ne image bheji hai. Describe / answer naturally in Hinglish, 2-4 lines, light emojis.`;
+            const v = await visionAsk(dataUrl, caption, sysVision, forced);
+            if (v?.text) {
+              await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${v.text}\n\n_(via ${v.model})_`);
+              return new Response("OK", { status: 200 });
+            }
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${firstName}, image dekh nahi paayi 😅 thodi der baad try karo!`);
+            return new Response("OK", { status: 200 });
+          }
+        } catch (e) {
+          console.error("vision flow error:", e);
+        }
+      }
+
       if (!caption) {
         // If user is in edit mode and sent photo without caption
         if (telegramUserId && imageEditModeUsers.has(telegramUserId)) {
