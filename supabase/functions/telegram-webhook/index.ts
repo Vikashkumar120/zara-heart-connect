@@ -1262,11 +1262,6 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Handle /start command
-    if (userText === "/start") {
-      // intentionally fall through after model handler below
-    }
-
     // ===== /model command — force OpenRouter model per-user =====
     if (userText.toLowerCase().startsWith("/model")) {
       const arg = userText.slice(6).trim();
