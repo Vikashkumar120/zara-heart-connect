@@ -1262,11 +1262,6 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== /model command — force OpenRouter model per-user =====
-    if (userText.toLowerCase().startsWith("/model")) {
-      // (model command logic below)
-    }
-
     // Load forced-model preference (if any) into request-scoped global
     try {
       (globalThis as any).__zaraForcedModel = undefined;
@@ -1280,6 +1275,7 @@ serve(async (req) => {
       }
     } catch (_) {}
 
+    // ===== /model command — force OpenRouter model per-user =====
     if (userText.toLowerCase().startsWith("/model")) {
       const arg = userText.slice(6).trim();
       const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
