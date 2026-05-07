@@ -1519,6 +1519,18 @@ serve(async (req) => {
 });
 
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number): Promise<string> {
+  // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
+  try {
+    const { routeOpenRouter } = await import("../_shared/openrouter.ts");
+    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens);
+    if (or?.text) {
+      console.log(`[Zara AI] OpenRouter model: ${or.model}`);
+      return or.text;
+    }
+  } catch (e) {
+    console.error("OpenRouter router failed, falling back:", e);
+  }
+
   // Skip Groq if key invalid/missing — saves 2-3s per reply (current key returns 401)
   const skipGroq = !apiKey || apiKey.length < 20 || Deno.env.get("SKIP_GROQ") === "1";
   if (!skipGroq) {

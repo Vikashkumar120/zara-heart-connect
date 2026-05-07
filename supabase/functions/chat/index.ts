@@ -45,7 +45,46 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+
+    // Smart-route: detect task from latest user msg, pick best OpenRouter model (no Gemini)
+    const lastUser = [...(messages || [])].reverse().find((m: any) => m.role === "user")?.content || "";
+    const { detectTask } = await import("../_shared/openrouter.ts");
+    const task = detectTask(typeof lastUser === "string" ? lastUser : "");
+    const ROUTE: Record<string, string> = {
+      coding: "deepseek/deepseek-chat-v3.1:free",
+      long: "anthropic/claude-3.5-sonnet",
+      fast: "meta-llama/llama-3.3-70b-instruct",
+      creative: "anthropic/claude-3.5-sonnet",
+      general: "openai/gpt-4o-mini",
+    };
+
+    // Try OpenRouter streaming first
+    if (OPENROUTER_API_KEY) {
+      const orResp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://zaraai.in",
+          "X-Title": "Zara AI",
+        },
+        body: JSON.stringify({
+          model: ROUTE[task],
+          messages: [{ role: "system", content: ZARA_SYSTEM_PROMPT }, ...messages],
+          stream: true,
+          temperature: 0.9,
+        }),
+      });
+      if (orResp.ok && orResp.body) {
+        return new Response(orResp.body, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Zara-Model": ROUTE[task], "X-Zara-Task": task },
+        });
+      }
+      console.error("OpenRouter stream failed:", orResp.status, "→ Groq fallback");
+    }
+
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
