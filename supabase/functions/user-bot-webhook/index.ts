@@ -9,7 +9,17 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
 
 async function getAIReply(userMessage: string, systemPrompt: string, maxTokens = 200): Promise<string> {
-  // Try Groq first
+  // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
+  try {
+    const { routeOpenRouter } = await import("../_shared/openrouter.ts");
+    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens);
+    if (or?.text) {
+      console.log(`[Clone Bot] OpenRouter model: ${or.model}`);
+      return or.text;
+    }
+  } catch (e) { console.error("OpenRouter fail:", e); }
+
+  // 2) Groq fallback
   if (GROQ_API_KEY) {
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
