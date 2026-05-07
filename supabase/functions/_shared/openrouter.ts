@@ -274,12 +274,13 @@ export async function routeOpenRouter(
   systemPrompt: string,
   maxTokens?: number,
   taskOverride?: Task,
+  forcedModel?: string,
 ): Promise<{ text: string; model: string } | null> {
   const key = Deno.env.get("OPENROUTER_API_KEY");
   if (!key) return null;
 
   const task = taskOverride || detectTask(userMessage);
-  const models = MODELS[task];
+  const models = forcedModel ? [forcedModel, ...MODELS[task]] : MODELS[task];
 
   for (const model of models) {
     try {
