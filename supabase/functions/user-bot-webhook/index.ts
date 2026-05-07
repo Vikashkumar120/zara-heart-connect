@@ -117,13 +117,86 @@ serve(async (req) => {
     }
 
     const message = update?.message;
-    if (!message?.text) return new Response("OK", { status: 200 });
+    if (!message) return new Response("OK", { status: 200 });
 
     const chatId = message.chat.id;
-    const userText = message.text.trim();
+    const telegramUserId: number | undefined = message.from?.id;
+    const userText = (message.text || "").trim();
     const lowerText = userText.toLowerCase();
     const firstName = message.from?.first_name || "Jaan";
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+
+    // ===== PHOTO → vision describe =====
+    if (message.photo && message.photo.length > 0) {
+      try {
+        const caption = (message.caption || "").trim();
+        const photoObj = message.photo[message.photo.length - 1];
+        const fileResp = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${photoObj.file_id}`);
+        const fileData = await fileResp.json();
+        const filePath = fileData.result?.file_path;
+        if (filePath) {
+          const photoResp = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+          const photoBuffer = await photoResp.arrayBuffer();
+          const photoBase64 = btoa(String.fromCharCode(...new Uint8Array(photoBuffer)));
+          const dataUrl = `data:image/jpeg;base64,${photoBase64}`;
+          const { visionAsk } = await import("../_shared/openrouter.ts");
+          let forced: string | undefined;
+          if (telegramUserId) {
+            const { data: mrow } = await supabase.from("zara_user_model").select("model").eq("telegram_user_id", telegramUserId).maybeSingle();
+            if (mrow?.model) forced = mrow.model;
+          }
+          const v = await visionAsk(dataUrl, caption, `You are ${botName}, sweet Hinglish AI. Describe / answer about user's image, 2-4 lines, light emojis.`, forced);
+          if (v?.text) {
+            await sendMessage(botToken, chatId, `${v.text}\n\n_(via ${v.model})_`);
+            return new Response("OK", { status: 200 });
+          }
+        }
+        await sendMessage(botToken, chatId, `Image dekh nahi paayi 😅 try again ${firstName}!`);
+      } catch (e) { console.error("clone vision err:", e); }
+      return new Response("OK", { status: 200 });
+    }
+
+    if (!message.text) return new Response("OK", { status: 200 });
+
+    // Forced-model lookup for this user
+    try {
+      (globalThis as any).__zaraForcedModel = undefined;
+      if (telegramUserId) {
+        const { data: mrow } = await supabase.from("zara_user_model").select("model").eq("telegram_user_id", telegramUserId).maybeSingle();
+        if (mrow?.model) (globalThis as any).__zaraForcedModel = mrow.model;
+      }
+    } catch (_) {}
+
+    // /model command
+    if (lowerText.startsWith("/model")) {
+      const arg = userText.slice(6).trim();
+      const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
+      if (!arg || arg.toLowerCase() === "list") {
+        await sendMessage(botToken, chatId, `🤖 ${MODEL_CATALOG.length}+ OpenRouter models available!\n\n• /model <name> — set\n• /model auto — reset\n• /model status — show current\n• /model search <query> — find\n\nExamples: \`/model gpt-4o\`, \`/model deepseek-r1\`, \`/model claude-3.5-sonnet\``);
+        return new Response("OK", { status: 200 });
+      }
+      if (["auto", "reset"].includes(arg.toLowerCase())) {
+        if (telegramUserId) await supabase.from("zara_user_model").delete().eq("telegram_user_id", telegramUserId);
+        await sendMessage(botToken, chatId, `✅ Auto-routing on, ${firstName}! 🤖`);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase() === "status") {
+        const cur = (globalThis as any).__zaraForcedModel;
+        await sendMessage(botToken, chatId, cur ? `🎯 Current: \`${cur}\`` : `🤖 Auto-routing`);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase().startsWith("search ")) {
+        const q = arg.slice(7).toLowerCase();
+        const hits = MODEL_CATALOG.filter((m) => m.toLowerCase().includes(q)).slice(0, 25);
+        await sendMessage(botToken, chatId, hits.length ? `🔎 *${q}:*\n${hits.map((m) => "• `" + m + "`").join("\n")}` : `❌ No match`);
+        return new Response("OK", { status: 200 });
+      }
+      const resolved = resolveModelId(arg);
+      if (!resolved) { await sendMessage(botToken, chatId, `❌ "${arg}" not found. Try \`/model search ${arg}\``); return new Response("OK", { status: 200 }); }
+      if (telegramUserId) await supabase.from("zara_user_model").upsert({ telegram_user_id: telegramUserId, chat_id: chatId, bot_token: "", model: resolved, scope: "user", updated_at: new Date().toISOString() }, { onConflict: "telegram_user_id,chat_id,bot_token" } as any);
+      await sendMessage(botToken, chatId, `🎯 Model set: \`${resolved}\` 💖`);
+      return new Response("OK", { status: 200 });
+    }
 
     // /start
     if (userText === "/start" || userText.startsWith("/start ")) {
