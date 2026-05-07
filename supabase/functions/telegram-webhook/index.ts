@@ -1603,7 +1603,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
     const { routeOpenRouter } = await import("../_shared/openrouter.ts");
-    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens);
+    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
       console.log(`[Zara AI] OpenRouter model: ${or.model}`);
       return or.text;
