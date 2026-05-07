@@ -1264,6 +1264,49 @@ serve(async (req) => {
 
     // Handle /start command
     if (userText === "/start") {
+      // intentionally fall through after model handler below
+    }
+
+    // ===== /model command — force OpenRouter model per-user =====
+    if (userText.toLowerCase().startsWith("/model")) {
+      const arg = userText.slice(6).trim();
+      const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
+      if (!arg || arg.toLowerCase() === "list") {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          `🤖 *Active model:* auto-routing\n\n*Usage:*\n• /model <name> — set (e.g. /model claude-3.5-sonnet)\n• /model auto — reset to smart routing\n• /model status — show current\n• /model search <query> — find models\n\n*Catalog size:* ${MODEL_CATALOG.length}+ models across OpenAI, Claude, Llama, Mistral, DeepSeek, Grok, Qwen, Cohere, Perplexity, Nvidia, Phi, Nova & more.\n\nExamples:\n\`/model gpt-4o\`\n\`/model deepseek-r1\`\n\`/model llama-3.3-70b-instruct\`\n\`/model grok-2-1212\``);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase() === "auto" || arg.toLowerCase() === "reset") {
+        await supabase.from("zara_user_model").delete().eq("telegram_user_id", telegramUserId!);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `✅ Auto routing enabled, ${firstName}! Smart router pick karega best model. 🤖`);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase() === "status") {
+        const { data: mrow } = await supabase.from("zara_user_model").select("model,updated_at").eq("telegram_user_id", telegramUserId!).maybeSingle();
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          mrow?.model ? `🎯 *Current model:* \`${mrow.model}\`` : `🤖 *Mode:* auto-routing (no forced model)`);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase().startsWith("search ")) {
+        const q = arg.slice(7).toLowerCase().trim();
+        const hits = MODEL_CATALOG.filter((m) => m.toLowerCase().includes(q)).slice(0, 25);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          hits.length ? `🔎 *Matches for "${q}":*\n\n${hits.map((m) => `• \`${m}\``).join("\n")}` : `❌ No model matches "${q}"`);
+        return new Response("OK", { status: 200 });
+      }
+      const resolved = resolveModelId(arg);
+      if (!resolved) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Model "${arg}" nahi mila. Try \`/model search ${arg}\` ya \`/model list\``);
+        return new Response("OK", { status: 200 });
+      }
+      await supabase.from("zara_user_model").upsert({
+        telegram_user_id: telegramUserId!, chat_id: chatId, bot_token: "", model: resolved, scope: "user", updated_at: new Date().toISOString(),
+      }, { onConflict: "telegram_user_id,chat_id,bot_token" } as any);
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *Forced model set:* \`${resolved}\`\n\nAb se sab replies isi model se aayenge ${firstName}! 💖\n(Reset: \`/model auto\`)`);
+      return new Response("OK", { status: 200 });
+    }
+
+    if (userText === "/start") {
       const welcomeMsg = isGroup
         ? `Hello everyone! 💕✨\n\nMain Zara hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n🎨 Edit Mode: /editmode\n📱 App: /app\n🌤️ Weather: /weather\n🎨 Image: /imagine\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: zaraai.in`
         : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n📱 Mujhe apne phone me install karo: /app\n🌐 Visit: zaraai.in`;
