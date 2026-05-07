@@ -1264,6 +1264,23 @@ serve(async (req) => {
 
     // ===== /model command — force OpenRouter model per-user =====
     if (userText.toLowerCase().startsWith("/model")) {
+      // (model command logic below)
+    }
+
+    // Load forced-model preference (if any) into request-scoped global
+    try {
+      (globalThis as any).__zaraForcedModel = undefined;
+      if (telegramUserId) {
+        const { data: mrow } = await supabase
+          .from("zara_user_model")
+          .select("model")
+          .eq("telegram_user_id", telegramUserId)
+          .maybeSingle();
+        if (mrow?.model) (globalThis as any).__zaraForcedModel = mrow.model;
+      }
+    } catch (_) {}
+
+    if (userText.toLowerCase().startsWith("/model")) {
       const arg = userText.slice(6).trim();
       const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
       if (!arg || arg.toLowerCase() === "list") {
