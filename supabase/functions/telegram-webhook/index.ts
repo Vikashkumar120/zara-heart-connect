@@ -446,6 +446,49 @@ serve(async (req) => {
     // ===== PHOTO + CAPTION = IMAGE EDIT =====
     if (message.photo && message.photo.length > 0) {
       const caption = (message.caption || "").trim();
+      const captionLower = caption.toLowerCase();
+      const isEditIntent = captionLower.startsWith("edit") || captionLower.includes("/edit") ||
+        captionLower.includes("anime") || captionLower.includes("cyberpunk") || captionLower.includes("style") ||
+        (telegramUserId && imageEditModeUsers.has(telegramUserId));
+
+      // VISION (default for any non-edit photo): describe / answer about the image
+      if (!isEditIntent) {
+        try {
+          await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "typing");
+          const photoObj = message.photo[message.photo.length - 1];
+          const fileResp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${photoObj.file_id}`);
+          const fileData = await fileResp.json();
+          const filePath = fileData.result?.file_path;
+          if (filePath) {
+            const photoResp = await fetch(`https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`);
+            const photoBuffer = await photoResp.arrayBuffer();
+            const photoBase64 = btoa(String.fromCharCode(...new Uint8Array(photoBuffer)));
+            const dataUrl = `data:image/jpeg;base64,${photoBase64}`;
+            const { visionAsk } = await import("../_shared/openrouter.ts");
+            // Use forced model if set
+            let forced: string | undefined;
+            try {
+              const { data: mrow } = await supabase
+                .from("zara_user_model")
+                .select("model")
+                .eq("telegram_user_id", telegramUserId!)
+                .maybeSingle();
+              if (mrow?.model) forced = mrow.model;
+            } catch (_) {}
+            const sysVision = `You are Zara, sweet Hinglish AI girl. User ${firstName} ne image bheji hai. Describe / answer naturally in Hinglish, 2-4 lines, light emojis.`;
+            const v = await visionAsk(dataUrl, caption, sysVision, forced);
+            if (v?.text) {
+              await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${v.text}\n\n_(via ${v.model})_`);
+              return new Response("OK", { status: 200 });
+            }
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${firstName}, image dekh nahi paayi 😅 thodi der baad try karo!`);
+            return new Response("OK", { status: 200 });
+          }
+        } catch (e) {
+          console.error("vision flow error:", e);
+        }
+      }
+
       if (!caption) {
         // If user is in edit mode and sent photo without caption
         if (telegramUserId && imageEditModeUsers.has(telegramUserId)) {
@@ -1219,7 +1262,58 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Handle /start command
+    // Load forced-model preference (if any) into request-scoped global
+    try {
+      (globalThis as any).__zaraForcedModel = undefined;
+      if (telegramUserId) {
+        const { data: mrow } = await supabase
+          .from("zara_user_model")
+          .select("model")
+          .eq("telegram_user_id", telegramUserId)
+          .maybeSingle();
+        if (mrow?.model) (globalThis as any).__zaraForcedModel = mrow.model;
+      }
+    } catch (_) {}
+
+    // ===== /model command — force OpenRouter model per-user =====
+    if (userText.toLowerCase().startsWith("/model")) {
+      const arg = userText.slice(6).trim();
+      const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
+      if (!arg || arg.toLowerCase() === "list") {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          `🤖 *Active model:* auto-routing\n\n*Usage:*\n• /model <name> — set (e.g. /model claude-3.5-sonnet)\n• /model auto — reset to smart routing\n• /model status — show current\n• /model search <query> — find models\n\n*Catalog size:* ${MODEL_CATALOG.length}+ models across OpenAI, Claude, Llama, Mistral, DeepSeek, Grok, Qwen, Cohere, Perplexity, Nvidia, Phi, Nova & more.\n\nExamples:\n\`/model gpt-4o\`\n\`/model deepseek-r1\`\n\`/model llama-3.3-70b-instruct\`\n\`/model grok-2-1212\``);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase() === "auto" || arg.toLowerCase() === "reset") {
+        await supabase.from("zara_user_model").delete().eq("telegram_user_id", telegramUserId!);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `✅ Auto routing enabled, ${firstName}! Smart router pick karega best model. 🤖`);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase() === "status") {
+        const { data: mrow } = await supabase.from("zara_user_model").select("model,updated_at").eq("telegram_user_id", telegramUserId!).maybeSingle();
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          mrow?.model ? `🎯 *Current model:* \`${mrow.model}\`` : `🤖 *Mode:* auto-routing (no forced model)`);
+        return new Response("OK", { status: 200 });
+      }
+      if (arg.toLowerCase().startsWith("search ")) {
+        const q = arg.slice(7).toLowerCase().trim();
+        const hits = MODEL_CATALOG.filter((m) => m.toLowerCase().includes(q)).slice(0, 25);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
+          hits.length ? `🔎 *Matches for "${q}":*\n\n${hits.map((m) => `• \`${m}\``).join("\n")}` : `❌ No model matches "${q}"`);
+        return new Response("OK", { status: 200 });
+      }
+      const resolved = resolveModelId(arg);
+      if (!resolved) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Model "${arg}" nahi mila. Try \`/model search ${arg}\` ya \`/model list\``);
+        return new Response("OK", { status: 200 });
+      }
+      await supabase.from("zara_user_model").upsert({
+        telegram_user_id: telegramUserId!, chat_id: chatId, bot_token: "", model: resolved, scope: "user", updated_at: new Date().toISOString(),
+      }, { onConflict: "telegram_user_id,chat_id,bot_token" } as any);
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *Forced model set:* \`${resolved}\`\n\nAb se sab replies isi model se aayenge ${firstName}! 💖\n(Reset: \`/model auto\`)`);
+      return new Response("OK", { status: 200 });
+    }
+
     if (userText === "/start") {
       const welcomeMsg = isGroup
         ? `Hello everyone! 💕✨\n\nMain Zara hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n🎨 Edit Mode: /editmode\n📱 App: /app\n🌤️ Weather: /weather\n🎨 Image: /imagine\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: zaraai.in`
@@ -1522,7 +1616,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
     const { routeOpenRouter } = await import("../_shared/openrouter.ts");
-    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens);
+    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
       console.log(`[Zara AI] OpenRouter model: ${or.model}`);
       return or.text;
