@@ -12,7 +12,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
   // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
     const { routeOpenRouter } = await import("../_shared/openrouter.ts");
-    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens);
+    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
       console.log(`[Clone Bot] OpenRouter model: ${or.model}`);
       return or.text;
