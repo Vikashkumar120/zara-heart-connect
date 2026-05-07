@@ -266,6 +266,39 @@ export type Database = {
         }
         Relationships: []
       }
+      zara_user_model: {
+        Row: {
+          bot_token: string | null
+          chat_id: number | null
+          created_at: string
+          id: string
+          model: string
+          scope: string
+          telegram_user_id: number
+          updated_at: string
+        }
+        Insert: {
+          bot_token?: string | null
+          chat_id?: number | null
+          created_at?: string
+          id?: string
+          model: string
+          scope?: string
+          telegram_user_id: number
+          updated_at?: string
+        }
+        Update: {
+          bot_token?: string | null
+          chat_id?: number | null
+          created_at?: string
+          id?: string
+          model?: string
+          scope?: string
+          telegram_user_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       zara_user_modes: {
         Row: {
           id: string
