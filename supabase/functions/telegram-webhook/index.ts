@@ -1604,7 +1604,9 @@ serve(async (req) => {
     ];
     const shouldAddPromo = Math.random() < 0.35;
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply + (shouldAddPromo ? promoTag : ""));
+    const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
+    const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, watermark + reply + (shouldAddPromo ? promoTag : ""));
 
     return new Response("OK", { status: 200 });
   } catch (e) {
