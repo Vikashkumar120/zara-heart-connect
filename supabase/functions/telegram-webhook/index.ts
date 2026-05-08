@@ -1540,6 +1540,27 @@ serve(async (req) => {
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}${mastiInjection}`;
     }
 
+    // ===== AUTO IMAGE INTENT DETECTION =====
+    // Agar user image/photo banwana chahta hai (without /imagine), auto-route to image gen
+    {
+      const t = userText.toLowerCase();
+      const imgVerbs = /(banao|banade|bana de|bana do|bna do|bnao|bna de|generate|create|draw|make|banaa|banaado|banadijiye|banadijie)/i;
+      const imgNouns = /(image|images|photo|picture|pic|tasveer|tasvir|drawing|art|wallpaper|poster|logo|sketch|painting|scene|illustration)/i;
+      const directImagine = /^(image|photo|picture|tasveer)\s*[:\-]/i;
+      const isImageReq = (imgVerbs.test(t) && imgNouns.test(t)) || directImagine.test(t) || /^banao\s+(image|photo|picture)/i.test(t);
+      if (isImageReq && !message.photo && !message.voice && userText.length < 400) {
+        let imgPrompt = userText
+          .replace(/^(zara[, ]+)?/i, "")
+          .replace(imgVerbs, " ")
+          .replace(/\b(mujhe|mereko|please|pls|na|yaar|jaan|ek|aik|of|a|an|the)\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!imgPrompt || imgPrompt.length < 4) imgPrompt = userText;
+        await generateAndSendImage(TELEGRAM_BOT_TOKEN, chatId, imgPrompt, firstName);
+        return new Response("OK", { status: 200 });
+      }
+    }
+
     // Generate reply — voice mode gets MUCH longer reply (~1 min spoken = 600+ tokens)
     const maxTok = isTextOnly ? (isGroup ? 200 : 300) : (isGroup ? 400 : 700);
     const replyPrompt = isTextOnly
