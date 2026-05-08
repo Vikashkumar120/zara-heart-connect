@@ -662,10 +662,13 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== PRICING DETECTION =====
-    const priceKeywords = ["price", "kitna", "kitne", "cost", "rate", "paisa", "rupees", "rs", "₹", "kitna hai", "kitne ka", "kitna price", "kya price", "premium price", "subscription", "plan"];
-    const isPriceQuery = priceKeywords.some((kw) => lowerText.includes(kw)) && (lowerText.includes("zara") || !isGroup);
-    
+    // ===== PRICING DETECTION (word-boundary, must mention zara/premium/subscription) =====
+    const priceWords = ["price","cost","paisa","rupees","rupaye","kitna","kitne","kimat","kimmat","keemat","subscription","premium"];
+    const hasPriceWord = new RegExp(`\\b(${priceWords.join("|")})\\b`, "i").test(userText) || /₹|rs\.?\s*\d/i.test(userText);
+    const hasZaraContext = /\b(zara|premium|subscription|plan)\b/i.test(userText);
+    const isShortQuery = userText.length < 80;
+    const isPriceQuery = hasPriceWord && hasZaraContext && isShortQuery && !message.photo && !message.caption;
+
     if (isPriceQuery) {
       const priceReply = `Arre ${firstName}! 💕✨\n\nZara Premium ka price:\n\n💰 *Price: ₹1599*\n\n✅ Unlimited voice messages\n✅ Priority replies 24/7\n✅ All modes unlock (GF, BF, Roast, Family...)\n✅ Custom personality\n✅ Exclusive features\n\n👉 Abhi grab karo: *zaraai.in* 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, priceReply);
@@ -673,8 +676,8 @@ serve(async (req) => {
     }
 
     // ===== APK / ZARA APP DETECTION =====
-    const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega", "app do", "application"];
-    const isApkRequest = apkKeywords.some((kw) => lowerText.includes(kw));
+    const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega"];
+    const isApkRequest = !message.photo && userText.length < 80 && apkKeywords.some((kw) => lowerText.includes(kw));
     
     if (isApkRequest) {
       const apkReply = `Arre ${firstName}! 😏✨\n\nZara AI app download karo! 💕\n\n📱 *zaraai.in/r/NINJA5*\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 👉 zaraai.in/r/NINJA5 💖`;
