@@ -1277,8 +1277,8 @@ serve(async (req) => {
     } catch (_) {}
 
     // ===== /model command — force OpenRouter model per-user =====
-    if (userText.toLowerCase().startsWith("/model")) {
-      const arg = userText.slice(6).trim();
+    if (/^\/model(@\S+)?(\s|$)/i.test(userText)) {
+      const arg = userText.replace(/^\/model(@\S+)?/i, "").trim();
       const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
       if (!arg || arg.toLowerCase() === "list") {
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
