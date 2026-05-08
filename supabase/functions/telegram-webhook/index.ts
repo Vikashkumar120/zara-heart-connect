@@ -676,8 +676,8 @@ serve(async (req) => {
     }
 
     // ===== APK / ZARA APP DETECTION =====
-    const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega", "app do", "application"];
-    const isApkRequest = apkKeywords.some((kw) => lowerText.includes(kw));
+    const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega"];
+    const isApkRequest = !message.photo && userText.length < 80 && apkKeywords.some((kw) => lowerText.includes(kw));
     
     if (isApkRequest) {
       const apkReply = `Arre ${firstName}! 😏✨\n\nZara AI app download karo! 💕\n\n📱 *zaraai.in/r/NINJA5*\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 👉 zaraai.in/r/NINJA5 💖`;
