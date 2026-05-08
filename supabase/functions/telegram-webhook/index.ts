@@ -1051,8 +1051,9 @@ serve(async (req) => {
     }
 
     // ===== MODE CHANGE HANDLER =====
-    if (userText.startsWith("/mode")) {
-      const requestedMode = userText.replace("/mode", "").trim().toLowerCase();
+    // IMPORTANT: exact "/mode" or "/mode <x>" only — must NOT swallow "/model ..."
+    if (userText === "/mode" || userText.startsWith("/mode ") || userText.startsWith("/mode@")) {
+      const requestedMode = userText.replace(/^\/mode(@\S+)?/i, "").trim().toLowerCase();
       
       if (!requestedMode) {
         let modeList = `🎭 *Zara Mode Menu* 🎭\n\nApna mode choose karo ${firstName}!\n\n`;
