@@ -1651,7 +1651,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
       if (response.ok) {
         const data = await response.json();
         const txt = data.choices?.[0]?.message?.content;
-        if (txt) return txt;
+        if (txt) { (globalThis as any).__zaraLastModel = "groq/llama-3.3-70b-versatile"; return txt; }
       } else {
         console.error("Groq error:", response.status, "— falling back to Lovable AI");
       }
@@ -1682,7 +1682,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
       if (r.ok) {
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
-        if (txt) return txt;
+        if (txt) { (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash"; return txt; }
       } else {
         console.error("Lovable AI error:", r.status);
       }
