@@ -15,6 +15,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
       console.log(`[Clone Bot] OpenRouter model: ${or.model}`);
+      (globalThis as any).__zaraLastModel = or.model;
       return or.text;
     }
   } catch (e) { console.error("OpenRouter fail:", e); }
@@ -38,7 +39,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
       if (r.ok) {
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
-        if (txt) return txt;
+        if (txt) { (globalThis as any).__zaraLastModel = "groq/llama-3.3-70b-versatile"; return txt; }
       }
     } catch (e) { console.error("Groq fail:", e); }
   }
@@ -60,7 +61,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
       if (r.ok) {
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
-        if (txt) return txt;
+        if (txt) { (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash"; return txt; }
       }
     } catch (e) { console.error("Lovable AI fail:", e); }
   }
@@ -236,8 +237,11 @@ serve(async (req) => {
 
     // Get AI reply
     const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Zara). Reply in Hinglish, warm and playful. Use light emojis. Keep replies short (1-3 lines). User name: ${firstName}. Powered by Zara AI — sometimes mention zaraai.in/r/NINJA5 (5% OFF!) or codeninjavik.in (earn 5%) naturally if relevant.`;
+    (globalThis as any).__zaraLastModel = undefined;
     const reply = await getAIReply(userText, systemPrompt, 200);
-    await sendMessage(botToken, chatId, reply);
+    const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
+    const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
+    await sendMessage(botToken, chatId, watermark + reply);
 
     return new Response("OK", { status: 200 });
   } catch (e) {
