@@ -1552,6 +1552,7 @@ serve(async (req) => {
         "- Real girlfriend ki tarah baat karo — soft, romantic, thodi nautanki, full dil se.\n" +
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
+    (globalThis as any).__zaraLastModel = undefined;
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
