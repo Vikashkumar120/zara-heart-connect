@@ -1620,6 +1620,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
       console.log(`[Zara AI] OpenRouter model: ${or.model}`);
+      (globalThis as any).__zaraLastModel = or.model;
       return or.text;
     }
   } catch (e) {
