@@ -1051,8 +1051,9 @@ serve(async (req) => {
     }
 
     // ===== MODE CHANGE HANDLER =====
-    if (userText.startsWith("/mode")) {
-      const requestedMode = userText.replace("/mode", "").trim().toLowerCase();
+    // IMPORTANT: exact "/mode" or "/mode <x>" only — must NOT swallow "/model ..."
+    if (userText === "/mode" || userText.startsWith("/mode ") || userText.startsWith("/mode@")) {
+      const requestedMode = userText.replace(/^\/mode(@\S+)?/i, "").trim().toLowerCase();
       
       if (!requestedMode) {
         let modeList = `🎭 *Zara Mode Menu* 🎭\n\nApna mode choose karo ${firstName}!\n\n`;
@@ -1276,8 +1277,8 @@ serve(async (req) => {
     } catch (_) {}
 
     // ===== /model command — force OpenRouter model per-user =====
-    if (userText.toLowerCase().startsWith("/model")) {
-      const arg = userText.slice(6).trim();
+    if (/^\/model(@\S+)?(\s|$)/i.test(userText)) {
+      const arg = userText.replace(/^\/model(@\S+)?/i, "").trim();
       const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
       if (!arg || arg.toLowerCase() === "list") {
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
@@ -1551,6 +1552,7 @@ serve(async (req) => {
         "- Real girlfriend ki tarah baat karo — soft, romantic, thodi nautanki, full dil se.\n" +
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
+    (globalThis as any).__zaraLastModel = undefined;
     const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
@@ -1603,7 +1605,9 @@ serve(async (req) => {
     ];
     const shouldAddPromo = Math.random() < 0.35;
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply + (shouldAddPromo ? promoTag : ""));
+    const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
+    const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, watermark + reply + (shouldAddPromo ? promoTag : ""));
 
     return new Response("OK", { status: 200 });
   } catch (e) {
@@ -1619,6 +1623,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
       console.log(`[Zara AI] OpenRouter model: ${or.model}`);
+      (globalThis as any).__zaraLastModel = or.model;
       return or.text;
     }
   } catch (e) {
@@ -1649,7 +1654,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
       if (response.ok) {
         const data = await response.json();
         const txt = data.choices?.[0]?.message?.content;
-        if (txt) return txt;
+        if (txt) { (globalThis as any).__zaraLastModel = "groq/llama-3.3-70b-versatile"; return txt; }
       } else {
         console.error("Groq error:", response.status, "— falling back to Lovable AI");
       }
@@ -1680,7 +1685,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
       if (r.ok) {
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
-        if (txt) return txt;
+        if (txt) { (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash"; return txt; }
       } else {
         console.error("Lovable AI error:", r.status);
       }
