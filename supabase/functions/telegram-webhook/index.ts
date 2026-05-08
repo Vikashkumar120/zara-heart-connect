@@ -662,10 +662,13 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== PRICING DETECTION =====
-    const priceKeywords = ["price", "kitna", "kitne", "cost", "rate", "paisa", "rupees", "rs", "₹", "kitna hai", "kitne ka", "kitna price", "kya price", "premium price", "subscription", "plan"];
-    const isPriceQuery = priceKeywords.some((kw) => lowerText.includes(kw)) && (lowerText.includes("zara") || !isGroup);
-    
+    // ===== PRICING DETECTION (word-boundary, must mention zara/premium/subscription) =====
+    const priceWords = ["price","cost","paisa","rupees","rupaye","kitna","kitne","kimat","kimmat","keemat","subscription","premium"];
+    const hasPriceWord = new RegExp(`\\b(${priceWords.join("|")})\\b`, "i").test(userText) || /₹|rs\.?\s*\d/i.test(userText);
+    const hasZaraContext = /\b(zara|premium|subscription|plan)\b/i.test(userText);
+    const isShortQuery = userText.length < 80;
+    const isPriceQuery = hasPriceWord && hasZaraContext && isShortQuery && !message.photo && !message.caption;
+
     if (isPriceQuery) {
       const priceReply = `Arre ${firstName}! 💕✨\n\nZara Premium ka price:\n\n💰 *Price: ₹1599*\n\n✅ Unlimited voice messages\n✅ Priority replies 24/7\n✅ All modes unlock (GF, BF, Roast, Family...)\n✅ Custom personality\n✅ Exclusive features\n\n👉 Abhi grab karo: *zaraai.in* 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, priceReply);
