@@ -321,6 +321,95 @@ function buildYouTubeUrl(query: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
+
+function isLikelyImageGenerationRequest(text: string): boolean {
+  const t = (text || "").toLowerCase().trim();
+  if (!t || t.startsWith("/")) return false;
+
+  const imageWords = /(image|images|photo|photos|picture|pictures|pic|pics|tasveer|tasvir|tashveer|drawing|art|artwork|wallpaper|poster|logo|banner|thumbnail|sketch|painting|illustration|avatar|sticker|dp|profile pic|cover photo|cinematic shot|portrait|landscape|render|3d render|scene)/i;
+  const makeWords = /(banao|bana do|bana de|banado|banade|bnao|bna do|bna de|generate|create|make|draw|design|render|imagine|paint|sketch|taiyar karo|create karo|design karo)/i;
+  const styleWords = /(photorealistic|realistic|hyper realistic|anime|cartoon|cyberpunk|cinematic|ultra detailed|4k|8k|studio lighting|oil painting|watercolor|digital art|pixel art|concept art|mockup|vector|minimal logo)/i;
+  const promptOpeners = /^(imagine|draw|create|generate|make|design|render|paint|sketch)\b/i;
+  const hindiPromptOpeners = /^(ek|aik|mujhe|mere liye|mereko|zara)\b.*\b(banao|bana do|bana de|banado|bnao|bna do|generate karo|create karo|design karo)\b/i;
+  const assetTarget = /\b(logo|poster|banner|thumbnail|wallpaper|dp|avatar|sticker|profile pic|cover photo)\b/i;
+  const looksLikeStandalonePrompt = /^(a|an|ek|aik)\s+.{20,}/i.test(t) &&
+    /\b(with|wearing|standing|sitting|holding|background|style|lighting|camera|portrait|scene|cinematic|realistic|beautiful|cute|girl|boy|man|woman|car|room|city|forest|mountain|beach|sky)\b/i.test(t) &&
+    !/[?？]$/.test(t);
+
+  return (makeWords.test(t) && (imageWords.test(t) || styleWords.test(t) || assetTarget.test(t))) ||
+    (promptOpeners.test(t) && (imageWords.test(t) || styleWords.test(t) || t.length > 20)) ||
+    hindiPromptOpeners.test(t) ||
+    looksLikeStandalonePrompt ||
+    /^\s*(image|photo|picture|tasveer|poster|logo|wallpaper)\s*[:=-]/i.test(t);
+}
+
+function cleanImagePrompt(text: string): string {
+  const stripped = (text || "")
+    .replace(/^\s*(zara|please|pls|mujhe|mereko|mere liye|yaar|jaan)[, ]+/i, "")
+    .replace(/\b(please|pls|na|yaar|jaan)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped.length >= 4 ? stripped : text.trim();
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function transcribeTelegramVoice(botToken: string, voice: any): Promise<string | null> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey || !voice?.file_id) return null;
+
+  try {
+    const fileResp = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${voice.file_id}`);
+    const fileData = await fileResp.json();
+    const filePath = fileData.result?.file_path;
+    if (!filePath) return null;
+
+    const audioResp = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+    if (!audioResp.ok) return null;
+
+    const audioBytes = new Uint8Array(await audioResp.arrayBuffer());
+    const audioBase64 = bytesToBase64(audioBytes);
+    const mimeType = filePath.endsWith(".mp3") ? "audio/mpeg" : filePath.endsWith(".wav") ? "audio/wav" : "audio/ogg";
+
+    const geminiResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              { text: "Transcribe this Telegram voice note exactly. If it is Hindi/Hinglish, write it in Hinglish/Devanagari naturally. Return only the spoken text, no explanation." },
+              { inlineData: { mimeType, data: audioBase64 } },
+            ],
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 500 },
+        }),
+      }
+    );
+
+    if (!geminiResp.ok) {
+      console.error("Gemini voice transcription failed:", geminiResp.status, await geminiResp.text());
+      return null;
+    }
+
+    const data = await geminiResp.json();
+    const text = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join(" ").trim();
+    return text && text.length > 1 ? text : null;
+  } catch (e) {
+    console.error("Voice transcription error:", e);
+    return null;
+  }
+}
+
 // Track per-user image edit mode in memory (resets on cold start, but that's fine)
 const imageEditModeUsers = new Set<number>();
 
@@ -330,10 +419,11 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 serve(async (req) => {
   try {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!TELEGRAM_BOT_TOKEN || !GROQ_API_KEY) {
-      console.error("Missing TELEGRAM_BOT_TOKEN or GROQ_API_KEY");
+    if (!TELEGRAM_BOT_TOKEN || !LOVABLE_API_KEY) {
+      console.error("Missing TELEGRAM_BOT_TOKEN or LOVABLE_API_KEY");
       return new Response("OK", { status: 200 });
     }
 
@@ -568,7 +658,13 @@ serve(async (req) => {
     const isVoiceMsg = !!message?.voice;
     
     if (isVoiceMsg && message?.chat?.id) {
-      userText = "[User sent a voice message]";
+      await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "typing");
+      const spokenText = await transcribeTelegramVoice(TELEGRAM_BOT_TOKEN, message.voice);
+      if (!spokenText) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${firstName}, voice clear nahi aayi 😅 ek baar dobara bhejo na.`);
+        return new Response("OK", { status: 200 });
+      }
+      userText = spokenText;
     }
     
     if (!userText) {
@@ -615,50 +711,16 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== AUTO IMAGE GENERATION — must run BEFORE price/app/chat detectors =====
+    if (!isVoiceMsg && !message.photo && userText.length < 900 && (isLikelyImageGenerationRequest(userText) || (!!telegramUserId && imageEditModeUsers.has(telegramUserId) && !userText.startsWith("/")))) {
+      const imgPrompt = cleanImagePrompt(userText);
+      await generateAndSendImage(TELEGRAM_BOT_TOKEN, chatId, imgPrompt, firstName);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== IMAGE EDIT MODE — treat every text as image prompt =====
     if (telegramUserId && imageEditModeUsers.has(telegramUserId) && !userText.startsWith("/")) {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generation setup nahi hai!`);
-        return new Response("OK", { status: 200 });
-      }
-
-      await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "upload_photo");
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎨 ${firstName}, tumhari image bana rahi hoon... ✨💕`);
-
-      try {
-        const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-image",
-            messages: [{ role: "user", content: `Generate a highly realistic, detailed, professional quality image: ${userText}. Make it photorealistic and stunning.` }],
-            modalities: ["image", "text"],
-          }),
-        });
-
-        if (!imgResponse.ok) {
-          const errText = await imgResponse.text();
-          console.error("Edit mode image API error:", imgResponse.status, errText);
-          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image nahi ban payi ${firstName}! Prompt change karke try karo 🎨`);
-          return new Response("OK", { status: 200 });
-        }
-
-        const imgData = await imgResponse.json();
-        const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-        if (imageUrl) {
-          await sendPhotoFromBase64(TELEGRAM_BOT_TOKEN, chatId, imageUrl, `🎨 ${userText}\n\n✨ Generated by Zara AI 💕\n📱 zaraai.in/r/NINJA5`);
-        } else {
-          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generate nahi ho payi! Alag prompt try karo 🎨`);
-        }
-      } catch (e) {
-        console.error("Edit mode image error:", e);
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image me error aaya! Dobara try karo 🎨`);
-      }
+      await generateAndSendImage(TELEGRAM_BOT_TOKEN, chatId, cleanImagePrompt(userText), firstName);
       return new Response("OK", { status: 200 });
     }
 
@@ -1022,7 +1084,8 @@ serve(async (req) => {
       }
 
       const voiceSystemPrompt = isGroup ? ZARA_SYSTEM_PROMPT_GROUP_GF : ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      const voiceReply = await getAIReply(GROQ_API_KEY, `${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. No special characters. Keep it short, natural and sweet for voice. BE EXPRESSIVE — haso, hanso, nautanki karo. Jaise real ladki baat karti hai.`, voiceSystemPrompt, 100);
+      const voiceReply = await getGeminiTextReply(`${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. No special characters. Keep it short, natural and sweet for voice. BE EXPRESSIVE — haso, hanso, nautanki karo. Jaise real ladki baat karti hai.`, voiceSystemPrompt, 100)
+        || `${firstName} jaan, main tumhare liye yahin hoon... bas pyaar se bolo, main sun rahi hoon.`;
       const cleanVoice = voiceReply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
       if (cleanVoice.length > 5) {
@@ -1540,30 +1603,12 @@ serve(async (req) => {
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}${mastiInjection}`;
     }
 
-    // ===== AUTO IMAGE INTENT DETECTION =====
-    // Agar user image/photo banwana chahta hai (without /imagine), auto-route to image gen
-    {
-      const t = userText.toLowerCase();
-      const imgVerbs = /(banao|banade|bana de|bana do|bna do|bnao|bna de|generate|create|draw|make|banaa|banaado|banadijiye|banadijie)/i;
-      const imgNouns = /(image|images|photo|picture|pic|tasveer|tasvir|drawing|art|wallpaper|poster|logo|sketch|painting|scene|illustration)/i;
-      const directImagine = /^(image|photo|picture|tasveer)\s*[:\-]/i;
-      const isImageReq = (imgVerbs.test(t) && imgNouns.test(t)) || directImagine.test(t) || /^banao\s+(image|photo|picture)/i.test(t);
-      if (isImageReq && !message.photo && !message.voice && userText.length < 400) {
-        let imgPrompt = userText
-          .replace(/^(zara[, ]+)?/i, "")
-          .replace(imgVerbs, " ")
-          .replace(/\b(mujhe|mereko|please|pls|na|yaar|jaan|ek|aik|of|a|an|the)\b/gi, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (!imgPrompt || imgPrompt.length < 4) imgPrompt = userText;
-        await generateAndSendImage(TELEGRAM_BOT_TOKEN, chatId, imgPrompt, firstName);
-        return new Response("OK", { status: 200 });
-      }
-    }
+    // Image prompts are handled earlier before business/app detectors, so they never fall into text chat.
 
-    // Generate reply — voice mode gets MUCH longer reply (~1 min spoken = 600+ tokens)
-    const maxTok = isTextOnly ? (isGroup ? 200 : 300) : (isGroup ? 400 : 700);
-    const replyPrompt = isTextOnly
+    // Voice replies happen only for actual incoming voice notes (or /voice command above), never automatically for every text.
+    const shouldSendVoiceReply = isVoiceMsg && !isTextOnly;
+    const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : (isGroup ? 200 : 300);
+    const replyPrompt = !shouldSendVoiceReply
       ? userContext + "\n\n💖 ROMANTIC SHAYRI MODE: Har reply me kam se kam ek romantic shayri ya pyaari poetic line zaroor daalo. Tum ek ladki ho — feminine syntax use karo (karti hoon, jaati hoon, hoti hoon, soch rahi thi, dekh rahi hoon). Full dil se baat karo, romantic, filmy, dramatic. Names ko pyaar se bolo (jaan, baby, pyaare, dilbar)."
       : userContext + "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
         "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
@@ -1577,7 +1622,9 @@ serve(async (req) => {
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
     (globalThis as any).__zaraLastModel = undefined;
-    const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
+    const reply = shouldSendVoiceReply
+      ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
+      : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
     if (MEM0_API_KEY && telegramUserId) {
@@ -1604,7 +1651,7 @@ serve(async (req) => {
     }
 
     // ===== VOICE-FIRST REPLY SYSTEM =====
-    if (!isTextOnly) {
+    if (shouldSendVoiceReply) {
       const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
       if (cleanText.length > 5 && cleanText.length < 4000) {
@@ -1639,6 +1686,39 @@ serve(async (req) => {
     return new Response("OK", { status: 200 });
   }
 });
+
+async function getGeminiTextReply(userMessage: string, systemPrompt: string, maxTokens = 300): Promise<string | null> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return null;
+
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userMessage }] }],
+          generationConfig: { temperature: 0.9, maxOutputTokens: maxTokens },
+        }),
+      }
+    );
+    if (!r.ok) {
+      console.error("Gemini text reply failed:", r.status, await r.text());
+      return null;
+    }
+    const data = await r.json();
+    const txt = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("").trim();
+    if (txt) {
+      (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash";
+      return txt;
+    }
+  } catch (e) {
+    console.error("Gemini text reply exception:", e);
+  }
+  return null;
+}
 
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number): Promise<string> {
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
