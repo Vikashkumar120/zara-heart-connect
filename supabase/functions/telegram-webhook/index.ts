@@ -348,6 +348,64 @@ function cleanImagePrompt(text: string): string {
   return stripped.length >= 4 ? stripped : text.trim();
 }
 
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function transcribeTelegramVoice(botToken: string, voice: any): Promise<string | null> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey || !voice?.file_id) return null;
+
+  try {
+    const fileResp = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${voice.file_id}`);
+    const fileData = await fileResp.json();
+    const filePath = fileData.result?.file_path;
+    if (!filePath) return null;
+
+    const audioResp = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+    if (!audioResp.ok) return null;
+
+    const audioBytes = new Uint8Array(await audioResp.arrayBuffer());
+    const audioBase64 = bytesToBase64(audioBytes);
+    const mimeType = filePath.endsWith(".mp3") ? "audio/mpeg" : filePath.endsWith(".wav") ? "audio/wav" : "audio/ogg";
+
+    const geminiResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              { text: "Transcribe this Telegram voice note exactly. If it is Hindi/Hinglish, write it in Hinglish/Devanagari naturally. Return only the spoken text, no explanation." },
+              { inlineData: { mimeType, data: audioBase64 } },
+            ],
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 500 },
+        }),
+      }
+    );
+
+    if (!geminiResp.ok) {
+      console.error("Gemini voice transcription failed:", geminiResp.status, await geminiResp.text());
+      return null;
+    }
+
+    const data = await geminiResp.json();
+    const text = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join(" ").trim();
+    return text && text.length > 1 ? text : null;
+  } catch (e) {
+    console.error("Voice transcription error:", e);
+    return null;
+  }
+}
+
 // Track per-user image edit mode in memory (resets on cold start, but that's fine)
 const imageEditModeUsers = new Set<number>();
 
