@@ -332,10 +332,14 @@ function isLikelyImageGenerationRequest(text: string): boolean {
   const promptOpeners = /^(imagine|draw|create|generate|make|design|render|paint|sketch)\b/i;
   const hindiPromptOpeners = /^(ek|aik|mujhe|mere liye|mereko|zara)\b.*\b(banao|bana do|bana de|banado|bnao|bna do|generate karo|create karo|design karo)\b/i;
   const assetTarget = /\b(logo|poster|banner|thumbnail|wallpaper|dp|avatar|sticker|profile pic|cover photo)\b/i;
+  const looksLikeStandalonePrompt = /^(a|an|ek|aik)\s+.{20,}/i.test(t) &&
+    /\b(with|wearing|standing|sitting|holding|background|style|lighting|camera|portrait|scene|cinematic|realistic|beautiful|cute|girl|boy|man|woman|car|room|city|forest|mountain|beach|sky)\b/i.test(t) &&
+    !/[?？]$/.test(t);
 
   return (makeWords.test(t) && (imageWords.test(t) || styleWords.test(t) || assetTarget.test(t))) ||
     (promptOpeners.test(t) && (imageWords.test(t) || styleWords.test(t) || t.length > 20)) ||
     hindiPromptOpeners.test(t) ||
+    looksLikeStandalonePrompt ||
     /^\s*(image|photo|picture|tasveer|poster|logo|wallpaper)\s*[:=-]/i.test(t);
 }
 
