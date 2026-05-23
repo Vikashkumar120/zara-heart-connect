@@ -654,7 +654,13 @@ serve(async (req) => {
     const isVoiceMsg = !!message?.voice;
     
     if (isVoiceMsg && message?.chat?.id) {
-      userText = "[User sent a voice message]";
+      await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "typing");
+      const spokenText = await transcribeTelegramVoice(TELEGRAM_BOT_TOKEN, message.voice);
+      if (!spokenText) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${firstName}, voice clear nahi aayi 😅 ek baar dobara bhejo na.`);
+        return new Response("OK", { status: 200 });
+      }
+      userText = spokenText;
     }
     
     if (!userText) {
