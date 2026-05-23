@@ -68,6 +68,125 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
   return "Hehe 😄 Ek baar phir bolo na!";
 }
 
+
+function isLikelyImageGenerationRequest(text: string): boolean {
+  const t = (text || "").toLowerCase().trim();
+  if (!t || t.startsWith("/")) return false;
+
+  const imageWords = /(image|images|photo|photos|picture|pictures|pic|pics|tasveer|tasvir|tashveer|drawing|art|artwork|wallpaper|poster|logo|banner|thumbnail|sketch|painting|illustration|avatar|sticker|dp|profile pic|cover photo|cinematic shot|portrait|landscape|render|3d render|scene)/i;
+  const makeWords = /(banao|bana do|bana de|banado|banade|bnao|bna do|bna de|generate|create|make|draw|design|render|imagine|paint|sketch|taiyar karo|create karo|design karo)/i;
+  const styleWords = /(photorealistic|realistic|hyper realistic|anime|cartoon|cyberpunk|cinematic|ultra detailed|4k|8k|studio lighting|oil painting|watercolor|digital art|pixel art|concept art|mockup|vector|minimal logo)/i;
+  const promptOpeners = /^(imagine|draw|create|generate|make|design|render|paint|sketch)\b/i;
+  const hindiPromptOpeners = /^(ek|aik|mujhe|mere liye|mereko|zara)\b.*\b(banao|bana do|bana de|banado|bnao|bna do|generate karo|create karo|design karo)\b/i;
+  const assetTarget = /\b(logo|poster|banner|thumbnail|wallpaper|dp|avatar|sticker|profile pic|cover photo)\b/i;
+  const looksLikeStandalonePrompt = /^(a|an|ek|aik)\s+.{20,}/i.test(t) &&
+    /\b(with|wearing|standing|sitting|holding|background|style|lighting|camera|portrait|scene|cinematic|realistic|beautiful|cute|girl|boy|man|woman|car|room|city|forest|mountain|beach|sky)\b/i.test(t) &&
+    !/[?？]$/.test(t);
+
+  return (makeWords.test(t) && (imageWords.test(t) || styleWords.test(t) || assetTarget.test(t))) ||
+    (promptOpeners.test(t) && (imageWords.test(t) || styleWords.test(t) || t.length > 20)) ||
+    hindiPromptOpeners.test(t) ||
+    looksLikeStandalonePrompt ||
+    /^\s*(image|photo|picture|tasveer|poster|logo|wallpaper)\s*[:=-]/i.test(t);
+}
+
+function cleanImagePrompt(text: string): string {
+  const stripped = (text || "")
+    .replace(/^\s*(zara|please|pls|mujhe|mereko|mere liye|yaar|jaan)[, ]+/i, "")
+    .replace(/\b(please|pls|na|yaar|jaan)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped.length >= 4 ? stripped : text.trim();
+}
+
+async function sendChatAction(token: string, chatId: number, action: string) {
+  await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, action }),
+  });
+}
+
+async function sendPhotoFromBase64(botToken: string, chatId: number, dataUrl: string, caption: string): Promise<boolean> {
+  try {
+    const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+    const binaryStr = atob(base64Data);
+    const imageBytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) imageBytes[i] = binaryStr.charCodeAt(i);
+
+    const encoder = new TextEncoder();
+    const boundary = "----ZaraCloneImg" + Date.now();
+    const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
+    const captionPart = `--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`;
+    const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="zara_art.png"\r\nContent-Type: image/png\r\n\r\n`;
+    const endPart = `\r\n--${boundary}--\r\n`;
+
+    const chatIdBytes = encoder.encode(chatIdPart);
+    const captionBytes = encoder.encode(captionPart);
+    const filePartBytes = encoder.encode(filePart);
+    const endPartBytes = encoder.encode(endPart);
+    const body = new Uint8Array(chatIdBytes.length + captionBytes.length + filePartBytes.length + imageBytes.length + endPartBytes.length);
+    let offset = 0;
+    body.set(chatIdBytes, offset); offset += chatIdBytes.length;
+    body.set(captionBytes, offset); offset += captionBytes.length;
+    body.set(filePartBytes, offset); offset += filePartBytes.length;
+    body.set(imageBytes, offset); offset += imageBytes.length;
+    body.set(endPartBytes, offset);
+
+    const sendResult = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+      method: "POST",
+      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+      body,
+    });
+    if (!sendResult.ok) console.error("clone sendPhoto failed:", sendResult.status, await sendResult.text());
+    return sendResult.ok;
+  } catch (e) {
+    console.error("clone sendPhotoFromBase64 error:", e);
+    return false;
+  }
+}
+
+async function generateAndSendImage(botToken: string, chatId: number, prompt: string, firstName: string) {
+  const apiKey = Deno.env.get("LOVABLE_API_KEY") || LOVABLE_API_KEY;
+  if (!apiKey) {
+    await sendMessage(botToken, chatId, `😅 Image generation setup nahi hai ${firstName}!`);
+    return;
+  }
+
+  await sendChatAction(botToken, chatId, "upload_photo");
+  await sendMessage(botToken, chatId, `🎨 ${firstName}, image bana rahi hoon... thoda wait karo! ✨`);
+
+  try {
+    const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: `Generate a high quality image from this exact prompt: ${prompt}` }],
+        modalities: ["image", "text"],
+      }),
+    });
+
+    if (!imgResponse.ok) {
+      console.error("clone image API error:", imgResponse.status, await imgResponse.text());
+      await sendMessage(botToken, chatId, `😅 Image nahi ban payi ${firstName}! Prompt change karke try karo 🎨`);
+      return;
+    }
+
+    const imgData = await imgResponse.json();
+    const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (imageUrl) {
+      const sent = await sendPhotoFromBase64(botToken, chatId, imageUrl, `🎨 ${prompt}\n\n✨ Generated by Zara AI 💕`);
+      if (!sent) await sendMessage(botToken, chatId, `😅 Telegram pe image send nahi ho payi ${firstName}, dobara try karo 🎨`);
+    } else {
+      await sendMessage(botToken, chatId, `😅 Image generate nahi ho payi ${firstName}! Alag prompt try karo 🎨`);
+    }
+  } catch (e) {
+    console.error("clone image gen error:", e);
+    await sendMessage(botToken, chatId, `😅 Image generate nahi ho payi ${firstName}! Dobara try karo 🎨`);
+  }
+}
+
 async function sendMessage(token: string, chatId: number, text: string) {
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
@@ -158,6 +277,11 @@ serve(async (req) => {
     }
 
     if (!message.text) return new Response("OK", { status: 200 });
+
+    if (userText.length < 900 && isLikelyImageGenerationRequest(userText)) {
+      await generateAndSendImage(botToken, chatId, cleanImagePrompt(userText), firstName);
+      return new Response("OK", { status: 200 });
+    }
 
     // Forced-model lookup for this user
     try {
