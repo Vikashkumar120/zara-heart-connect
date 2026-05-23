@@ -321,6 +321,33 @@ function buildYouTubeUrl(query: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
+
+function isLikelyImageGenerationRequest(text: string): boolean {
+  const t = (text || "").toLowerCase().trim();
+  if (!t || t.startsWith("/")) return false;
+
+  const imageWords = /(image|images|photo|photos|picture|pictures|pic|pics|tasveer|tasvir|tashveer|drawing|art|artwork|wallpaper|poster|logo|banner|thumbnail|sketch|painting|illustration|avatar|sticker|dp|profile pic|cover photo|cinematic shot|portrait|landscape|render|3d render|scene)/i;
+  const makeWords = /(banao|bana do|bana de|banado|banade|bnao|bna do|bna de|generate|create|make|draw|design|render|imagine|paint|sketch|taiyar karo|create karo|design karo)/i;
+  const styleWords = /(photorealistic|realistic|hyper realistic|anime|cartoon|cyberpunk|cinematic|ultra detailed|4k|8k|studio lighting|oil painting|watercolor|digital art|pixel art|concept art|mockup|vector|minimal logo)/i;
+  const promptOpeners = /^(imagine|draw|create|generate|make|design|render|paint|sketch)\b/i;
+  const hindiPromptOpeners = /^(ek|aik|mujhe|mere liye|mereko|zara)\b.*\b(banao|bana do|bana de|banado|bnao|bna do|generate karo|create karo|design karo)\b/i;
+  const assetTarget = /\b(logo|poster|banner|thumbnail|wallpaper|dp|avatar|sticker|profile pic|cover photo)\b/i;
+
+  return (makeWords.test(t) && (imageWords.test(t) || styleWords.test(t) || assetTarget.test(t))) ||
+    (promptOpeners.test(t) && (imageWords.test(t) || styleWords.test(t) || t.length > 20)) ||
+    hindiPromptOpeners.test(t) ||
+    /^\s*(image|photo|picture|tasveer|poster|logo|wallpaper)\s*[:=-]/i.test(t);
+}
+
+function cleanImagePrompt(text: string): string {
+  const stripped = (text || "")
+    .replace(/^\s*(zara|please|pls|mujhe|mereko|mere liye|yaar|jaan)[, ]+/i, "")
+    .replace(/\b(please|pls|na|yaar|jaan)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped.length >= 4 ? stripped : text.trim();
+}
+
 // Track per-user image edit mode in memory (resets on cold start, but that's fine)
 const imageEditModeUsers = new Set<number>();
 
@@ -330,10 +357,11 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 serve(async (req) => {
   try {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!TELEGRAM_BOT_TOKEN || !GROQ_API_KEY) {
-      console.error("Missing TELEGRAM_BOT_TOKEN or GROQ_API_KEY");
+    if (!TELEGRAM_BOT_TOKEN || !LOVABLE_API_KEY) {
+      console.error("Missing TELEGRAM_BOT_TOKEN or LOVABLE_API_KEY");
       return new Response("OK", { status: 200 });
     }
 
@@ -615,50 +643,16 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== AUTO IMAGE GENERATION — must run BEFORE price/app/chat detectors =====
+    if (!isVoiceMsg && !message.photo && userText.length < 900 && (isLikelyImageGenerationRequest(userText) || (!!telegramUserId && imageEditModeUsers.has(telegramUserId) && !userText.startsWith("/")))) {
+      const imgPrompt = cleanImagePrompt(userText);
+      await generateAndSendImage(TELEGRAM_BOT_TOKEN, chatId, imgPrompt, firstName);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== IMAGE EDIT MODE — treat every text as image prompt =====
     if (telegramUserId && imageEditModeUsers.has(telegramUserId) && !userText.startsWith("/")) {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generation setup nahi hai!`);
-        return new Response("OK", { status: 200 });
-      }
-
-      await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "upload_photo");
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎨 ${firstName}, tumhari image bana rahi hoon... ✨💕`);
-
-      try {
-        const imgResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash-image",
-            messages: [{ role: "user", content: `Generate a highly realistic, detailed, professional quality image: ${userText}. Make it photorealistic and stunning.` }],
-            modalities: ["image", "text"],
-          }),
-        });
-
-        if (!imgResponse.ok) {
-          const errText = await imgResponse.text();
-          console.error("Edit mode image API error:", imgResponse.status, errText);
-          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image nahi ban payi ${firstName}! Prompt change karke try karo 🎨`);
-          return new Response("OK", { status: 200 });
-        }
-
-        const imgData = await imgResponse.json();
-        const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-        if (imageUrl) {
-          await sendPhotoFromBase64(TELEGRAM_BOT_TOKEN, chatId, imageUrl, `🎨 ${userText}\n\n✨ Generated by Zara AI 💕\n📱 zaraai.in/r/NINJA5`);
-        } else {
-          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image generate nahi ho payi! Alag prompt try karo 🎨`);
-        }
-      } catch (e) {
-        console.error("Edit mode image error:", e);
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image me error aaya! Dobara try karo 🎨`);
-      }
+      await generateAndSendImage(TELEGRAM_BOT_TOKEN, chatId, cleanImagePrompt(userText), firstName);
       return new Response("OK", { status: 200 });
     }
 
@@ -1540,26 +1534,7 @@ serve(async (req) => {
       userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}${mastiInjection}`;
     }
 
-    // ===== AUTO IMAGE INTENT DETECTION =====
-    // Agar user image/photo banwana chahta hai (without /imagine), auto-route to image gen
-    {
-      const t = userText.toLowerCase();
-      const imgVerbs = /(banao|banade|bana de|bana do|bna do|bnao|bna de|generate|create|draw|make|banaa|banaado|banadijiye|banadijie)/i;
-      const imgNouns = /(image|images|photo|picture|pic|tasveer|tasvir|drawing|art|wallpaper|poster|logo|sketch|painting|scene|illustration)/i;
-      const directImagine = /^(image|photo|picture|tasveer)\s*[:\-]/i;
-      const isImageReq = (imgVerbs.test(t) && imgNouns.test(t)) || directImagine.test(t) || /^banao\s+(image|photo|picture)/i.test(t);
-      if (isImageReq && !message.photo && !message.voice && userText.length < 400) {
-        let imgPrompt = userText
-          .replace(/^(zara[, ]+)?/i, "")
-          .replace(imgVerbs, " ")
-          .replace(/\b(mujhe|mereko|please|pls|na|yaar|jaan|ek|aik|of|a|an|the)\b/gi, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (!imgPrompt || imgPrompt.length < 4) imgPrompt = userText;
-        await generateAndSendImage(TELEGRAM_BOT_TOKEN, chatId, imgPrompt, firstName);
-        return new Response("OK", { status: 200 });
-      }
-    }
+    // Image prompts are handled earlier before business/app detectors, so they never fall into text chat.
 
     // Generate reply — voice mode gets MUCH longer reply (~1 min spoken = 600+ tokens)
     const maxTok = isTextOnly ? (isGroup ? 200 : 300) : (isGroup ? 400 : 700);
