@@ -1080,7 +1080,8 @@ serve(async (req) => {
       }
 
       const voiceSystemPrompt = isGroup ? ZARA_SYSTEM_PROMPT_GROUP_GF : ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      const voiceReply = await getAIReply(GROQ_API_KEY, `${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. No special characters. Keep it short, natural and sweet for voice. BE EXPRESSIVE — haso, hanso, nautanki karo. Jaise real ladki baat karti hai.`, voiceSystemPrompt, 100);
+      const voiceReply = await getGeminiTextReply(`${firstName} wants you to say this in voice: "${voiceQuery}". Reply naturally in 1-2 lines. NO emojis. NO markdown. No special characters. Keep it short, natural and sweet for voice. BE EXPRESSIVE — haso, hanso, nautanki karo. Jaise real ladki baat karti hai.`, voiceSystemPrompt, 100)
+        || `${firstName} jaan, main tumhare liye yahin hoon... bas pyaar se bolo, main sun rahi hoon.`;
       const cleanVoice = voiceReply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
 
       if (cleanVoice.length > 5) {
@@ -1616,7 +1617,9 @@ serve(async (req) => {
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
     (globalThis as any).__zaraLastModel = undefined;
-    const reply = await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
+    const reply = (!isTextOnly || isVoiceMsg)
+      ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
+      : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
     if (MEM0_API_KEY && telegramUserId) {
@@ -1678,6 +1681,39 @@ serve(async (req) => {
     return new Response("OK", { status: 200 });
   }
 });
+
+async function getGeminiTextReply(userMessage: string, systemPrompt: string, maxTokens = 300): Promise<string | null> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return null;
+
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userMessage }] }],
+          generationConfig: { temperature: 0.9, maxOutputTokens: maxTokens },
+        }),
+      }
+    );
+    if (!r.ok) {
+      console.error("Gemini text reply failed:", r.status, await r.text());
+      return null;
+    }
+    const data = await r.json();
+    const txt = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("").trim();
+    if (txt) {
+      (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash";
+      return txt;
+    }
+  } catch (e) {
+    console.error("Gemini text reply exception:", e);
+  }
+  return null;
+}
 
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number): Promise<string> {
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
