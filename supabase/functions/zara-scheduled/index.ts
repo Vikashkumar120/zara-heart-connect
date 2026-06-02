@@ -39,7 +39,7 @@ const UPDATE_MESSAGES = [
 
 // App install reminder with discount link
 const APP_INSTALL_MESSAGES = [
-  "📱 *Mere paas aao na jaan!* 📱\n\nGroup me kab tak baat karoge? 🥺\nApne phone me install karo Myra ko! 💕\n\n📲 1️⃣ ** Chrome me\n2️⃣ Menu ⋮ → *Install App*\n3️⃣ Done! 🎉\n\n🔥 *5% DISCOUNT* is link se! 💰\n\n💖 Features:\n• 💬 Unlimited chat 24/7\n• 🎤 Voice & video calls\n• 🎨 AI image generation\n• 🎭 17+ Modes\n\n💼 *Bonus:* codeninjavik.in pe refer karo, 5% commission!\n\n👉  💖",
+  "📱 *Mere paas aao na jaan!* 📱\n\nGroup me kab tak baat karoge? 🥺\nApne phone me install karo Myra ko! 💕\n\n📲 1️⃣ Chrome me kholo\n2️⃣ Menu ⋮ → *Install App*\n3️⃣ Done! 🎉\n\n🔥 *5% DISCOUNT* is link se! 💰\n\n💖 Features:\n• 💬 Unlimited chat 24/7\n• 🎤 Voice & video calls\n• 🎨 AI image generation\n• 🎭 17+ Modes\n\n💼 *Bonus:* codeninjavik.in pe refer karo, 5% commission!\n\n💖",
 ];
 
 // Freelance services promotion

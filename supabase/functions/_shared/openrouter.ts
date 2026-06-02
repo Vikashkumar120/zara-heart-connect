@@ -166,7 +166,7 @@ export function detectTask(userMessage: string): Task {
   return "general";
 }
 
-/** Validate / normalize a /model command argument (case-insensitive prefix-match if needed) */
+/Validate / normalize a /model command argument (case-insensitive prefix-match if needed) */
 export function resolveModelId(input: string): string | null {
   const q = input.trim().toLowerCase();
   if (!q) return null;
@@ -181,7 +181,7 @@ export function resolveModelId(input: string): string | null {
   return sub || null;
 }
 
-/** Direct call to a specific OpenRouter model (text only) */
+/Direct call to a specific OpenRouter model (text only) */
 export async function callOpenRouterModel(
   model: string,
   userMessage: string,
@@ -221,7 +221,7 @@ export async function callOpenRouterModel(
   }
 }
 
-/** Vision: send image + question. imageUrl can be data URL or https URL */
+/Vision: send image + question. imageUrl can be data URL or https URL */
 export async function visionAsk(
   imageUrl: string,
   question: string,
