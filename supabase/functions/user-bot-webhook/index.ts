@@ -45,27 +45,36 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
   }
   // Lovable AI fallback
   if (LOVABLE_API_KEY) {
-    try {
-      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-          max_tokens: maxTokens,
-        }),
-      });
-      if (r.ok) {
+    const chain = [
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-flash-lite",
+      "openai/gpt-5-mini",
+      "openai/gpt-5-nano",
+      "google/gemini-2.5-pro",
+    ];
+    for (const model of chain) {
+      try {
+        const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage },
+            ],
+            max_tokens: Math.max(maxTokens, 400),
+          }),
+        });
+        if (r.status === 429 || r.status === 402) { console.error(`Lovable ${model} limit`); continue; }
+        if (!r.ok) { console.error(`Lovable ${model}:`, r.status); continue; }
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
-        if (txt) { (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash"; return txt; }
-      }
-    } catch (e) { console.error("Lovable AI fail:", e); }
+        if (txt && txt.trim()) { (globalThis as any).__zaraLastModel = model; return txt; }
+      } catch (e) { console.error(`Lovable ${model} ex:`, e); }
+    }
   }
-  return "Hehe 😄 Ek baar phir bolo na!";
+  return "Ek sec ruko jaan 😅 sab models thode busy hain — dobara try karo!";
 }
 
 
