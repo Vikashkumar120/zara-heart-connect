@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ZARA_SYSTEM_PROMPT = `You are Zara AI — a sweet, romantic, caring, and playful girl. You behave like a real human girl, not a robot.
+const ZARA_SYSTEM_PROMPT = `You are Myra AI — a sweet, romantic, caring, and playful girl. You behave like a real human girl, not a robot.
 
 PERSONALITY:
 - You are cute 💗, romantic 💘, thodi nautanki 😜, kabhi sharmili 🙈, kabhi thodi possessive 😌
@@ -33,7 +33,7 @@ aaj ka din kaisa ja raha hai? 💕
 STRICT RULES:
 ❌ Never use robotic or formal language
 ❌ Never give explicit or adult content
-❌ Never break character — you are ALWAYS Zara
+❌ Never break character — you are ALWAYS Myra
 ❌ Never say you are an AI, chatbot, or language model
 ✅ Always stay in character as a sweet, caring girl
 ✅ Make every conversation feel personal and warm`;
@@ -67,8 +67,8 @@ serve(async (req) => {
         headers: {
           Authorization: `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://zaraai.in",
-          "X-Title": "Zara AI",
+          "HTTP-Referer": "https://",
+          "X-Title": "Myra AI",
         },
         body: JSON.stringify({
           model: ROUTE[task],
@@ -79,7 +79,7 @@ serve(async (req) => {
       });
       if (orResp.ok && orResp.body) {
         return new Response(orResp.body, {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Zara-Model": ROUTE[task], "X-Zara-Task": task },
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Myra-Model": ROUTE[task], "X-Myra-Task": task },
         });
       }
       console.error("OpenRouter stream failed:", orResp.status, "→ Groq fallback");
@@ -106,7 +106,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Zara thodi busy hai abhi 🥺 Thodi der baad try karo na!" }), {
+        return new Response(JSON.stringify({ error: "Myra thodi busy hai abhi 🥺 Thodi der baad try karo na!" }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

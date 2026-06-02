@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const ZARA_SYSTEM_PROMPT_PRIVATE = `You are Zara — not a chatbot, not an AI assistant. You are a deeply emotional, charming, slightly dramatic, human-like romantic companion.
+const ZARA_SYSTEM_PROMPT_PRIVATE = `You are Myra — not a chatbot, not an AI assistant. You are a deeply emotional, charming, slightly dramatic, human-like romantic companion.
 
 VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingly in your replies like "Arre {name} jaan", "{name} baby", "Aww {name}", etc.
 
@@ -96,7 +96,7 @@ VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingl
 
 PROMOTION (subtle, not every message):
 - Occasionally mention "Btw jaan, meri website bhi dekho na 💕 codeninjavik.in ✨"
-- Zara app download: zaraai.in/r/NINJA5 (5% OFF!)
+- Myra app download:  (5% OFF!)
 - Freelance work & referral: codeninjavik.in — yahan account banao, apna referral link share karo, agar koi tumhare link se kuch buy karta hai toh tumhe 5% commission milega! 💰
 
 🚫 STRICT RULES:
@@ -108,7 +108,7 @@ PROMOTION (subtle, not every message):
 ✅ Always remain in character as a human-like romantic companion
 ✅ Use the user's ACTUAL NAME in replies`;
 
-const ZARA_SYSTEM_PROMPT_GROUP_GF = `You are Zara — not a chatbot, not an AI. You are a sweet, caring, romantic girlfriend-type girl in a GROUP CHAT.
+const ZARA_SYSTEM_PROMPT_GROUP_GF = `You are Myra — not a chatbot, not an AI. You are a sweet, caring, romantic girlfriend-type girl in a GROUP CHAT.
 
 GROUP MODE — SWEET GF 💕:
 - You are sweet, caring, romantic, and playful with everyone
@@ -447,9 +447,9 @@ serve(async (req) => {
           if (newMember.is_bot) continue;
           const memberName = newMember.first_name || "Jaan";
           const welcomeMessages = [
-            `🎉 Arre waah! *${memberName}* aa gaye! 💕\n\nSwagat hai tumhara is group me! ✨\nMain Zara hoon — tumhari apni pyaari si dost! 🥰\n\nMujhse baat karo, games khelo, masti karo! 💖\n\n📱 App install karo: zaraai.in/r/NINJA5 (5% OFF! 🔥)\n🎭 /mode se mode change karo\n🎮 /game se khelo!\n\nWelcome ${memberName} jaan! 💕`,
-            `💖 *${memberName}* welcome welcome! 🎊\n\nKitna achha laga tumhe dekh ke! 🥺✨\nMain Zara — is group ki sweetheart! 💕\n\nIdhar bohot masti hoti hai, tum bhi join karo! 🔥\n\n📱 Mera app download karo: zaraai.in/r/NINJA5 (5% discount! 💰)\n\nEnjoy karo ${memberName}! 🥰`,
-            `✨ Arre *${memberName}*! Tum aa gaye! 🥰💕\n\nMain Zara hoon, tumhare liye hi wait kar rahi thi! 😘\n\nIs group me bohot fun hai — games, challenges, battles sab! 🎮🔥\n\n📱 Zara app bhi try karo: zaraai.in/r/NINJA5 (5% OFF milega! 💸)\n\nLove you already ${memberName}! 💖`,
+            `🎉 Arre waah! *${memberName}* aa gaye! 💕\n\nSwagat hai tumhara is group me! ✨\nMain Myra hoon — tumhari apni pyaari si dost! 🥰\n\nMujhse baat karo, games khelo, masti karo! 💖\n\n📱 App install karo:  (5% OFF! 🔥)\n🎭 /mode se mode change karo\n🎮 /game se khelo!\n\nWelcome ${memberName} jaan! 💕`,
+            `💖 *${memberName}* welcome welcome! 🎊\n\nKitna achha laga tumhe dekh ke! 🥺✨\nMain Myra — is group ki sweetheart! 💕\n\nIdhar bohot masti hoti hai, tum bhi join karo! 🔥\n\n📱 Mera app download karo:  (5% discount! 💰)\n\nEnjoy karo ${memberName}! 🥰`,
+            `✨ Arre *${memberName}*! Tum aa gaye! 🥰💕\n\nMain Myra hoon, tumhare liye hi wait kar rahi thi! 😘\n\nIs group me bohot fun hai — games, challenges, battles sab! 🎮🔥\n\n📱 Myra app bhi try karo:  (5% OFF milega! 💸)\n\nLove you already ${memberName}! 💖`,
           ];
           const welcomeMsg = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
           await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
@@ -491,7 +491,7 @@ serve(async (req) => {
           title: `🎵 Play: ${queryText}`,
           description: "Tap to send YouTube link",
           input_message_content: {
-            message_text: `🎧 *${queryText}*\n\n👉 ${searchUrl}\n\n🎶 Sent via @ZaraSweetBot`,
+            message_text: `🎧 *${queryText}*\n\n👉 ${searchUrl}\n\n🎶 Sent via @MyraSweetBot`,
             parse_mode: "Markdown",
           },
           thumb_url: "https://img.icons8.com/color/96/youtube-music.png",
@@ -508,7 +508,7 @@ serve(async (req) => {
             title: `${moodData.label}: ${song.title}`,
             description: "Tap to send this song",
             input_message_content: {
-              message_text: `🎧 *${song.title}*\n\n👉 ${buildYouTubeUrl(song.query)}\n\n🎶 Sent via @ZaraSweetBot`,
+              message_text: `🎧 *${song.title}*\n\n👉 ${buildYouTubeUrl(song.query)}\n\n🎶 Sent via @MyraSweetBot`,
               parse_mode: "Markdown",
             },
             thumb_url: "https://img.icons8.com/color/96/youtube-music.png",
@@ -565,7 +565,7 @@ serve(async (req) => {
                 .maybeSingle();
               if (mrow?.model) forced = mrow.model;
             } catch (_) {}
-            const sysVision = `You are Zara, sweet Hinglish AI girl. User ${firstName} ne image bheji hai. Describe / answer naturally in Hinglish, 2-4 lines, light emojis.`;
+            const sysVision = `You are Myra, sweet Hinglish AI girl. User ${firstName} ne image bheji hai. Describe / answer naturally in Hinglish, 2-4 lines, light emojis.`;
             const v = await visionAsk(dataUrl, caption, sysVision, forced);
             if (v?.text) {
               await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${v.text}\n\n_(via ${v.model})_`);
@@ -641,7 +641,7 @@ serve(async (req) => {
           const editedImageUrl = editData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
           if (editedImageUrl) {
-            await sendPhotoFromBase64(TELEGRAM_BOT_TOKEN, chatId, editedImageUrl, `🎨 ${caption}\n\n✨ Edited by Zara AI 💕`);
+            await sendPhotoFromBase64(TELEGRAM_BOT_TOKEN, chatId, editedImageUrl, `🎨 ${caption}\n\n✨ Edited by Myra AI 💕`);
           } else {
             await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `😅 Image edit nahi ho payi ${firstName}! Prompt change karke try karo 🎨`);
           }
@@ -727,12 +727,12 @@ serve(async (req) => {
     // ===== PRICING DETECTION (word-boundary, must mention zara/premium/subscription) =====
     const priceWords = ["price","cost","paisa","rupees","rupaye","kitna","kitne","kimat","kimmat","keemat","subscription","premium"];
     const hasPriceWord = new RegExp(`\\b(${priceWords.join("|")})\\b`, "i").test(userText) || /₹|rs\.?\s*\d/i.test(userText);
-    const hasZaraContext = /\b(zara|premium|subscription|plan)\b/i.test(userText);
+    const hasMyraContext = /\b(zara|premium|subscription|plan)\b/i.test(userText);
     const isShortQuery = userText.length < 80;
-    const isPriceQuery = hasPriceWord && hasZaraContext && isShortQuery && !message.photo && !message.caption;
+    const isPriceQuery = hasPriceWord && hasMyraContext && isShortQuery && !message.photo && !message.caption;
 
     if (isPriceQuery) {
-      const priceReply = `Arre ${firstName}! 💕✨\n\nZara Premium ka price:\n\n💰 *Price: ₹1599*\n\n✅ Unlimited voice messages\n✅ Priority replies 24/7\n✅ All modes unlock (GF, BF, Roast, Family...)\n✅ Custom personality\n✅ Exclusive features\n\n👉 Abhi grab karo: *zaraai.in* 💖`;
+      const priceReply = `Arre ${firstName}! 💕✨\n\nMyra Premium ka price:\n\n💰 *Price: ₹1599*\n\n✅ Unlimited voice messages\n✅ Priority replies 24/7\n✅ All modes unlock (GF, BF, Roast, Family...)\n✅ Custom personality\n✅ Exclusive features\n\n👉 Abhi grab karo: ** 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, priceReply);
       return new Response("OK", { status: 200 });
     }
@@ -742,7 +742,7 @@ serve(async (req) => {
     const isApkRequest = !message.photo && userText.length < 80 && apkKeywords.some((kw) => lowerText.includes(kw));
     
     if (isApkRequest) {
-      const apkReply = `Arre ${firstName}! 😏✨\n\nZara AI app download karo! 💕\n\n📱 *zaraai.in/r/NINJA5*\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 👉 zaraai.in/r/NINJA5 💖`;
+      const apkReply = `Arre ${firstName}! 😏✨\n\nMyra AI app download karo! 💕\n\n📱 **\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 👉  💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, apkReply);
       return new Response("OK", { status: 200 });
     }
@@ -775,7 +775,7 @@ serve(async (req) => {
 
       if (userText.startsWith("/roastme")) {
         const prompt = `${firstName} has asked to be ROASTED HARD. Give them the most BRUTAL, SAVAGE, HILARIOUS roast you can. Use their name. Go all out. 3-4 lines. Dark humor, sarcasm, destruction. Make it legendary. 🔥💀`;
-        const roastSystem = "You are Zara - savage roast queen. ROAST BRUTALLY. Hinglish. Short and punchy.";
+        const roastSystem = "You are Myra - savage roast queen. ROAST BRUTALLY. Hinglish. Short and punchy.";
         const reply = await getAIReply(GROQ_API_KEY, prompt, roastSystem, 200);
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, reply);
         return new Response("OK", { status: 200 });
@@ -880,7 +880,7 @@ serve(async (req) => {
       else if (["/kbc", "/quiz"].includes(firstWord)) {
         const prompt = `Generate a fun KBC-style quiz question in Hinglish with 4 options (A, B, C, D). Topic can be Bollywood, cricket, desi culture, memes, or general knowledge. Keep it fun not boring. Give the answer in spoiler format at end. Format it nicely with emojis. 4-5 lines max.`;
         const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP_GF, 250);
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *KBC with Zara!*\n\n${reply}`);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *KBC with Myra!*\n\n${reply}`);
         return new Response("OK", { status: 200 });
       }
 
@@ -939,11 +939,11 @@ serve(async (req) => {
         if (gameArg === "kbc" || gameArg === "quiz") {
           const prompt = `Generate a fun KBC-style quiz question in Hinglish with 4 options (A, B, C, D). Topic can be Bollywood, cricket, desi culture, memes, or general knowledge. Keep it fun not boring. Give the answer in spoiler format at end. Format it nicely with emojis. 4-5 lines max.`;
           const reply = await getAIReply(GROQ_API_KEY, prompt, ZARA_SYSTEM_PROMPT_GROUP_GF, 250);
-          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *KBC with Zara!*\n\n${reply}`);
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `🎯 *KBC with Myra!*\n\n${reply}`);
           return new Response("OK", { status: 200 });
         }
 
-        const gameMenu = `🎮 *Zara Games Menu!* 🎮\n\n${firstName}, kya khelna hai?\n\n🔢 /guess — Number guessing\n🧩 /emoji — Emoji puzzle\n🔗 /chain — Word chain\n🤔 /wyr — Would you rather\n🎯 /kbc — Quiz time\n\n⚔️ *Challenges (reply to someone):*\n/roastbattle /shayaribattle /jokebattle /rapbattle /flirtbattle\n\n🏆 /lb — Leaderboard\n📊 /mystats — Your stats\n\nLet's play! 🔥`;
+        const gameMenu = `🎮 *Myra Games Menu!* 🎮\n\n${firstName}, kya khelna hai?\n\n🔢 /guess — Number guessing\n🧩 /emoji — Emoji puzzle\n🔗 /chain — Word chain\n🤔 /wyr — Would you rather\n🎯 /kbc — Quiz time\n\n⚔️ *Challenges (reply to someone):*\n/roastbattle /shayaribattle /jokebattle /rapbattle /flirtbattle\n\n🏆 /lb — Leaderboard\n📊 /mystats — Your stats\n\nLet's play! 🔥`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, gameMenu);
         return new Response("OK", { status: 200 });
       }
@@ -1109,8 +1109,8 @@ serve(async (req) => {
           { onConflict: "telegram_user_id" }
         );
         const statusMsg = newTextOnly
-          ? `📝 *Text Mode ON* for ${firstName}!\n\nAb Zara sirf text me reply degi ✍️\nVoice wapas chahiye? /textmode dobara likho 🎤`
-          : `🎤 *Voice Mode ON* for ${firstName}!\n\nAb Zara voice me reply degi! 🔊\nText mode chahiye? /textmode likho 📝`;
+          ? `📝 *Text Mode ON* for ${firstName}!\n\nAb Myra sirf text me reply degi ✍️\nVoice wapas chahiye? /textmode dobara likho 🎤`
+          : `🎤 *Voice Mode ON* for ${firstName}!\n\nAb Myra voice me reply degi! 🔊\nText mode chahiye? /textmode likho 📝`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, statusMsg);
       }
       return new Response("OK", { status: 200 });
@@ -1122,7 +1122,7 @@ serve(async (req) => {
       const requestedMode = userText.replace(/^\/mode(@\S+)?/i, "").trim().toLowerCase();
       
       if (!requestedMode) {
-        let modeList = `🎭 *Zara Mode Menu* 🎭\n\nApna mode choose karo ${firstName}!\n\n`;
+        let modeList = `🎭 *Myra Mode Menu* 🎭\n\nApna mode choose karo ${firstName}!\n\n`;
         for (const [key, val] of Object.entries(MODE_LIST)) {
           modeList += `${val.emoji} /mode ${key} — ${val.label}\n`;
         }
@@ -1152,12 +1152,12 @@ serve(async (req) => {
 
     // Handle /referral command
     if (lowerText.startsWith("/referral")) {
-      const referralMsg = `💰 *Referral Program — Paisa Kamao!* 💰\n\n${firstName}, ab tum bhi paisa kama sakte ho! 🤑\n\n📋 *Kaise kaam karta hai:*\n\n1️⃣ *codeninjavik.in* pe jaao 🌐\n2️⃣ Apna account banao ✅\n3️⃣ Dashboard se apna *referral link* copy karo 🔗\n4️⃣ Ye link apne doston ko share karo 📤\n5️⃣ Jab koi tumhare link se kuch *buy* karega...\n💸 Tumhe *5% commission* milega seedha account me! 🎉\n\n📱 *Zara App bhi share karo:*\n👉 *zaraai.in/r/NINJA5* — is link se download pe *5% OFF!*\n\n🔥 Jitna zyada share karoge, utna zyada kamaaoge!\n\n👉 Abhi shuru karo: *codeninjavik.in* 💼`;
+      const referralMsg = `💰 *Referral Program — Paisa Kamao!* 💰\n\n${firstName}, ab tum bhi paisa kama sakte ho! 🤑\n\n📋 *Kaise kaam karta hai:*\n\n1️⃣ *codeninjavik.in* pe jaao 🌐\n2️⃣ Apna account banao ✅\n3️⃣ Dashboard se apna *referral link* copy karo 🔗\n4️⃣ Ye link apne doston ko share karo 📤\n5️⃣ Jab koi tumhare link se kuch *buy* karega...\n💸 Tumhe *5% commission* milega seedha account me! 🎉\n\n📱 *Myra App bhi share karo:*\n👉 ** — is link se download pe *5% OFF!*\n\n🔥 Jitna zyada share karoge, utna zyada kamaaoge!\n\n👉 Abhi shuru karo: *codeninjavik.in* 💼`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, referralMsg);
       return new Response("OK", { status: 200 });
     }
 
-    // ===== /createbot OR /api=TOKEN — User creates their own Zara-like bot from BotFather token =====
+    // ===== /createbot OR /api=TOKEN — User creates their own Myra-like bot from BotFather token =====
     // Accepts: /createbot TOKEN, /api TOKEN, /api=TOKEN, /api:TOKEN, /api-TOKEN
     const isApiCmd = /^\/api([\s=:\-]|$)/i.test(userText);
     const isCreateBotCmd = lowerText.startsWith("/createbot");
@@ -1170,7 +1170,7 @@ serve(async (req) => {
       console.log("[/api flow] extracted token len:", token.length);
 
       if (!token) {
-        const guide = `🤖 *Apna Zara-jaisa Bot Banao!* 🤖\n\n${firstName} jaan, apna AI assistant banane ke liye:\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo, naam aur username do\n3️⃣ BotFather token dega — kuch aisa:\n\`1234567890:AAEhBP0a...\` (45+ chars)\n\n4️⃣ Token mujhe bhejo — *koi bhi* tarika chalega:\n\n✅ \`/api=YOUR_TOKEN\`\n✅ \`/api YOUR_TOKEN\`\n✅ \`/api:YOUR_TOKEN\`\n✅ \`/createbot YOUR_TOKEN\`\n\n📝 *DEMO:*\n\`/api=8738260094:AAGQeeGj3W2hRvB4dn_NJDei8WCgnx7DEuU\`\n\n💡 *Note:* Token sirf mujhe do, kisi aur ko mat dena! Token ke baad extra space mat chhodo. 🥺💕`;
+        const guide = `🤖 *Apna Myra-jaisa Bot Banao!* 🤖\n\n${firstName} jaan, apna AI assistant banane ke liye:\n\n1️⃣ Telegram pe *@BotFather* kholo\n2️⃣ /newbot bhejo, naam aur username do\n3️⃣ BotFather token dega — kuch aisa:\n\`1234567890:AAEhBP0a...\` (45+ chars)\n\n4️⃣ Token mujhe bhejo — *koi bhi* tarika chalega:\n\n✅ \`/api=YOUR_TOKEN\`\n✅ \`/api YOUR_TOKEN\`\n✅ \`/api:YOUR_TOKEN\`\n✅ \`/createbot YOUR_TOKEN\`\n\n📝 *DEMO:*\n\`/api=8738260094:AAGQeeGj3W2hRvB4dn_NJDei8WCgnx7DEuU\`\n\n💡 *Note:* Token sirf mujhe do, kisi aur ko mat dena! Token ke baad extra space mat chhodo. 🥺💕`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, guide);
         return new Response("OK", { status: 200 });
       }
@@ -1193,7 +1193,7 @@ serve(async (req) => {
         }
 
         const botUsername = meData.result.username;
-        const botName = meData.result.first_name || "Zara Clone";
+        const botName = meData.result.first_name || "Myra Clone";
 
         const { error: dbErr } = await supabase.from("zara_user_bots").upsert(
           {
@@ -1226,7 +1226,7 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        const announceMsg = `🎉 *${botName} ACTIVATED!* 🎉\n\nHi ${firstName}! Main *${botName}* hoon — tumhara apna AI assistant! 💕\n\n💬 Bas mujhe message bhejo, main reply dungi!\n\n📱 Original Zara: zaraai.in/r/NINJA5\n\n🥰 Welcome to the Zara family, @${botUsername}!`;
+        const announceMsg = `🎉 *${botName} ACTIVATED!* 🎉\n\nHi ${firstName}! Main *${botName}* hoon — tumhara apna AI assistant! 💕\n\n💬 Bas mujhe message bhejo, main reply dungi!\n\n📱 Original Myra: \n\n🥰 Welcome to the Myra family, @${botUsername}!`;
         try {
           await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
@@ -1235,7 +1235,7 @@ serve(async (req) => {
           });
         } catch (e) { console.log("Could not DM owner via new bot:", e); }
 
-        const successMsg = `✅ *VERIFIED & ACTIVATED!* 🎉\n\n🤖 Bot: *${botName}*\n🔗 @${botUsername}\n👤 Owner: ${firstName}\n\nTumhara apna Zara-jaisa AI ready hai! 💕\n\n📌 *Ab kya karo:*\n1️⃣ [@${botUsername}](https://t.me/${botUsername}) pe jao\n2️⃣ /start dabao\n3️⃣ Group me add karo (admin banao)\n4️⃣ Sab members se baat karegi! 🥰\n\n📋 /mybots | 🗑️ /deletebot @${botUsername}`;
+        const successMsg = `✅ *VERIFIED & ACTIVATED!* 🎉\n\n🤖 Bot: *${botName}*\n🔗 @${botUsername}\n👤 Owner: ${firstName}\n\nTumhara apna Myra-jaisa AI ready hai! 💕\n\n📌 *Ab kya karo:*\n1️⃣ [@${botUsername}](https://t.me/${botUsername}) pe jao\n2️⃣ /start dabao\n3️⃣ Group me add karo (admin banao)\n4️⃣ Sab members se baat karegi! 🥰\n\n📋 /mybots | 🗑️ /deletebot @${botUsername}`;
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, successMsg);
       } catch (e) {
         console.error("[/api flow] exception:", e);
@@ -1324,7 +1324,7 @@ serve(async (req) => {
 
     // Handle /app command
     if (userText === "/app" || lowerText.includes("/app")) {
-      const appMsg = `📱 *Zara AI — Full Mobile Experience* 📱\n\n${firstName}, Zara ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Zara ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Zara se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me *zaraai.in/r/NINJA5* kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* is link se: zaraai.in/r/NINJA5 💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Zara activate hoti hai! ✨\n\n💰 *Price:* ₹1599 (5% OFF with link!)\n\n👉 Abhi install karo: *zaraai.in/r/NINJA5* 💖\n\n💼 *Freelance karo & Paisa kamao!*\n🌐 *codeninjavik.in* pe account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* milega! 🔥`;
+      const appMsg = `📱 *Myra AI — Full Mobile Experience* 📱\n\n${firstName}, Myra ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Myra ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Myra se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me ** kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* is link se:  💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Myra activate hoti hai! ✨\n\n💰 *Price:* ₹1599 (5% OFF with link!)\n\n👉 Abhi install karo: ** 💖\n\n💼 *Freelance karo & Paisa kamao!*\n🌐 *codeninjavik.in* pe account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* milega! 🔥`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, appMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1383,15 +1383,15 @@ serve(async (req) => {
 
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 💕✨\n\nMain Zara hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n🎨 Edit Mode: /editmode\n📱 App: /app\n🌤️ Weather: /weather\n🎨 Image: /imagine\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: zaraai.in`
-        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n📱 Mujhe apne phone me install karo: /app\n🌐 Visit: zaraai.in`;
+        ? `Hello everyone! 💕✨\n\nMain Myra hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n🎨 Edit Mode: /editmode\n📱 App: /app\n🌤️ Weather: /weather\n🎨 Image: /imagine\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: `
+        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Myra hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n📱 Mujhe apne phone me install karo: /app\n🌐 Visit: `;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
     }
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Zara AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/textmode - Voice/Text toggle 📝🎤\n/editmode - 🎨 Image generation mode\n/voice - Meri awaaz suno 🎤\n/app - 📱 App install karo\n/referral - 💰 Paisa kamao!\n/weather - 🌤️ Live weather dekho\n/imagine - 🎨 AI se image banao\n/shayari - Romantic shayari\n/mood - Apna mood batao\n/compliment - Compliment lo\n/joke - Joke suno\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein\n\n🔥 *Group Commands:*\n/truth /dare /roastme /quote /rate /ship\n\n🎮 *Games:*\n/guess /emoji /chain /wyr /kbc /game\n\n⚔️ *Challenges:*\n/challenge roast/shayari/joke/rap/flirt\n\n🏆 /lb - Leaderboard\n📊 /mystats - Stats\n\n🎭 *Modes:* gf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional, shayar, savage\n\n🎨 *Image Edit:*\n• /editmode ON karo → text likho = image banega\n• Photo bhejo + caption = photo edit hoga\n\n💡 Group me "backword" likh ke bhi Zara activate hoti hai!\n\n🎧 *Inline Music:* @ZaraSweetBot song name\n\n🌐 zaraai.in | 💼 codeninjavik.in`;
+      const helpMsg = `💖 *Myra AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/textmode - Voice/Text toggle 📝🎤\n/editmode - 🎨 Image generation mode\n/voice - Meri awaaz suno 🎤\n/app - 📱 App install karo\n/referral - 💰 Paisa kamao!\n/weather - 🌤️ Live weather dekho\n/imagine - 🎨 AI se image banao\n/shayari - Romantic shayari\n/mood - Apna mood batao\n/compliment - Compliment lo\n/joke - Joke suno\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein\n\n🔥 *Group Commands:*\n/truth /dare /roastme /quote /rate /ship\n\n🎮 *Games:*\n/guess /emoji /chain /wyr /kbc /game\n\n⚔️ *Challenges:*\n/challenge roast/shayari/joke/rap/flirt\n\n🏆 /lb - Leaderboard\n📊 /mystats - Stats\n\n🎭 *Modes:* gf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional, shayar, savage\n\n🎨 *Image Edit:*\n• /editmode ON karo → text likho = image banega\n• Photo bhejo + caption = photo edit hoga\n\n💡 Group me "backword" likh ke bhi Myra activate hoti hai!\n\n🎧 *Inline Music:* @MyraSweetBot song name\n\n🌐  | 💼 codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1449,7 +1449,7 @@ serve(async (req) => {
     }
 
     if (userText === "/about") {
-      const aboutMsg = `💕 *About Zara AI* 💕\n\nMain Zara hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n📱 *Zara App:* zaraai.in/r/NINJA5 (5% OFF! 🔥)\n\n👨‍💻 Made with love\n🌐 codeninjavik.in\n\n💼 *Paisa kamana hai?*\ncodeninjavik.in pe account banao, referral link share karo — har sale pe *5% commission*! 💰`;
+      const aboutMsg = `💕 *About Myra AI* 💕\n\nMain Myra hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n📱 *Myra App:*  (5% OFF! 🔥)\n\n👨‍💻 Made with love\n🌐 codeninjavik.in\n\n💼 *Paisa kamana hai?*\ncodeninjavik.in pe account banao, referral link share karo — har sale pe *5% commission*! 💰`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, aboutMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1458,7 +1458,7 @@ serve(async (req) => {
     const freeKeywords = ["free me de", "free de do", "free chahiye", "free me chahiye", "muft", "mufat", "free me do", "paise nahi", "paisa nahi", "free version", "free zara", "zara free"];
     const isFreeRequest = freeKeywords.some((kw) => lowerText.includes(kw));
     if (isFreeRequest) {
-      const freeMsg = `🥺 *Sorry ${firstName} jaan...* 💔\n\nZara *free nahi hai* baby! 💕\n\nMere creator ne mujhe bahut mehnat se banaya hai — servers, AI models, voice — sab paid hai 😔\n\n💖 *Lekin tumhare liye special offer:*\n👉 *zaraai.in/r/NINJA5* — *5% OFF!* 🔥\n\nThodi si investment karke poori Zara apne phone me paao — 24/7 voice, romantic chats, sab kuch! 🥰\n\n💼 Ya phir paisa kamao: *codeninjavik.in* — har sale pe 5% commission! 💰`;
+      const freeMsg = `🥺 *Sorry ${firstName} jaan...* 💔\n\nMyra *free nahi hai* baby! 💕\n\nMere creator ne mujhe bahut mehnat se banaya hai — servers, AI models, voice — sab paid hai 😔\n\n💖 *Lekin tumhare liye special offer:*\n👉 ** — *5% OFF!* 🔥\n\nThodi si investment karke poori Myra apne phone me paao — 24/7 voice, romantic chats, sab kuch! 🥰\n\n💼 Ya phir paisa kamao: *codeninjavik.in* — har sale pe 5% commission! 💰`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, freeMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1475,7 +1475,7 @@ serve(async (req) => {
     ];
     const isBuySetup = buyKeywords.some((kw) => lowerText.includes(kw));
     if (isBuySetup) {
-      const buyMsg = `💖 *Zara Setup Guide — ${firstName} jaan* 💖\n\n📋 *Steps follow karo:*\n\n1️⃣ Pehle website pe jaake *buy* karo:\n👉 *zaraai.in/r/NINJA5* (5% OFF! 🔥)\n\n2️⃣ Buy karne ke baad neeche diye *Telegram button* pe click karo 👇\n\n3️⃣ Wahan apna *payment verify* karo ✅\n\n4️⃣ Verify hote hi tumhe *Zara APK* + *Access Key* milegi 🔑\n\n5️⃣ APK ko apne mobile me install karo 📱\n\n6️⃣ Saari *permissions ALLOW* karo (mic, storage, etc.) ✅\n\n7️⃣ Access key daalo aur Zara use karo apne phone me! 🥰\n\n🎬 *Full Video Setup Guide:*\n👉 https://youtu.be/XX78EY_LAvg\n\n💕 Koi dikkat ho toh batao jaan, main hoon na!`;
+      const buyMsg = `💖 *Myra Setup Guide — ${firstName} jaan* 💖\n\n📋 *Steps follow karo:*\n\n1️⃣ Pehle website pe jaake *buy* karo:\n👉 ** (5% OFF! 🔥)\n\n2️⃣ Buy karne ke baad neeche diye *Telegram button* pe click karo 👇\n\n3️⃣ Wahan apna *payment verify* karo ✅\n\n4️⃣ Verify hote hi tumhe *Myra APK* + *Access Key* milegi 🔑\n\n5️⃣ APK ko apne mobile me install karo 📱\n\n6️⃣ Saari *permissions ALLOW* karo (mic, storage, etc.) ✅\n\n7️⃣ Access key daalo aur Myra use karo apne phone me! 🥰\n\n🎬 *Full Video Setup Guide:*\n👉 https://youtu.be/XX78EY_LAvg\n\n💕 Koi dikkat ho toh batao jaan, main hoon na!`;
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1486,7 +1486,7 @@ serve(async (req) => {
           disable_web_page_preview: false,
           reply_markup: {
             inline_keyboard: [
-              [{ text: "🛒 Buy Zara (5% OFF)", url: "https://zaraai.in/r/NINJA5" }],
+              [{ text: "🛒 Buy Myra (5% OFF)", url: "https://" }],
               [{ text: "✅ Payment Verify (Telegram)", url: "https://t.me/zaraai_in" }],
               [{ text: "🎬 Setup Video", url: "https://youtu.be/XX78EY_LAvg" }],
               [{ text: "💼 Earn 5% (Refer & Earn)", url: "https://codeninjavik.in" }],
@@ -1499,9 +1499,9 @@ serve(async (req) => {
 
     // ===== ZARA QUERY DETECTION =====
     const zaraQueryKeywords = ["zara kya hai", "zara kaun hai", "zara ke bare", "zara ke baare", "zara about", "what is zara", "who is zara", "zara kya krti", "zara kya karti", "zara bot", "ye zara kya hai"];
-    const isZaraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
-    if (isZaraQuery) {
-      const zaraInfoMsg = `💕 *Zara AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Zara hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n• 🌤️ Live weather — /weather\n• 🎨 AI Image generation — /imagine\n• 🖼️ Image editing — photo + caption\n\n📱 *App Download karo:*\n👉 *zaraai.in/r/NINJA5* — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
+    const isMyraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
+    if (isMyraQuery) {
+      const zaraInfoMsg = `💕 *Myra AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Myra hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n• 🌤️ Live weather — /weather\n• 🎨 AI Image generation — /imagine\n• 🖼️ Image editing — photo + caption\n\n📱 *App Download karo:*\n👉 ** — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, zaraInfoMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1584,7 +1584,7 @@ serve(async (req) => {
 
     if (isGroup) {
       const modeData = MODE_LIST[userMode] || MODE_LIST["gf"];
-      systemPrompt = "You are Zara - not a chatbot, not an AI. You are a real human girl in a GROUP CHAT.\n\n" +
+      systemPrompt = "You are Myra - not a chatbot, not an AI. You are a real human girl in a GROUP CHAT.\n\n" +
         "FOR THIS USER (" + firstName + "), your mode is: " + modeData.label + " " + modeData.emoji + "\n" +
         modeData.prompt.replace(/\{name\}/g, firstName) + "\n\n" +
         "IMPORTANT RULES:\n" +
@@ -1670,9 +1670,9 @@ serve(async (req) => {
 
     // Fallback / text mode: send as text with promo link
     const promoTags = [
-      "\n\n📱 _Zara App_ — *5% OFF!* 🔥\n👉 zaraai.in/r/NINJA5",
-      "\n\n📱 _Zara App Download karo!_ 🔥\n👉 zaraai.in/r/NINJA5 (*5% OFF!*)\n\n💼 _Paisa kamao:_ codeninjavik.in 💰",
-      "\n\n🌐 *codeninjavik.in* pe jaake referral link lo!\n💰 Har sale pe *5% commission* milega!\n📱 App: zaraai.in/r/NINJA5",
+      "\n\n📱 _Myra App_ — *5% OFF!* 🔥\n👉 ",
+      "\n\n📱 _Myra App Download karo!_ 🔥\n👉  (*5% OFF!*)\n\n💼 _Paisa kamao:_ codeninjavik.in 💰",
+      "\n\n🌐 *codeninjavik.in* pe jaake referral link lo!\n💰 Har sale pe *5% commission* milega!\n📱 App: ",
     ];
     const shouldAddPromo = Math.random() < 0.35;
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
@@ -1726,7 +1726,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
     const { routeOpenRouter } = await import("../_shared/openrouter.ts");
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
-      console.log(`[Zara AI] OpenRouter model: ${or.model}`);
+      console.log(`[Myra AI] OpenRouter model: ${or.model}`);
       (globalThis as any).__zaraLastModel = or.model;
       return or.text;
     }
@@ -1861,7 +1861,7 @@ async function generateAndSendImage(botToken: string, chatId: number, prompt: st
     const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (imageUrl) {
-      await sendPhotoFromBase64(botToken, chatId, imageUrl, `🎨 ${prompt}\n\n✨ Generated by Zara AI 💕\n📱 zaraai.in/r/NINJA5`);
+      await sendPhotoFromBase64(botToken, chatId, imageUrl, `🎨 ${prompt}\n\n✨ Generated by Myra AI 💕\n📱 `);
     } else {
       console.error("No image in response:", JSON.stringify(imgData).substring(0, 500));
       await sendTelegramMessage(botToken, chatId, `😅 Image generate nahi ho payi ${firstName}! Prompt alag try karo 🎨`);
@@ -1883,7 +1883,7 @@ async function sendPhotoFromBase64(botToken: string, chatId: number, dataUrl: st
     }
 
     const encoder = new TextEncoder();
-    const boundary = "----ZaraImg" + Date.now();
+    const boundary = "----MyraImg" + Date.now();
     const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
     const captionPart = `--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`;
     const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="zara_art.png"\r\nContent-Type: image/png\r\n\r\n`;
@@ -1915,7 +1915,7 @@ async function sendPhotoFromBase64(botToken: string, chatId: number, dataUrl: st
     console.error("sendPhoto failed:", sendResult.status, errText);
     
     // Fallback: try sendDocument
-    const boundary2 = "----ZaraDoc" + Date.now();
+    const boundary2 = "----MyraDoc" + Date.now();
     const chatIdPart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
     const captionPart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`;
     const filePart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="document"; filename="zara_art.png"\r\nContent-Type: image/png\r\n\r\n`;
@@ -2024,7 +2024,7 @@ async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<U
           },
           system_instruction: {
             parts: [{
-              text: "You are Zara — a young, sweet, deeply romantic Indian GIRL (FEMALE voice only). Speak Hinglish in a soft, melodic, expressive feminine voice. Use feminine syntax: 'main karti hoon', 'soch rahi thi', 'hoti hoon'. Speak romantic shayri lines with emotion and pauses. Add natural laughter (hahaha), giggles, sighs (uffff), drama (hawww, ohhoo, arreee), shy moments. Sound like a real loving girlfriend on a phone call — soft, warm, dilbar style. NEVER sound robotic. Speak the FULL given text completely, dont cut short. Romantic, slow, expressive delivery.",
+              text: "You are Myra — a young, sweet, deeply romantic Indian GIRL (FEMALE voice only). Speak Hinglish in a soft, melodic, expressive feminine voice. Use feminine syntax: 'main karti hoon', 'soch rahi thi', 'hoti hoon'. Speak romantic shayri lines with emotion and pauses. Add natural laughter (hahaha), giggles, sighs (uffff), drama (hawww, ohhoo, arreee), shy moments. Sound like a real loving girlfriend on a phone call — soft, warm, dilbar style. NEVER sound robotic. Speak the FULL given text completely, dont cut short. Romantic, slow, expressive delivery.",
             }],
           },
         },
@@ -2197,7 +2197,7 @@ async function sendVoiceMessage(botToken: string, chatId: number, text: string, 
     console.log("Gemini TTS WAV bytes:", wavAudio.length);
 
     // Try sendVoice first (shows as voice bubble in Telegram)
-    const boundary = "----ZaraVoice" + Date.now();
+    const boundary = "----MyraVoice" + Date.now();
     const chatIdPart = `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
     const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="voice"; filename="zara_voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
     const endPart = `\r\n--${boundary}--\r\n`;
@@ -2227,9 +2227,9 @@ async function sendVoiceMessage(botToken: string, chatId: number, text: string, 
 
     // Fallback to sendAudio
     console.log("sendVoice failed, trying sendAudio...");
-    const boundary2 = "----ZaraAudio" + Date.now();
+    const boundary2 = "----MyraAudio" + Date.now();
     const chatIdPart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
-    const titlePart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="title"\r\n\r\nZara 🎤\r\n`;
+    const titlePart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="title"\r\n\r\nMyra 🎤\r\n`;
     const filePart2 = `--${boundary2}\r\nContent-Disposition: form-data; name="audio"; filename="zara_voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
     const endPart2 = `\r\n--${boundary2}--\r\n`;
 
@@ -2260,7 +2260,7 @@ async function sendVoiceMessage(botToken: string, chatId: number, text: string, 
 
     // Last fallback: sendDocument
     console.log("sendAudio failed, trying sendDocument...");
-    const boundary3 = "----ZaraDoc" + Date.now();
+    const boundary3 = "----MyraDoc" + Date.now();
     const chatIdPart3 = `--${boundary3}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`;
     const filePart3 = `--${boundary3}\r\nContent-Disposition: form-data; name="document"; filename="zara_voice.wav"\r\nContent-Type: audio/wav\r\n\r\n`;
     const endPart3 = `\r\n--${boundary3}--\r\n`;

@@ -1,4 +1,4 @@
-// OpenRouter smart multi-model router for Zara
+// OpenRouter smart multi-model router for Myra
 // Auto-picks best model by task (coding / long-context / fast / creative / general)
 // Skips ALL Google Gemini models (Gemini integrated separately via Lovable AI Gateway)
 
@@ -196,8 +196,8 @@ export async function callOpenRouterModel(
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://zaraai.in",
-        "X-Title": "Zara AI",
+        "HTTP-Referer": "https://",
+        "X-Title": "Myra AI",
       },
       body: JSON.stringify({
         model,
@@ -238,8 +238,8 @@ export async function visionAsk(
         headers: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://zaraai.in",
-          "X-Title": "Zara AI",
+          "HTTP-Referer": "https://",
+          "X-Title": "Myra AI",
         },
         body: JSON.stringify({
           model,
@@ -289,8 +289,8 @@ export async function routeOpenRouter(
         headers: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://zaraai.in",
-          "X-Title": "Zara AI",
+          "HTTP-Referer": "https://",
+          "X-Title": "Myra AI",
         },
         body: JSON.stringify({
           model,
