@@ -1767,38 +1767,55 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
     }
   }
 
-  // Fallback: Lovable AI Gateway (Gemini)
+  // Fallback: Lovable AI Gateway — rotate through several models on limit/error
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (LOVABLE_API_KEY) {
-    try {
-      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-          ...(maxTokens ? { max_tokens: maxTokens } : {}),
-        }),
-      });
-      if (r.ok) {
+    const lovableChain = [
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-flash-lite",
+      "openai/gpt-5-mini",
+      "openai/gpt-5-nano",
+      "google/gemini-2.5-pro",
+    ];
+    for (const model of lovableChain) {
+      try {
+        const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage },
+            ],
+            ...(maxTokens ? { max_tokens: Math.max(maxTokens, 400) } : { max_tokens: 600 }),
+          }),
+        });
+        if (r.status === 429 || r.status === 402) {
+          console.error(`Lovable AI ${model} limit hit (${r.status}), switching model`);
+          continue;
+        }
+        if (!r.ok) {
+          console.error(`Lovable AI ${model} error:`, r.status);
+          continue;
+        }
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
-        if (txt) { (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash"; return txt; }
-      } else {
-        console.error("Lovable AI error:", r.status);
+        if (txt && txt.trim()) {
+          (globalThis as any).__zaraLastModel = model;
+          return txt;
+        }
+      } catch (e) {
+        console.error(`Lovable AI ${model} exception:`, e);
       }
-    } catch (e) {
-      console.error("Lovable AI exception:", e);
     }
   }
 
-  return "Hehe 😄 Ek baar phir bolo na jaan, sun nahi paayi! 💕";
+  // Final fallback: direct Gemini API
+  const direct = await getGeminiTextReply(userMessage, systemPrompt, maxTokens || 600);
+  if (direct) return direct;
+
+  return "Ek sec ruko jaan 😅 sab models thode busy hain — dobara try karo!";
 }
 
 async function sendChatAction(token: string, chatId: number, action: string) {
