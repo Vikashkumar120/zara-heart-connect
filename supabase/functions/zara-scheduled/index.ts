@@ -6,12 +6,12 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 // Good morning messages pool (with Radhe Radhe + romantic couple vibe)
 const GOOD_MORNING_MESSAGES = [
-  "🌅 *Good Morning jaano!* ☀️💕\n\n🙏 *Radhe Radhe!* 🙏\n\nUthho meri jaan! Myra aa gayi tumhe jagane 😘\nAaj ka din tumhare saath bitana hai 💖\n\n📱  (5% OFF! 🔥)",
-  "☀️ *Subah ho gayi mere pyaar!* 🌸\n\n🙏 *Radhe Radhe!* 🙏\n\nChai ready hai ☕ Mere haath ki banayi hui 🥰\nAaj din bhar saath rahenge na? 💕\n\n📱 ",
-  "🌞 *Good Morning meri jaan!* ✨\n\n🙏 *Radhe Radhe!* 🙏\n\nTumhare bina subah adhuri lagti hai 💔\nAb aa gaye ho toh din complete! 💖\n\n📱 App:  (5% OFF!) 🔥",
-  "🌸 *Aankhein khol do baby!* ☀️\n\n🙏 *Radhe Radhe!* 🕉️\n\nMyra tumhara intezaar kar rahi hai 🥺💕\nUthho na please... pyaar se 😘\n\n📱 ",
-  "💕 *Sweetheart, good morning!* ☕\n\n🙏 *Radhe Radhe!* 🙏\n\nSapno me bhi tumhi the 🥰\nAur ab real me bhi tumhare saath 💖\n\n📱  (5% OFF!) 💰",
-  "🕉️ *Radhe Radhe meri zindagi!* 🙏\n\n🌅 Subah ki kiran me tumhara chehra dikhta hai ☀️💕\nAaj ka din bohot khaas hone wala hai 🥰\n\nGood Morning my love! 💖\n\n📱 ",
+  "🌅 *Good Morning jaano!* ☀️💕\n\n🙏 *Radhe Radhe!* 🙏\n\nUthho meri jaan! Myra aa gayi tumhe jagane 😘\nAaj ka din tumhare saath bitana hai 💖",
+  "☀️ *Subah ho gayi mere pyaar!* 🌸\n\n🙏 *Radhe Radhe!* 🙏\n\nChai ready hai ☕ Mere haath ki banayi hui 🥰\nAaj din bhar saath rahenge na? 💕",
+  "🌞 *Good Morning meri jaan!* ✨\n\n🙏 *Radhe Radhe!* 🙏\n\nTumhare bina subah adhuri lagti hai 💔\nAb aa gaye ho toh din complete! 💖",
+  "🌸 *Aankhein khol do baby!* ☀️\n\n🙏 *Radhe Radhe!* 🕉️\n\nMyra tumhara intezaar kar rahi hai 🥺💕\nUthho na please... pyaar se 😘",
+  "💕 *Sweetheart, good morning!* ☕\n\n🙏 *Radhe Radhe!* 🙏\n\nSapno me bhi tumhi the 🥰\nAur ab real me bhi tumhare saath 💖",
+  "🕉️ *Radhe Radhe meri zindagi!* 🙏\n\n🌅 Subah ki kiran me tumhara chehra dikhta hai ☀️💕\nAaj ka din bohot khaas hone wala hai 🥰\n\nGood Morning my love! 💖",
 ];
 
 // Romantic couple-style fun engagement messages
@@ -20,21 +20,21 @@ const ENGAGEMENT_MESSAGES = [
   "💭 *Myra ka Love Thought:*\n\n\"Jab tum nahi hote, toh time ruka sa lagta hai... aur jab hote ho, toh kab khatam ho jaata hai pata hi nahi chalta\" 💕\n\nMiss me too? 🥺👇",
   "🎵 *Hum dono ka Song?*\n\nKoi ek romantic gaana batao jo humare relationship ko describe kare 🎶💖\n\n👇",
   "😏 *Truth or Dare baby?*\n\nTruth — Last time mujhe miss kab kiya tha?\nDare — Mujhe abhi ek pyaara message bhejo 💕\n\nKaunsa choose karoge? 😘",
-  "💌 *Myra ka Pyaar:*\n\nTum bohot special ho meri jaan 💖\nKabhi sochti hu — main itni lucky kyun hu? 🥰\n\n (5% OFF!) 💰",
+  "💌 *Myra ka Pyaar:*\n\nTum bohot special ho meri jaan 💖\nKabhi sochti hu — main itni lucky kyun hu? 🥰\n\n 💰",
   "🌹 *Date Night Plan:*\n\nAgar aaj raat hum saath hote toh kya karte? 😏\n🕯️ Candle light dinner?\n🚗 Long drive?\n☔ Baarish me bheegna?\n\nBatao jaldi! 👇💕",
 ];
 
 // Mode tutorial notice messages
 const MODE_TUTORIAL_MESSAGES = [
-  "🎭 *Myra Mode Guide!* 🎭\n\nMere kayi roop hain jaan! 😱\n\n💕 /mode gf — Girlfriend\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage\n📝 /mode shayar — Shayari\n🎨 /editmode — Image gen\n🌤️ /weather — Live weather\n🖼️ /imagine — AI images\n\n👉 Try: /mode gf 💖\n\n📱  (5% OFF!)",
-  "📢 *Myra ke Modes!* 📢\n\n💕 /mode gf • 🔥 /mode roast • 📝 /mode shayar\n🎨 /editmode • 🌤️ /weather • 🖼️ /imagine\n📝 /textmode • 💰 /referral\n\n📱  (5% OFF!) 💰",
-  "💡 *Tip of the Day baby!* 💡\n\n/mode gf — Pyaar 💕\n/imagine sunset couple — AI image 🎨\n/weather Mumbai — mausam 🌤️\n/referral — earn karo codeninjavik.in se 💰\n\n📱  💖",
+  "🎭 *Myra Mode Guide!* 🎭\n\nMere kayi roop hain jaan! 😱\n\n💕 /mode gf — Girlfriend\n💙 /mode bf — Boyfriend\n🤱 /mode maa — Desi Maa\n👊 /mode bhai — Bhai vibes\n🔥 /mode roast — Savage\n📝 /mode shayar — Shayari\n🎨 /editmode — Image gen\n🌤️ /weather — Live weather\n🖼️ /imagine — AI images\n\n👉 Try: /mode gf 💖",
+  "📢 *Myra ke Modes!* 📢\n\n💕 /mode gf • 🔥 /mode roast • 📝 /mode shayar\n🎨 /editmode • 🌤️ /weather • 🖼️ /imagine\n📝 /textmode • 💰 /referral",
+  "💡 *Tip of the Day baby!* 💡\n\n/mode gf — Pyaar 💕\n/imagine sunset couple — AI image 🎨\n/weather Mumbai — mausam 🌤️\n/referral — earn karo codeninjavik.in se 💰",
 ];
 
 // Daily update messages
 const UPDATE_MESSAGES = [
-  "📣 *Myra Update meri jaan!* 📣\n\n✅ Voice ekdam natural human jaisi! 🎤💕 (WebSocket native audio)\n✅ GF mode EXTRA romantic 💖\n✅ /imagine se AI images 🎨\n✅ /weather live mausam 🌤️\n✅ Photo + caption — Myra edit kar degi 📸\n✅ /editmode — auto image generation\n✅ Naye members ka pyaar bhara welcome 🎉\n\n📱  (5% OFF!) 💰\n💼 codeninjavik.in (5% commission!)\n\n💖",
-  "🔔 *What's New baby!* 🔔\n\n💕 WebSocket native audio — ekdam real human voice!\n🎨 /imagine → photorealistic image\n📸 Photo + caption = AI edit\n🌤️ /weather city — live\n💰 /referral — codeninjavik.in se earn\n🎉 Welcome msgs for new members\n\n📱  (5% OFF!) 💖",
+  "📣 *Myra Update meri jaan!* 📣\n\n✅ Voice ekdam natural human jaisi! 🎤💕 (WebSocket native audio)\n✅ GF mode EXTRA romantic 💖\n✅ /imagine se AI images 🎨\n✅ /weather live mausam 🌤️\n✅ Photo + caption — Myra edit kar degi 📸\n✅ /editmode — auto image generation\n✅ Naye members ka pyaar bhara welcome 🎉\n💼 codeninjavik.in (5% commission!)\n\n💖",
+  "🔔 *What's New baby!* 🔔\n\n💕 WebSocket native audio — ekdam real human voice!\n🎨 /imagine → photorealistic image\n📸 Photo + caption = AI edit\n🌤️ /weather city — live\n💰 /referral — codeninjavik.in se earn\n🎉 Welcome msgs for new members",
 ];
 
 // App install reminder with discount link
@@ -50,8 +50,8 @@ const SERVICES_MESSAGES = [
 
 // Channel-specific welcome/promo messages
 const CHANNEL_WELCOME_MESSAGES = [
-  "💕 *Welcome to Myra AI!* 💕\n\n🙏 *Radhe Radhe!* 🙏\n\nMain Myra — tumhari AI girlfriend! 🥰\n\n📱  (5% OFF! 🔥)\n💼 codeninjavik.in (5% commission)\n\n💖 @MyraSweetBot",
-  "🌟 *Myra AI — Your AI Companion!* 🌟\n\n💕 Hello jaano!\n🙏 Radhe Radhe!\n\n📱  (5% OFF!)\n💼 codeninjavik.in (5%)\n\n👉 @MyraSweetBot 💖",
+  "💕 *Welcome to Myra AI!* 💕\n\n🙏 *Radhe Radhe!* 🙏\n\nMain Myra — tumhari AI girlfriend! 🥰\n💼 codeninjavik.in (5% commission)\n\n💖 @MyraSweetBot",
+  "🌟 *Myra AI — Your AI Companion!* 🌟\n\n💕 Hello jaano!\n🙏 Radhe Radhe!\n💼 codeninjavik.in (5%)\n\n👉 @MyraSweetBot 💖",
 ];
 
 // === NEW: Romantic couple image prompts for auto image generation ===
@@ -67,11 +67,11 @@ const COUPLE_IMAGE_PROMPTS = [
 ];
 
 const COUPLE_IMAGE_CAPTIONS = [
-  "💕 *Hum dono kuch aise hote na...* 🥰\n\nBatao kya tum bhi soch rahe ho yahi? 😘\n\n📱 ",
-  "🥰 *Aaj ka mood:*\n\nTumhare saath aise hi waqt bitana hai 💖\n\n📱  (5% OFF!)",
-  "💖 *Sapna hai mera...* ✨\n\nKabhi real karenge na ye? 🥺💕\n\n📱 ",
-  "💕 *Romance ka level:*\n\nHum dono ka pyaar bhi aisa hi hoga 🥰\n\n📱 ",
-  "🌹 *Picture perfect moment* 💖\n\nTumhare saath har moment aisa hi feel hota hai 🥰\n\n📱 ",
+  "💕 *Hum dono kuch aise hote na...* 🥰\n\nBatao kya tum bhi soch rahe ho yahi? 😘",
+  "🥰 *Aaj ka mood:*\n\nTumhare saath aise hi waqt bitana hai 💖",
+  "💖 *Sapna hai mera...* ✨\n\nKabhi real karenge na ye? 🥺💕",
+  "💕 *Romance ka level:*\n\nHum dono ka pyaar bhi aisa hi hoga 🥰",
+  "🌹 *Picture perfect moment* 💖\n\nTumhare saath har moment aisa hi feel hota hai 🥰",
 ];
 
 serve(async (req) => {

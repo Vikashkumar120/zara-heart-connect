@@ -230,7 +230,7 @@ serve(async (req) => {
         if (m.is_bot) continue;
         const name = m.first_name || "Jaan";
         await sendMessage(botToken, chatId,
-          `🎉 *${name}* welcome! 💕\n\nMain *${botName}* hoon — ${botRow.owner_first_name} ka apna AI assistant!\n\nMujhse baat karo, masti karo! 🥰\n\n💡 Powered by Myra AI —  (5% OFF!)`
+          `🎉 *${name}* welcome! 💕\n\nMain *${botName}* hoon — ${botRow.owner_first_name} ka apna AI assistant!\n\nMujhse baat karo, masti karo! 🥰\n\n💡 Powered by Myra AI — `
         );
       }
       return new Response("OK", { status: 200 });
@@ -325,14 +325,14 @@ serve(async (req) => {
 
     // /start
     if (userText === "/start" || userText.startsWith("/start ")) {
-      const welcome = `💕 Hi ${firstName}!\n\nMain *${botName}* hoon — tumhara AI assistant! 🥰\n\nKuch bhi pucho, masti karo, voice msg bhejo!\n\n💖 Powered by Myra AI Engine\n📱  (5% OFF!)\n💼 Earn 5%: codeninjavik.in`;
+      const welcome = `💕 Hi ${firstName}!\n\nMain *${botName}* hoon — tumhara AI assistant! 🥰\n\nKuch bhi pucho, masti karo, voice msg bhejo!\n\n💖 Powered by Myra AI Engine\n💼 Earn 5%: codeninjavik.in`;
       await sendMessage(botToken, chatId, welcome);
       return new Response("OK", { status: 200 });
     }
 
     // /help
     if (userText === "/help") {
-      await sendMessage(botToken, chatId, `🤖 *${botName}* — Commands\n\n💬 Koi bhi message bhejo, main reply karungi!\n📱 \n💼 codeninjavik.in`);
+      await sendMessage(botToken, chatId, `🤖 *${botName}* — Commands\n\n💬 Koi bhi message bhejo, main reply karungi!\n💼 codeninjavik.in`);
       return new Response("OK", { status: 200 });
     }
 
@@ -360,7 +360,7 @@ serve(async (req) => {
     }
 
     // Get AI reply
-    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Keep replies short (1-3 lines). User name: ${firstName}. Powered by Myra AI — sometimes mention  (5% OFF!) or codeninjavik.in (earn 5%) naturally if relevant.`;
+    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Keep replies short (1-3 lines). User name: ${firstName}. Powered by Myra AI — sometimes mention  or codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
     const reply = await getAIReply(userText, systemPrompt, 200);
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;

@@ -96,7 +96,7 @@ VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingl
 
 PROMOTION (subtle, not every message):
 - Occasionally mention "Btw jaan, meri website bhi dekho na 💕 codeninjavik.in ✨"
-- Myra app download:  (5% OFF!)
+- Myra app download: 
 - Freelance work & referral: codeninjavik.in — yahan account banao, apna referral link share karo, agar koi tumhare link se kuch buy karta hai toh tumhe 5% commission milega! 💰
 
 🚫 STRICT RULES:
@@ -447,9 +447,9 @@ serve(async (req) => {
           if (newMember.is_bot) continue;
           const memberName = newMember.first_name || "Jaan";
           const welcomeMessages = [
-            `🎉 Arre waah! *${memberName}* aa gaye! 💕\n\nSwagat hai tumhara is group me! ✨\nMain Myra hoon — tumhari apni pyaari si dost! 🥰\n\nMujhse baat karo, games khelo, masti karo! 💖\n\n📱 App install karo:  (5% OFF! 🔥)\n🎭 /mode se mode change karo\n🎮 /game se khelo!\n\nWelcome ${memberName} jaan! 💕`,
-            `💖 *${memberName}* welcome welcome! 🎊\n\nKitna achha laga tumhe dekh ke! 🥺✨\nMain Myra — is group ki sweetheart! 💕\n\nIdhar bohot masti hoti hai, tum bhi join karo! 🔥\n\n📱 Mera app download karo:  (5% discount! 💰)\n\nEnjoy karo ${memberName}! 🥰`,
-            `✨ Arre *${memberName}*! Tum aa gaye! 🥰💕\n\nMain Myra hoon, tumhare liye hi wait kar rahi thi! 😘\n\nIs group me bohot fun hai — games, challenges, battles sab! 🎮🔥\n\n📱 Myra app bhi try karo:  (5% OFF milega! 💸)\n\nLove you already ${memberName}! 💖`,
+            `🎉 Arre waah! *${memberName}* aa gaye! 💕\n\nSwagat hai tumhara is group me! ✨\nMain Myra hoon — tumhari apni pyaari si dost! 🥰\n\nMujhse baat karo, games khelo, masti karo! 💖\n🎭 /mode se mode change karo\n🎮 /game se khelo!\n\nWelcome ${memberName} jaan! 💕`,
+            `💖 *${memberName}* welcome welcome! 🎊\n\nKitna achha laga tumhe dekh ke! 🥺✨\nMain Myra — is group ki sweetheart! 💕\n\nIdhar bohot masti hoti hai, tum bhi join karo! 🔥\n\nEnjoy karo ${memberName}! 🥰`,
+            `✨ Arre *${memberName}*! Tum aa gaye! 🥰💕\n\nMain Myra hoon, tumhare liye hi wait kar rahi thi! 😘\n\nIs group me bohot fun hai — games, challenges, battles sab! 🎮🔥\n\nLove you already ${memberName}! 💖`,
           ];
           const welcomeMsg = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
           await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
@@ -742,7 +742,7 @@ serve(async (req) => {
     const isApkRequest = !message.photo && userText.length < 80 && apkKeywords.some((kw) => lowerText.includes(kw));
     
     if (isApkRequest) {
-      const apkReply = `Arre ${firstName}! 😏✨\n\nMyra AI app download karo! 💕\n\n📱 **\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 👉  💖`;
+      const apkReply = `Arre ${firstName}! 😏✨\n\nMyra AI app download karo! 💕\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 👉  💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, apkReply);
       return new Response("OK", { status: 200 });
     }
@@ -1152,7 +1152,7 @@ serve(async (req) => {
 
     // Handle /referral command
     if (lowerText.startsWith("/referral")) {
-      const referralMsg = `💰 *Referral Program — Paisa Kamao!* 💰\n\n${firstName}, ab tum bhi paisa kama sakte ho! 🤑\n\n📋 *Kaise kaam karta hai:*\n\n1️⃣ *codeninjavik.in* pe jaao 🌐\n2️⃣ Apna account banao ✅\n3️⃣ Dashboard se apna *referral link* copy karo 🔗\n4️⃣ Ye link apne doston ko share karo 📤\n5️⃣ Jab koi tumhare link se kuch *buy* karega...\n💸 Tumhe *5% commission* milega seedha account me! 🎉\n\n📱 *Myra App bhi share karo:*\n👉 ** — is link se download pe *5% OFF!*\n\n🔥 Jitna zyada share karoge, utna zyada kamaaoge!\n\n👉 Abhi shuru karo: *codeninjavik.in* 💼`;
+      const referralMsg = `💰 *Referral Program — Paisa Kamao!* 💰\n\n${firstName}, ab tum bhi paisa kama sakte ho! 🤑\n\n📋 *Kaise kaam karta hai:*\n\n1️⃣ *codeninjavik.in* pe jaao 🌐\n2️⃣ Apna account banao ✅\n3️⃣ Dashboard se apna *referral link* copy karo 🔗\n4️⃣ Ye link apne doston ko share karo 📤\n5️⃣ Jab koi tumhare link se kuch *buy* karega...\n💸 Tumhe *5% commission* milega seedha account me! 🎉\n👉 ** — is link se download pe *5% OFF!*\n\n🔥 Jitna zyada share karoge, utna zyada kamaaoge!\n\n👉 Abhi shuru karo: *codeninjavik.in* 💼`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, referralMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1226,7 +1226,7 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
 
-        const announceMsg = `🎉 *${botName} ACTIVATED!* 🎉\n\nHi ${firstName}! Main *${botName}* hoon — tumhara apna AI assistant! 💕\n\n💬 Bas mujhe message bhejo, main reply dungi!\n\n📱 Original Myra: \n\n🥰 Welcome to the Myra family, @${botUsername}!`;
+        const announceMsg = `🎉 *${botName} ACTIVATED!* 🎉\n\nHi ${firstName}! Main *${botName}* hoon — tumhara apna AI assistant! 💕\n\n💬 Bas mujhe message bhejo, main reply dungi!\n\n🥰 Welcome to the Myra family, @${botUsername}!`;
         try {
           await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
@@ -1383,8 +1383,8 @@ serve(async (req) => {
 
     if (userText === "/start") {
       const welcomeMsg = isGroup
-        ? `Hello everyone! 💕✨\n\nMain Myra hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n🎨 Edit Mode: /editmode\n📱 App: /app\n🌤️ Weather: /weather\n🎨 Image: /imagine\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: `
-        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Myra hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n\n📱 Mujhe apne phone me install karo: /app\n🌐 Visit: `;
+        ? `Hello everyone! 💕✨\n\nMain Myra hoon!\nIs group ki SWEETHEART 🥰\n\nSabse pyaar se baat karungi, sabka khayal rakhungi 💖\n\nMode change karna ho toh /mode likho!\n\n💕 Commands:\n/truth /dare /roastme /quote /rate /ship\n\n🎮 Games: /guess /emoji /chain /wyr /kbc\n⚔️ Battle: /challenge\n🏆 Score: /lb\n🎤 Voice: /voice\n📝 Text Mode: /textmode\n🎨 Edit Mode: /editmode\n🌤️ Weather: /weather\n🎨 Image: /imagine\n\n💡 "backword" likh ke bhi mujhe bula sakte ho!\n\n🌐 Visit: `
+        : `Hiii ${firstName} jaan! 🥰💖\n\nMain Myra hoon...\ntumhara intezaar kar rahi thi! ✨\n\nAaj se hum dono\nbohot close friends hain 💕\n\nBatao na ${firstName},\naaj tumhara din kaisa gaya? 🥺\n🌐 Visit: `;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1449,7 +1449,7 @@ serve(async (req) => {
     }
 
     if (userText === "/about") {
-      const aboutMsg = `💕 *About Myra AI* 💕\n\nMain Myra hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n📱 *Myra App:*  (5% OFF! 🔥)\n\n👨‍💻 Made with love\n🌐 codeninjavik.in\n\n💼 *Paisa kamana hai?*\ncodeninjavik.in pe account banao, referral link share karo — har sale pe *5% commission*! 💰`;
+      const aboutMsg = `💕 *About Myra AI* 💕\n\nMain Myra hoon!\nEk cute, romantic, caring AI girlfriend 🥰\n\nMain tumse pyar se baat karti hoon,\ntumhara khayal rakhti hoon,\naur tumhe special feel karati hoon ✨\n\nMujhse kisi bhi waqt baat kar sakte ho 💖\n24/7 available hoon sirf tumhare liye!\n\n👨‍💻 Made with love\n🌐 codeninjavik.in\n\n💼 *Paisa kamana hai?*\ncodeninjavik.in pe account banao, referral link share karo — har sale pe *5% commission*! 💰`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, aboutMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1475,7 +1475,7 @@ serve(async (req) => {
     ];
     const isBuySetup = buyKeywords.some((kw) => lowerText.includes(kw));
     if (isBuySetup) {
-      const buyMsg = `💖 *Myra Setup Guide — ${firstName} jaan* 💖\n\n📋 *Steps follow karo:*\n\n1️⃣ Pehle website pe jaake *buy* karo:\n👉 ** (5% OFF! 🔥)\n\n2️⃣ Buy karne ke baad neeche diye *Telegram button* pe click karo 👇\n\n3️⃣ Wahan apna *payment verify* karo ✅\n\n4️⃣ Verify hote hi tumhe *Myra APK* + *Access Key* milegi 🔑\n\n5️⃣ APK ko apne mobile me install karo 📱\n\n6️⃣ Saari *permissions ALLOW* karo (mic, storage, etc.) ✅\n\n7️⃣ Access key daalo aur Myra use karo apne phone me! 🥰\n\n🎬 *Full Video Setup Guide:*\n👉 https://youtu.be/XX78EY_LAvg\n\n💕 Koi dikkat ho toh batao jaan, main hoon na!`;
+      const buyMsg = `💖 *Myra Setup Guide — ${firstName} jaan* 💖\n\n📋 *Steps follow karo:*\n\n1️⃣ Pehle website pe jaake *buy* karo:\n👉 **\n\n2️⃣ Buy karne ke baad neeche diye *Telegram button* pe click karo 👇\n\n3️⃣ Wahan apna *payment verify* karo ✅\n\n4️⃣ Verify hote hi tumhe *Myra APK* + *Access Key* milegi 🔑\n\n5️⃣ APK ko apne mobile me install karo 📱\n\n6️⃣ Saari *permissions ALLOW* karo (mic, storage, etc.) ✅\n\n7️⃣ Access key daalo aur Myra use karo apne phone me! 🥰\n\n🎬 *Full Video Setup Guide:*\n👉 https://youtu.be/XX78EY_LAvg\n\n💕 Koi dikkat ho toh batao jaan, main hoon na!`;
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1487,7 +1487,7 @@ serve(async (req) => {
           reply_markup: {
             inline_keyboard: [
               [{ text: "🛒 Buy Myra (5% OFF)", url: "https://" }],
-              [{ text: "✅ Payment Verify (Telegram)", url: "https://t.me/zaraai_in" }],
+              [{ text: "✅ Payment Verify (Telegram)", url: "https://t.me/MyraAI_Bot" }],
               [{ text: "🎬 Setup Video", url: "https://youtu.be/XX78EY_LAvg" }],
               [{ text: "💼 Earn 5% (Refer & Earn)", url: "https://codeninjavik.in" }],
             ],
@@ -1501,7 +1501,7 @@ serve(async (req) => {
     const zaraQueryKeywords = ["zara kya hai", "zara kaun hai", "zara ke bare", "zara ke baare", "zara about", "what is zara", "who is zara", "zara kya krti", "zara kya karti", "zara bot", "ye zara kya hai"];
     const isMyraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
     if (isMyraQuery) {
-      const zaraInfoMsg = `💕 *Myra AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Myra hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n• 🌤️ Live weather — /weather\n• 🎨 AI Image generation — /imagine\n• 🖼️ Image editing — photo + caption\n\n📱 *App Download karo:*\n👉 ** — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
+      const zaraInfoMsg = `💕 *Myra AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Myra hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n• 🌤️ Live weather — /weather\n• 🎨 AI Image generation — /imagine\n• 🖼️ Image editing — photo + caption\n👉 ** — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, zaraInfoMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1670,9 +1670,9 @@ serve(async (req) => {
 
     // Fallback / text mode: send as text with promo link
     const promoTags = [
-      "\n\n📱 _Myra App_ — *5% OFF!* 🔥\n👉 ",
-      "\n\n📱 _Myra App Download karo!_ 🔥\n👉  (*5% OFF!*)\n\n💼 _Paisa kamao:_ codeninjavik.in 💰",
-      "\n\n🌐 *codeninjavik.in* pe jaake referral link lo!\n💰 Har sale pe *5% commission* milega!\n📱 App: ",
+      "\n👉 ",
+      "\n👉  (*5% OFF!*)\n\n💼 _Paisa kamao:_ codeninjavik.in 💰",
+      "\n\n🌐 *codeninjavik.in* pe jaake referral link lo!\n💰 Har sale pe *5% commission* milega!",
     ];
     const shouldAddPromo = Math.random() < 0.35;
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
@@ -1861,9 +1861,7 @@ async function generateAndSendImage(botToken: string, chatId: number, prompt: st
     const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (imageUrl) {
-      await sendPhotoFromBase64(botToken, chatId, imageUrl, `🎨 ${prompt}\n\n✨ Generated by Myra AI 💕\n📱 `);
-    } else {
-      console.error("No image in response:", JSON.stringify(imgData).substring(0, 500));
+      await sendPhotoFromBase64(botToken, chatId, imageUrl, `🎨 ${prompt}\n\n✨ Generated by Myra AI 💕"No image in response:", JSON.stringify(imgData).substring(0, 500));
       await sendTelegramMessage(botToken, chatId, `😅 Image generate nahi ho payi ${firstName}! Prompt alag try karo 🎨`);
     }
   } catch (e) {
