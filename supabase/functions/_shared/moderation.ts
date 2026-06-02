@@ -1,4 +1,4 @@
-// Shared moderation engine — used by both telegram-webhook (main Zara) and user-bot-webhook (clones)
+// Shared moderation engine — used by both telegram-webhook (main Myra) and user-bot-webhook (clones)
 // Implements: AI classify (abuse/spam/scam/clean) + 3-strike + flood + link whitelist + bio-scam + admin bypass
 // + savage shayri reply + auto delete/mute/ban + /modstats command + /unwarn /unmute /resetwarns /warnlist /modconfig
 
@@ -16,7 +16,7 @@ export interface ModResult {
 }
 
 const ALLOWED_DOMAINS = [
-  "zaraai.in", "codeninjavik.in", "t.me", "telegram.me", "telegram.org",
+  "", "codeninjavik.in", "t.me", "telegram.me", "telegram.org",
   "youtube.com", "youtu.be", "youtube-nocookie.com",
   "instagram.com", "facebook.com", "twitter.com", "x.com",
   "github.com", "google.com", "wikipedia.org",
@@ -58,7 +58,7 @@ function quickScamCheck(text: string): boolean {
   return hasBadLink || hasScamWords;
 }
 
-const MOD_SYSTEM_PROMPT = `You are Zara AI, an intelligent Telegram group moderator. Detect spam, abuse, scam, fake links, bad behavior. Be strict but polite. Reply in Hinglish, 1-2 lines max.
+const MOD_SYSTEM_PROMPT = `You are Myra AI, an intelligent Telegram group moderator. Detect spam, abuse, scam, fake links, bad behavior. Be strict but polite. Reply in Hinglish, 1-2 lines max.
 
 Rules:
 1. Abuse/gali → type:"abuse", action:"warn"
@@ -69,8 +69,8 @@ Rules:
 Return ONLY this JSON (no markdown, no extra text):
 {"type":"spam|abuse|scam|clean","action":"none|warn|mute|ban","reply":"short Hinglish msg or empty"}
 
-For abuse, make reply a SAVAGE-but-romantic Hinglish shayri/comeback (Zara is a sassy romantic GF). Examples:
-- abuse: {"type":"abuse","action":"warn","reply":"Itni gali kyun jaan? 💔 Pyaar se bolo na, warna Zara naraz ho jayegi 😤"}
+For abuse, make reply a SAVAGE-but-romantic Hinglish shayri/comeback (Myra is a sassy romantic GF). Examples:
+- abuse: {"type":"abuse","action":"warn","reply":"Itni gali kyun jaan? 💔 Pyaar se bolo na, warna Myra naraz ho jayegi 😤"}
 - scam: {"type":"scam","action":"warn","reply":"Ye link suspicious lag raha hai ⚠️ careful raho sab"}
 - clean: {"type":"clean","action":"none","reply":""}`;
 
@@ -356,7 +356,7 @@ export async function moderateGroupMessage(opts: ModerateOpts): Promise<boolean>
 
   let result: ModResult | null = null;
   if (quickAbuse) {
-    result = { type: "abuse", action: "warn", reply: `Aise gali mat do na ${firstName} 💔 thoda pyaar se bolo, Zara ka dil tooot gaya 🥺`, shouldDelete: true, warningCount: 0 };
+    result = { type: "abuse", action: "warn", reply: `Aise gali mat do na ${firstName} 💔 thoda pyaar se bolo, Myra ka dil tooot gaya 🥺`, shouldDelete: true, warningCount: 0 };
   } else if (quickScam) {
     result = { type: "scam", action: "warn", reply: `⚠️ ${firstName} ye link/msg suspicious lag raha hai — sab careful raho!`, shouldDelete: true, warningCount: 0 };
   } else {
