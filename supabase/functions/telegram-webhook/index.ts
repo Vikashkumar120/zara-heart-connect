@@ -1828,6 +1828,10 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
       "google/gemini-2.5-pro",
     ];
     for (const model of lovableChain) {
+      if ((globalThis as any).__zaraIsModelBlocked?.((globalThis as any).__zaraCurrentUserId, model)) {
+        console.log(`Skipping ${model}: blocked for user (rate-limited recently)`);
+        continue;
+      }
       try {
         const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -1843,6 +1847,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
         });
         if (r.status === 429 || r.status === 402) {
           console.error(`Lovable AI ${model} limit hit (${r.status}), switching model`);
+          (globalThis as any).__zaraBlockModelForUser?.((globalThis as any).__zaraCurrentUserId, model);
           continue;
         }
         if (!r.ok) {
