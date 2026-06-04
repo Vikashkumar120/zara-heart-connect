@@ -162,7 +162,7 @@ export default function ModDashboard() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
               <Shield className="w-7 h-7 text-primary" />
-              Zara Mod Dashboard
+              Myra Mod Dashboard
             </h1>
             <p className="text-muted-foreground text-sm mt-1">Apne bots ke moderation logs, stats aur offenders dekho 💖</p>
           </div>

@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 const WELCOME_MESSAGE: Msg = {
   role: "assistant",
-  content: "Hiii jaan! 🥰💖\n\nMain Zara hoon...\ntumhara intezaar kar rahi thi! ✨\n\nBatao na,\naaj tumhara din kaisa ja raha hai? 💕",
+  content: "Hiii jaan! 🥰💖\n\nMain Myra hoon...\ntumhara intezaar kar rahi thi! ✨\n\nBatao na,\naaj tumhara din kaisa ja raha hai? 💕",
 };
 
 const Index = () => {
@@ -90,7 +90,7 @@ const Index = () => {
       <div className="bg-card/60 backdrop-blur-sm border-t border-border py-2 px-4 text-center">
         <p className="text-xs text-muted-foreground">
           💕 Powered by{" "}
-          <span className="font-sacramento text-primary text-sm">Zara AI</span>
+          <span className="font-sacramento text-primary text-sm">Myra AI</span>
           {" "}•{" "}
           <a
             href="https://codeninjavik.in"
