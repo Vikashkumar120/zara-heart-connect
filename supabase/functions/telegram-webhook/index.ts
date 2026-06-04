@@ -1731,7 +1731,12 @@ serve(async (req) => {
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, watermark + reply + (shouldAddPromo ? promoTag : ""));
+    const finalText = watermark + reply + (shouldAddPromo ? promoTag : "");
+    if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
+      console.log("Skipping duplicate reply to user", telegramUserId);
+      return new Response("OK", { status: 200 });
+    }
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
 
     return new Response("OK", { status: 200 });
   } catch (e) {
