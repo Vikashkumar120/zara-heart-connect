@@ -583,6 +583,9 @@ serve(async (req) => {
 
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
 
+    // Track current user for per-user model failover state
+    (globalThis as any).__zaraCurrentUserId = telegramUserId;
+
     // ===== PHOTO + CAPTION = IMAGE EDIT =====
     if (message.photo && message.photo.length > 0) {
       const caption = (message.caption || "").trim();
