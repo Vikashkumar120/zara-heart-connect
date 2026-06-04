@@ -271,6 +271,11 @@ serve(async (req) => {
 
     const update = await req.json();
 
+    if (typeof update?.update_id === "number" && !markUpdateProcessed(update.update_id)) {
+      console.log("clone bot: duplicate update_id, skip", update.update_id);
+      return new Response("OK", { status: 200 });
+    }
+
     // === New chat members welcome ===
     if (update?.message?.new_chat_members) {
       const chatId = update.message.chat.id;
@@ -293,6 +298,7 @@ serve(async (req) => {
     const lowerText = userText.toLowerCase();
     const firstName = message.from?.first_name || "Jaan";
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+    (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
     // ===== PHOTO → vision describe =====
     if (message.photo && message.photo.length > 0) {
@@ -413,7 +419,12 @@ serve(async (req) => {
     const reply = await getAIReply(userText, systemPrompt, 200);
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    await sendMessage(botToken, chatId, watermark + reply);
+    const finalText = watermark + reply;
+    if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
+      console.log("clone bot: skipping duplicate reply to user", telegramUserId);
+      return new Response("OK", { status: 200 });
+    }
+    await sendMessage(botToken, chatId, finalText);
 
     return new Response("OK", { status: 200 });
   } catch (e) {
