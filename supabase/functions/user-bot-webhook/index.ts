@@ -8,6 +8,43 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
 
+// ===== DE-DUPLICATION & PER-USER FAILOVER STATE =====
+const processedUpdateIds = new Map<number, number>();
+function markUpdateProcessed(updateId: number): boolean {
+  const now = Date.now();
+  if (processedUpdateIds.size > 500) {
+    for (const [k, t] of processedUpdateIds) if (now - t > 10 * 60_000) processedUpdateIds.delete(k);
+  }
+  if (processedUpdateIds.has(updateId)) return false;
+  processedUpdateIds.set(updateId, now);
+  return true;
+}
+const lastReplyByUser = new Map<string, { text: string; ts: number }>();
+function shouldSkipDuplicateReply(userId: number, chatId: number, text: string): boolean {
+  const key = `${userId}:${chatId}`;
+  const now = Date.now();
+  const prev = lastReplyByUser.get(key);
+  if (prev && prev.text === text && now - prev.ts < 60_000) return true;
+  lastReplyByUser.set(key, { text, ts: now });
+  return false;
+}
+const userBlockedModels = new Map<number, Map<string, number>>();
+function blockModelForUser(userId: number | undefined, model: string) {
+  if (!userId) return;
+  let m = userBlockedModels.get(userId);
+  if (!m) { m = new Map(); userBlockedModels.set(userId, m); }
+  m.set(model, Date.now() + 5 * 60_000);
+}
+function isModelBlocked(userId: number | undefined, model: string): boolean {
+  if (!userId) return false;
+  const m = userBlockedModels.get(userId);
+  if (!m) return false;
+  const exp = m.get(model);
+  if (!exp) return false;
+  if (Date.now() > exp) { m.delete(model); return false; }
+  return true;
+}
+
 async function getAIReply(userMessage: string, systemPrompt: string, maxTokens = 200): Promise<string> {
   // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
@@ -52,7 +89,9 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
       "openai/gpt-5-nano",
       "google/gemini-2.5-pro",
     ];
+    const currentUserId = (globalThis as any).__zaraCurrentUserId as number | undefined;
     for (const model of chain) {
+      if (isModelBlocked(currentUserId, model)) { console.log(`Skipping blocked ${model} for user`); continue; }
       try {
         const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -66,7 +105,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
             max_tokens: Math.max(maxTokens, 400),
           }),
         });
-        if (r.status === 429 || r.status === 402) { console.error(`Lovable ${model} limit`); continue; }
+        if (r.status === 429 || r.status === 402) { console.error(`Lovable ${model} limit`); blockModelForUser(currentUserId, model); continue; }
         if (!r.ok) { console.error(`Lovable ${model}:`, r.status); continue; }
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
@@ -232,6 +271,11 @@ serve(async (req) => {
 
     const update = await req.json();
 
+    if (typeof update?.update_id === "number" && !markUpdateProcessed(update.update_id)) {
+      console.log("clone bot: duplicate update_id, skip", update.update_id);
+      return new Response("OK", { status: 200 });
+    }
+
     // === New chat members welcome ===
     if (update?.message?.new_chat_members) {
       const chatId = update.message.chat.id;
@@ -254,6 +298,7 @@ serve(async (req) => {
     const lowerText = userText.toLowerCase();
     const firstName = message.from?.first_name || "Jaan";
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+    (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
     // ===== PHOTO → vision describe =====
     if (message.photo && message.photo.length > 0) {
@@ -374,7 +419,12 @@ serve(async (req) => {
     const reply = await getAIReply(userText, systemPrompt, 200);
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    await sendMessage(botToken, chatId, watermark + reply);
+    const finalText = watermark + reply;
+    if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
+      console.log("clone bot: skipping duplicate reply to user", telegramUserId);
+      return new Response("OK", { status: 200 });
+    }
+    await sendMessage(botToken, chatId, finalText);
 
     return new Response("OK", { status: 200 });
   } catch (e) {

@@ -413,6 +413,50 @@ async function transcribeTelegramVoice(botToken: string, voice: any): Promise<st
 // Track per-user image edit mode in memory (resets on cold start, but that's fine)
 const imageEditModeUsers = new Set<number>();
 
+// ===== DE-DUPLICATION & PER-USER FAILOVER STATE =====
+// Telegram retries failed webhook deliveries — skip duplicate update_ids.
+const processedUpdateIds = new Map<number, number>(); // update_id -> ts
+function markUpdateProcessed(updateId: number): boolean {
+  const now = Date.now();
+  // Cleanup older than 10 min
+  if (processedUpdateIds.size > 500) {
+    for (const [k, t] of processedUpdateIds) if (now - t > 10 * 60 * 1000) processedUpdateIds.delete(k);
+  }
+  if (processedUpdateIds.has(updateId)) return false;
+  processedUpdateIds.set(updateId, now);
+  return true;
+}
+
+// Avoid sending the exact same reply text twice in a row to the same user within 60s.
+const lastReplyByUser = new Map<string, { text: string; ts: number }>();
+function shouldSkipDuplicateReply(userId: number, chatId: number, text: string): boolean {
+  const key = `${userId}:${chatId}`;
+  const now = Date.now();
+  const prev = lastReplyByUser.get(key);
+  if (prev && prev.text === text && now - prev.ts < 60_000) return true;
+  lastReplyByUser.set(key, { text, ts: now });
+  return false;
+}
+
+// Per-user blocked-models map with 5-min TTL. When a model returns 429/402 for a user,
+// skip it for them temporarily so the failover state is isolated per user.
+const userBlockedModels = new Map<number, Map<string, number>>(); // userId -> model -> expiresAt
+(globalThis as any).__zaraBlockModelForUser = (userId: number | undefined, model: string) => {
+  if (!userId) return;
+  let m = userBlockedModels.get(userId);
+  if (!m) { m = new Map(); userBlockedModels.set(userId, m); }
+  m.set(model, Date.now() + 5 * 60_000);
+};
+(globalThis as any).__zaraIsModelBlocked = (userId: number | undefined, model: string): boolean => {
+  if (!userId) return false;
+  const m = userBlockedModels.get(userId);
+  if (!m) return false;
+  const exp = m.get(model);
+  if (!exp) return false;
+  if (Date.now() > exp) { m.delete(model); return false; }
+  return true;
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -430,6 +474,12 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const update = await req.json();
+
+    // ===== DEDUP: skip Telegram retries of the same update_id =====
+    if (typeof update?.update_id === "number" && !markUpdateProcessed(update.update_id)) {
+      console.log("Duplicate update_id, skipping:", update.update_id);
+      return new Response("OK", { status: 200 });
+    }
 
     // ===== NEW MEMBER WELCOME MESSAGE =====
     if (update?.message?.new_chat_members) {
@@ -532,6 +582,9 @@ serve(async (req) => {
     }
 
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+
+    // Track current user for per-user model failover state
+    (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
     // ===== PHOTO + CAPTION = IMAGE EDIT =====
     if (message.photo && message.photo.length > 0) {
@@ -1678,7 +1731,12 @@ serve(async (req) => {
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, watermark + reply + (shouldAddPromo ? promoTag : ""));
+    const finalText = watermark + reply + (shouldAddPromo ? promoTag : "");
+    if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
+      console.log("Skipping duplicate reply to user", telegramUserId);
+      return new Response("OK", { status: 200 });
+    }
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
 
     return new Response("OK", { status: 200 });
   } catch (e) {
@@ -1778,6 +1836,10 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
       "google/gemini-2.5-pro",
     ];
     for (const model of lovableChain) {
+      if ((globalThis as any).__zaraIsModelBlocked?.((globalThis as any).__zaraCurrentUserId, model)) {
+        console.log(`Skipping ${model}: blocked for user (rate-limited recently)`);
+        continue;
+      }
       try {
         const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -1793,6 +1855,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
         });
         if (r.status === 429 || r.status === 402) {
           console.error(`Lovable AI ${model} limit hit (${r.status}), switching model`);
+          (globalThis as any).__zaraBlockModelForUser?.((globalThis as any).__zaraCurrentUserId, model);
           continue;
         }
         if (!r.ok) {

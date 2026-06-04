@@ -4,7 +4,7 @@ const TypingIndicator = () => (
   <div className="flex gap-3 items-start">
     <img
       src={zaraAvatar}
-      alt="Zara AI"
+      alt="Myra AI"
       className="w-8 h-8 rounded-full avatar-glow flex-shrink-0"
     />
     <div className="bg-secondary rounded-2xl rounded-tl-sm px-4 py-3 message-glow">

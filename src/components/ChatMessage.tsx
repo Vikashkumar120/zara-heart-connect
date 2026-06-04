@@ -19,7 +19,7 @@ const ChatMessage = ({ role, content }: ChatMessageProps) => {
       {isZara && (
         <img
           src={zaraAvatar}
-          alt="Zara AI"
+          alt="Myra AI"
           className="w-8 h-8 rounded-full avatar-glow flex-shrink-0 mt-1"
         />
       )}
