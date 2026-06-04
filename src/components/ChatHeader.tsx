@@ -6,13 +6,13 @@ const ChatHeader = () => (
       <div className="relative">
         <img
           src={zaraAvatar}
-          alt="Zara AI"
+          alt="Myra AI"
           className="w-10 h-10 rounded-full avatar-glow"
         />
         <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-accent border-2 border-card" style={{ backgroundColor: "hsl(140 70% 55%)" }} />
       </div>
       <div>
-        <h1 className="font-sacramento text-2xl text-primary leading-none">Zara AI</h1>
+        <h1 className="font-sacramento text-2xl text-primary leading-none">Myra AI</h1>
         <p className="text-xs text-muted-foreground">Online • tumhara intezaar tha 💗</p>
       </div>
     </div>
