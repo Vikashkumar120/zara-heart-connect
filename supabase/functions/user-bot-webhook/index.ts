@@ -484,6 +484,33 @@ serve(async (req) => {
       }
     }
 
+    // Social media downloader — reels / video link detect
+    {
+      const { extractSocialUrl } = await import("../_shared/downloader.ts");
+      const socialUrl = extractSocialUrl(userText);
+      if (socialUrl) {
+        const linkId = crypto.randomUUID().slice(0, 8);
+        await supabase.from("zara_dl_links").insert({
+          id: linkId,
+          url: socialUrl,
+          telegram_user_id: telegramUserId ?? null,
+          chat_id: chatId,
+        });
+        await sendButtons(botToken, chatId, `📥 Link mil gaya! 💕\n\nKis quality me chahiye? 👇`, [
+          [{ text: "🎵 MP3 (audio)", callback_data: `dl|mp3|${linkId}` }],
+          [
+            { text: "📱 360p", callback_data: `dl|360|${linkId}` },
+            { text: "🎬 720p HD", callback_data: `dl|720|${linkId}` },
+          ],
+          [
+            { text: "✨ 1080p", callback_data: `dl|1080|${linkId}` },
+            { text: "🔥 4K Max", callback_data: `dl|max|${linkId}` },
+          ],
+        ]);
+        return new Response("OK", { status: 200 });
+      }
+    }
+
     // Myra Android assistant — coming soon
     if (/android|play ?store|mobile app|myra app|app kab|app launch/i.test(userText)) {
       await sendMessage(
