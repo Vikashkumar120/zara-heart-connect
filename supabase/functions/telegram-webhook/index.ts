@@ -1890,7 +1890,7 @@ async function sendChatAction(token: string, chatId: number, action: string) {
 }
 
 async function sendTelegramMessage(token: string, chatId: number, text: string) {
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1899,6 +1899,16 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
       parse_mode: "Markdown",
     }),
   });
+  if (!r.ok) {
+    // Markdown parse errors silently drop replies — retry as plain text.
+    const errBody = await r.text().catch(() => "");
+    console.error("sendMessage failed, retrying plain:", r.status, errBody.slice(0, 200));
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    }).catch((e) => console.error("plain sendMessage failed:", e));
+  }
 }
 
 // ===== IMAGE GENERATION HELPER =====
