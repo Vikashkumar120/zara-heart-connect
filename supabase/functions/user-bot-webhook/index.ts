@@ -422,6 +422,16 @@ serve(async (req) => {
       }
     }
 
+    // Myra Android assistant — coming soon
+    if (/android|play ?store|mobile app|myra app|app kab|app launch/i.test(userText)) {
+      await sendMessage(
+        botToken,
+        chatId,
+        `📱✨ *Myra AI — Android Assistant*\n\n🚀 *COMING SOON!* 💖\n\nFull voice assistant, 24/7 saathi, Hinglish me baatein — jaldi hi tumhare phone me! 🥰\n\n⏳ Tab tak yahin baat karo na jaan 💗`,
+      );
+      return new Response("OK", { status: 200 });
+    }
+
     // Get AI reply
     const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Keep replies short (1-3 lines). User name: ${firstName}. Powered by Myra AI — sometimes mention  or codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
