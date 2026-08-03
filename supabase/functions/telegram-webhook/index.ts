@@ -1734,10 +1734,15 @@ serve(async (req) => {
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    const finalText = watermark + reply + (shouldAddPromo ? promoTag : "");
+    let finalText = watermark + reply + (shouldAddPromo ? promoTag : "");
     if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
-      console.log("Skipping duplicate reply to user", telegramUserId);
-      return new Response("OK", { status: 200 });
+      // Never go silent — vary the reply instead of dropping it.
+      const variants = [
+        "\n\n(phir se keh rahi hoon jaan 🙈 thoda alag tareeke se pucho na 💕)",
+        "\n\n(arre wahi baat 😅 kuch naya poocho na baby 💗)",
+        "\n\n(main yahin hoon jaan 💖 batao aur kya chahiye?)",
+      ];
+      finalText += variants[Math.floor(Math.random() * variants.length)];
     }
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
 
