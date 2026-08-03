@@ -811,6 +811,40 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== SOCIAL MEDIA DOWNLOADER — reels / video link detect =====
+    if (!message.photo) {
+      const { extractSocialUrl } = await import("../_shared/downloader.ts");
+      const socialUrl = extractSocialUrl(message.text || message.caption || "");
+      if (socialUrl) {
+        const linkId = crypto.randomUUID().slice(0, 8);
+        await supabase.from("zara_dl_links").insert({
+          id: linkId,
+          url: socialUrl,
+          telegram_user_id: telegramUserId ?? null,
+          chat_id: chatId,
+        });
+        await sendMessageWithButtons(
+          TELEGRAM_BOT_TOKEN,
+          chatId,
+          `📥 *${firstName}, link mil gaya jaan!* 💕\n\nBatao kis quality me download karke doon? 👇`,
+          [
+            [
+              { text: "🎵 MP3 (audio)", callback_data: `dl|mp3|${linkId}` },
+            ],
+            [
+              { text: "📱 360p", callback_data: `dl|360|${linkId}` },
+              { text: "🎬 720p HD", callback_data: `dl|720|${linkId}` },
+            ],
+            [
+              { text: "✨ 1080p Full HD", callback_data: `dl|1080|${linkId}` },
+              { text: "🔥 4K Max", callback_data: `dl|max|${linkId}` },
+            ],
+          ],
+        );
+        return new Response("OK", { status: 200 });
+      }
+    }
+
     // ===== MYRA ANDROID ASSISTANT — COMING SOON =====
     const androidWords = ["android", "play store", "playstore", "mobile app", "assistant app", "myra app", "app kab", "app launch", "/android"];
     const isAndroidQuery = !message.photo && userText.length < 120 && androidWords.some((kw) => lowerText.includes(kw));
