@@ -252,6 +252,47 @@ async function sendMessage(token: string, chatId: number, text: string) {
   }
 }
 
+async function cloneSocialDownload(token: string, chatId: number, url: string, fmt: string) {
+  const { resolveDownload } = await import("../_shared/downloader.ts");
+  const isAudio = fmt === "mp3";
+  const label = isAudio ? "MP3" : fmt === "max" ? "4K/Max" : `${fmt}p`;
+  await sendMessage(token, chatId, `⏳ ${label} me download kar rahi hoon... thoda ruko 💕`);
+
+  const res = await resolveDownload(url, fmt as any);
+  if (!res.ok || !res.url) {
+    await sendMessage(token, chatId, "😢 Ye link download nahi ho paaya — private ho sakta hai ya server busy hai, baad me try karo 💕");
+    return;
+  }
+  const items = res.items?.length ? res.items.slice(0, 10) : [res.url];
+  let sentAny = false;
+  for (const item of items) {
+    const method = isAudio ? "sendAudio" : res.kind === "photo" ? "sendPhoto" : "sendVideo";
+    const field = isAudio ? "audio" : res.kind === "photo" ? "photo" : "video";
+    const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, [field]: item, caption: `✨ Ye lo — ${label} 💖`, supports_streaming: true }),
+    });
+    if (r.ok) sentAny = true;
+  }
+  if (!sentAny) {
+    await sendMessage(token, chatId, `😅 File badi hai, upload nahi ho paayi.\n\n👇 Direct link:\n${res.url}`);
+  }
+}
+
+async function sendButtons(
+  token: string,
+  chatId: number,
+  text: string,
+  keyboard: Array<Array<{ text: string; callback_data: string }>>,
+) {
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown", reply_markup: { inline_keyboard: keyboard } }),
+  }).catch((e) => console.error("clone sendButtons failed:", e));
+}
+
 serve(async (req) => {
   try {
     const url = new URL(req.url);
@@ -282,6 +323,27 @@ serve(async (req) => {
 
     if (typeof update?.update_id === "number" && !markUpdateProcessed(update.update_id)) {
       console.log("clone bot: duplicate update_id, skip", update.update_id);
+      return new Response("OK", { status: 200 });
+    }
+
+    // === Social downloader: quality button callbacks ===
+    if (update?.callback_query?.data?.startsWith("dl|")) {
+      const cq = update.callback_query;
+      const [, fmt, linkId] = String(cq.data).split("|");
+      const cbChatId = cq.message?.chat?.id;
+      await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: cq.id, text: "Download shuru... 💕" }),
+      }).catch(() => {});
+      if (cbChatId) {
+        const { data: row } = await supabase.from("zara_dl_links").select("url").eq("id", linkId).maybeSingle();
+        if (!row?.url) {
+          await sendMessage(botToken, cbChatId, "😅 Link purana ho gaya, dobara bhejo na 💕");
+        } else {
+          await cloneSocialDownload(botToken, cbChatId, row.url, fmt);
+        }
+      }
       return new Response("OK", { status: 200 });
     }
 
@@ -418,6 +480,33 @@ serve(async (req) => {
       const mentioned = lowerText.includes(`@${botRow.bot_username?.toLowerCase()}`) ||
                         message.reply_to_message?.from?.username === botRow.bot_username;
       if (!mentioned && Math.random() > 0.25) {
+        return new Response("OK", { status: 200 });
+      }
+    }
+
+    // Social media downloader — reels / video link detect
+    {
+      const { extractSocialUrl } = await import("../_shared/downloader.ts");
+      const socialUrl = extractSocialUrl(userText);
+      if (socialUrl) {
+        const linkId = crypto.randomUUID().slice(0, 8);
+        await supabase.from("zara_dl_links").insert({
+          id: linkId,
+          url: socialUrl,
+          telegram_user_id: telegramUserId ?? null,
+          chat_id: chatId,
+        });
+        await sendButtons(botToken, chatId, `📥 Link mil gaya! 💕\n\nKis quality me chahiye? 👇`, [
+          [{ text: "🎵 MP3 (audio)", callback_data: `dl|mp3|${linkId}` }],
+          [
+            { text: "📱 360p", callback_data: `dl|360|${linkId}` },
+            { text: "🎬 720p HD", callback_data: `dl|720|${linkId}` },
+          ],
+          [
+            { text: "✨ 1080p", callback_data: `dl|1080|${linkId}` },
+            { text: "🔥 4K Max", callback_data: `dl|max|${linkId}` },
+          ],
+        ]);
         return new Response("OK", { status: 200 });
       }
     }
