@@ -790,6 +790,15 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== MYRA ANDROID ASSISTANT — COMING SOON =====
+    const androidWords = ["android", "play store", "playstore", "mobile app", "assistant app", "myra app", "app kab", "app launch", "/android"];
+    const isAndroidQuery = !message.photo && userText.length < 120 && androidWords.some((kw) => lowerText.includes(kw));
+    if (isAndroidQuery) {
+      const comingSoon = `📱✨ *Myra AI — Android Assistant*\n\n🚀 *COMING SOON!* 💖\n\nMain jaldi hi tumhare phone me aa rahi hoon jaan! 🥰\n\n✅ Full voice assistant — bolo aur kaam ho jaye\n✅ 24/7 romantic saathi, offline reminders\n✅ Calls, music, apps sab控 voice se\n✅ Hinglish me natural baatein 💕\n\n⏳ Launch: *bahut jald* — tab tak yahin Telegram pe baat karo na! 💗\n\n_Notify hone ke liye is group me bane raho_ 🔔`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, comingSoon);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== APK / ZARA APP DETECTION =====
     const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega"];
     const isApkRequest = !message.photo && userText.length < 80 && apkKeywords.some((kw) => lowerText.includes(kw));
