@@ -252,6 +252,47 @@ async function sendMessage(token: string, chatId: number, text: string) {
   }
 }
 
+async function cloneSocialDownload(token: string, chatId: number, url: string, fmt: string) {
+  const { resolveDownload } = await import("../_shared/downloader.ts");
+  const isAudio = fmt === "mp3";
+  const label = isAudio ? "MP3" : fmt === "max" ? "4K/Max" : `${fmt}p`;
+  await sendMessage(token, chatId, `⏳ ${label} me download kar rahi hoon... thoda ruko 💕`);
+
+  const res = await resolveDownload(url, fmt as any);
+  if (!res.ok || !res.url) {
+    await sendMessage(token, chatId, "😢 Ye link download nahi ho paaya — private ho sakta hai ya server busy hai, baad me try karo 💕");
+    return;
+  }
+  const items = res.items?.length ? res.items.slice(0, 10) : [res.url];
+  let sentAny = false;
+  for (const item of items) {
+    const method = isAudio ? "sendAudio" : res.kind === "photo" ? "sendPhoto" : "sendVideo";
+    const field = isAudio ? "audio" : res.kind === "photo" ? "photo" : "video";
+    const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, [field]: item, caption: `✨ Ye lo — ${label} 💖`, supports_streaming: true }),
+    });
+    if (r.ok) sentAny = true;
+  }
+  if (!sentAny) {
+    await sendMessage(token, chatId, `😅 File badi hai, upload nahi ho paayi.\n\n👇 Direct link:\n${res.url}`);
+  }
+}
+
+async function sendButtons(
+  token: string,
+  chatId: number,
+  text: string,
+  keyboard: Array<Array<{ text: string; callback_data: string }>>,
+) {
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown", reply_markup: { inline_keyboard: keyboard } }),
+  }).catch((e) => console.error("clone sendButtons failed:", e));
+}
+
 serve(async (req) => {
   try {
     const url = new URL(req.url);
