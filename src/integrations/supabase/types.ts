@@ -38,6 +38,30 @@ export type Database = {
         }
         Relationships: []
       }
+      zara_dl_links: {
+        Row: {
+          chat_id: number | null
+          created_at: string
+          id: string
+          telegram_user_id: number | null
+          url: string
+        }
+        Insert: {
+          chat_id?: number | null
+          created_at?: string
+          id: string
+          telegram_user_id?: number | null
+          url: string
+        }
+        Update: {
+          chat_id?: number | null
+          created_at?: string
+          id?: string
+          telegram_user_id?: number | null
+          url?: string
+        }
+        Relationships: []
+      }
       zara_game_scores: {
         Row: {
           chat_id: number
