@@ -236,11 +236,20 @@ async function generateAndSendImage(botToken: string, chatId: number, prompt: st
 }
 
 async function sendMessage(token: string, chatId: number, text: string) {
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
   });
+  if (!r.ok) {
+    const errBody = await r.text().catch(() => "");
+    console.error("clone sendMessage failed, retrying plain:", r.status, errBody.slice(0, 200));
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    }).catch((e) => console.error("clone plain sendMessage failed:", e));
+  }
 }
 
 serve(async (req) => {
@@ -413,16 +422,25 @@ serve(async (req) => {
       }
     }
 
+    // Myra Android assistant — coming soon
+    if (/android|play ?store|mobile app|myra app|app kab|app launch/i.test(userText)) {
+      await sendMessage(
+        botToken,
+        chatId,
+        `📱✨ *Myra AI — Android Assistant*\n\n🚀 *COMING SOON!* 💖\n\nFull voice assistant, 24/7 saathi, Hinglish me baatein — jaldi hi tumhare phone me! 🥰\n\n⏳ Tab tak yahin baat karo na jaan 💗`,
+      );
+      return new Response("OK", { status: 200 });
+    }
+
     // Get AI reply
     const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Keep replies short (1-3 lines). User name: ${firstName}. Powered by Myra AI — sometimes mention  or codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
     const reply = await getAIReply(userText, systemPrompt, 200);
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    const finalText = watermark + reply;
+    let finalText = watermark + reply;
     if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
-      console.log("clone bot: skipping duplicate reply to user", telegramUserId);
-      return new Response("OK", { status: 200 });
+      finalText += "\n\n(phir se wahi baat 😅 kuch naya poocho na jaan 💕)";
     }
     await sendMessage(botToken, chatId, finalText);
 

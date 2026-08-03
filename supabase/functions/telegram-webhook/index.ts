@@ -790,6 +790,15 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== MYRA ANDROID ASSISTANT — COMING SOON =====
+    const androidWords = ["android", "play store", "playstore", "mobile app", "assistant app", "myra app", "app kab", "app launch", "/android"];
+    const isAndroidQuery = !message.photo && userText.length < 120 && androidWords.some((kw) => lowerText.includes(kw));
+    if (isAndroidQuery) {
+      const comingSoon = `📱✨ *Myra AI — Android Assistant*\n\n🚀 *COMING SOON!* 💖\n\nMain jaldi hi tumhare phone me aa rahi hoon jaan! 🥰\n\n✅ Full voice assistant — bolo aur kaam ho jaye\n✅ 24/7 romantic saathi, offline reminders\n✅ Calls, music, apps sab voice se\n✅ Hinglish me natural baatein 💕\n\n⏳ Launch: *bahut jald* — tab tak yahin Telegram pe baat karo na! 💗\n\n_Notify hone ke liye is group me bane raho_ 🔔`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, comingSoon);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== APK / ZARA APP DETECTION =====
     const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega"];
     const isApkRequest = !message.photo && userText.length < 80 && apkKeywords.some((kw) => lowerText.includes(kw));
@@ -800,12 +809,15 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== GROUP COOLDOWN SYSTEM — reply to every 3rd-4th message randomly =====
+    // ===== GROUP REPLY POLICY — reply to real messages, skip only pure noise =====
     if (isGroup && !userText.startsWith("/")) {
-      const msgId = message.message_id || 0;
-      const shouldReply = (msgId % 3 === 0) || (Math.random() < 0.4);
-      const isMentioned = lowerText.includes("zara") || lowerText.includes("backword") || lowerText.includes("@zarasweetbot");
-      if (!shouldReply && !isMentioned) {
+      const isNoise = userText.trim().length === 0 || /^[\p{Emoji}\s\p{P}]+$/u.test(userText.trim());
+      const isMentioned =
+        lowerText.includes("myra") ||
+        lowerText.includes("zara") ||
+        lowerText.includes("backword") ||
+        !!message.reply_to_message?.from?.is_bot;
+      if (isNoise && !isMentioned) {
         return new Response("OK", { status: 200 });
       }
     }
@@ -1731,10 +1743,15 @@ serve(async (req) => {
     const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    const finalText = watermark + reply + (shouldAddPromo ? promoTag : "");
+    let finalText = watermark + reply + (shouldAddPromo ? promoTag : "");
     if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
-      console.log("Skipping duplicate reply to user", telegramUserId);
-      return new Response("OK", { status: 200 });
+      // Never go silent — vary the reply instead of dropping it.
+      const variants = [
+        "\n\n(phir se keh rahi hoon jaan 🙈 thoda alag tareeke se pucho na 💕)",
+        "\n\n(arre wahi baat 😅 kuch naya poocho na baby 💗)",
+        "\n\n(main yahin hoon jaan 💖 batao aur kya chahiye?)",
+      ];
+      finalText += variants[Math.floor(Math.random() * variants.length)];
     }
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
 
@@ -1890,7 +1907,7 @@ async function sendChatAction(token: string, chatId: number, action: string) {
 }
 
 async function sendTelegramMessage(token: string, chatId: number, text: string) {
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1899,6 +1916,16 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
       parse_mode: "Markdown",
     }),
   });
+  if (!r.ok) {
+    // Markdown parse errors silently drop replies — retry as plain text.
+    const errBody = await r.text().catch(() => "");
+    console.error("sendMessage failed, retrying plain:", r.status, errBody.slice(0, 200));
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    }).catch((e) => console.error("plain sendMessage failed:", e));
+  }
 }
 
 // ===== IMAGE GENERATION HELPER =====
