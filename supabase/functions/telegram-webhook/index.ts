@@ -481,6 +481,27 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // ===== SOCIAL DOWNLOADER — quality button callbacks =====
+    if (update?.callback_query?.data?.startsWith("dl|")) {
+      const cq = update.callback_query;
+      const [, fmt, linkId] = String(cq.data).split("|");
+      const cbChatId = cq.message?.chat?.id;
+      await answerCallback(TELEGRAM_BOT_TOKEN, cq.id, "Download shuru kar rahi hoon jaan 💕");
+      if (cbChatId) {
+        const { data: row } = await supabase
+          .from("zara_dl_links")
+          .select("url")
+          .eq("id", linkId)
+          .maybeSingle();
+        if (!row?.url) {
+          await sendTelegramMessage(TELEGRAM_BOT_TOKEN, cbChatId, "😅 Ye link purana ho gaya jaan, dobara bhejo na 💕");
+        } else {
+          await handleSocialDownload(TELEGRAM_BOT_TOKEN, cbChatId, row.url, fmt as any);
+        }
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== NEW MEMBER WELCOME MESSAGE =====
     if (update?.message?.new_chat_members) {
       const chatId = update.message.chat.id;
