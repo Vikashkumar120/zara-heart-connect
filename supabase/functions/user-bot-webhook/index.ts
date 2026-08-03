@@ -285,6 +285,27 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // === Social downloader: quality button callbacks ===
+    if (update?.callback_query?.data?.startsWith("dl|")) {
+      const cq = update.callback_query;
+      const [, fmt, linkId] = String(cq.data).split("|");
+      const cbChatId = cq.message?.chat?.id;
+      await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: cq.id, text: "Download shuru... 💕" }),
+      }).catch(() => {});
+      if (cbChatId) {
+        const { data: row } = await supabase.from("zara_dl_links").select("url").eq("id", linkId).maybeSingle();
+        if (!row?.url) {
+          await sendMessage(botToken, cbChatId, "😅 Link purana ho gaya, dobara bhejo na 💕");
+        } else {
+          await cloneSocialDownload(botToken, cbChatId, row.url, fmt);
+        }
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // === New chat members welcome ===
     if (update?.message?.new_chat_members) {
       const chatId = update.message.chat.id;
