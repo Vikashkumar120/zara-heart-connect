@@ -1983,6 +1983,84 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
   }
 }
 
+// ===== TELEGRAM UI HELPERS =====
+async function sendMessageWithButtons(
+  token: string,
+  chatId: number,
+  text: string,
+  keyboard: Array<Array<{ text: string; callback_data: string }>>,
+) {
+  const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: "Markdown",
+      reply_markup: { inline_keyboard: keyboard },
+    }),
+  });
+  if (!r.ok) console.error("sendMessageWithButtons failed:", r.status, (await r.text()).slice(0, 200));
+}
+
+async function answerCallback(token: string, callbackQueryId: string, text: string) {
+  await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+  }).catch((e) => console.error("answerCallback failed:", e));
+}
+
+// ===== SOCIAL DOWNLOAD HANDLER =====
+async function handleSocialDownload(token: string, chatId: number, url: string, fmt: string) {
+  const { resolveDownload } = await import("../_shared/downloader.ts");
+  const isAudio = fmt === "mp3";
+  const label = isAudio ? "MP3" : fmt === "max" ? "4K/Max" : `${fmt}p`;
+
+  await sendChatAction(token, chatId, isAudio ? "upload_voice" : "upload_video");
+  await sendTelegramMessage(token, chatId, `⏳ ${label} me download kar rahi hoon jaan... thoda ruko 💕`);
+
+  const res = await resolveDownload(url, fmt as any);
+  if (!res.ok || !res.url) {
+    console.error("download failed:", res.error);
+    await sendTelegramMessage(
+      token,
+      chatId,
+      `😢 Ye link download nahi ho paaya jaan.\n\nHo sakta hai video private ho ya server busy ho — thodi der baad phir try karo na 💕`,
+    );
+    return;
+  }
+
+  const items = res.items?.length ? res.items.slice(0, 10) : [res.url];
+  let sentAny = false;
+
+  for (const item of items) {
+    const method = isAudio ? "sendAudio" : res.kind === "photo" ? "sendPhoto" : "sendVideo";
+    const field = isAudio ? "audio" : res.kind === "photo" ? "photo" : "video";
+    const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        [field]: item,
+        caption: `✨ Ye lo jaan — *${label}* 💖\n\n_Myra AI se download_ 💕`,
+        parse_mode: "Markdown",
+        supports_streaming: true,
+      }),
+    });
+    if (r.ok) sentAny = true;
+    else console.error(`${method} failed:`, r.status, (await r.text()).slice(0, 200));
+  }
+
+  if (!sentAny) {
+    await sendTelegramMessage(
+      token,
+      chatId,
+      `😅 File thodi badi hai isliye Telegram pe upload nahi ho paayi jaan.\n\n👇 Direct download link le lo (kuch der tak valid hai):\n${res.url}`,
+    );
+  }
+}
+
 // ===== IMAGE GENERATION HELPER =====
 async function generateAndSendImage(botToken: string, chatId: number, prompt: string, firstName: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
