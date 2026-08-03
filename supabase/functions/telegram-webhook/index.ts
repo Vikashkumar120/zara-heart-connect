@@ -800,12 +800,15 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== GROUP COOLDOWN SYSTEM — reply to every 3rd-4th message randomly =====
+    // ===== GROUP REPLY POLICY — reply to real messages, skip only pure noise =====
     if (isGroup && !userText.startsWith("/")) {
-      const msgId = message.message_id || 0;
-      const shouldReply = (msgId % 3 === 0) || (Math.random() < 0.4);
-      const isMentioned = lowerText.includes("zara") || lowerText.includes("backword") || lowerText.includes("@zarasweetbot");
-      if (!shouldReply && !isMentioned) {
+      const isNoise = userText.trim().length === 0 || /^[\p{Emoji}\s\p{P}]+$/u.test(userText.trim());
+      const isMentioned =
+        lowerText.includes("myra") ||
+        lowerText.includes("zara") ||
+        lowerText.includes("backword") ||
+        !!message.reply_to_message?.from?.is_bot;
+      if (isNoise && !isMentioned) {
         return new Response("OK", { status: 200 });
       }
     }
