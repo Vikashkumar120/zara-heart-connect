@@ -20,8 +20,10 @@ export interface DlResult {
 
 // Public cobalt-compatible instances (tried in order)
 const COBALT_INSTANCES = [
-  "https://cobalt-api.kwiatekmiki.com",
   "https://co.otomir23.me",
+  "https://cobalt-api.kwiatekmiki.com",
+  "https://cobalt.255x.ru",
+  "https://dl.khyernet.xyz",
   "https://cobalt-backend.canine.tools",
   "https://api.cobalt.tools",
   "https://co.wuk.sh",
