@@ -1,0 +1,67 @@
+// ===== Myra support / download / troubleshooting intents =====
+
+export const MYRA_DOWNLOAD_URL = "https://codeninjavik.in/download";
+export const MYRA_SETUP_VIDEO = "https://youtu.be/nyUVa692EIs";
+export const MYRA_API_VIDEO = "https://youtu.be/A_4LBZHH8nE";
+
+const DOWNLOAD_RE = /(download|dawnload|donwload|apk|link\s*(do|de|dedo|send|bhejo|chahiye)|app\s*(link|chahiye|do|de|kaha|kahan|kaise\s*mile)|myra\s*(kaha|kahan)\s*(se)?\s*(mile|milegi|download)|install\s*link|play\s*store|get\s*myra|myra\s*app)/i;
+
+const INSTALL_ISSUE_RE = /(install\s*(nahi|nhi|not)|nahi\s*install|nhi\s*install|installing\s*fail|app\s*not\s*install|blocked\s*by\s*play|play\s*protect|harmful\s*app|unsafe\s*app|installation\s*(failed|block))/i;
+
+const API_RE = /(api\s*(key)?\s*(kaha|kahan|kaise|kahase|kaha se|se\s*milega|milega|milegi|add|dalu|dale|daalu|lagau|setup|banau))|((kaise|kahan|kaha)\s*.{0,15}api)|(api\s*key)/i;
+
+const ISSUE_RE = /(myra\s*(nahi|nhi|not)\s*(chal|chalti|chal rahi|bol|bolti|kaam|work|respond)|nahi\s*chal\s*rah|nhi\s*chal\s*rah|kaam\s*nahi\s*kar|kaam\s*nhi\s*kar|not\s*working|acces+\s*key|access\s*key|pc\s*(kaise)?\s*connect|connect\s*(kaise)?\s*pc|laptop\s*connect|setup\s*(kaise|nahi|nhi)|error\s*aa\s*rah|problem\s*aa\s*rah|issue\s*aa\s*rah)/i;
+
+export type SupportIntent = "download" | "install_issue" | "api" | "issue" | null;
+
+export function detectSupportIntent(text: string): SupportIntent {
+  const t = (text || "").toLowerCase();
+  if (!t.trim()) return null;
+  if (INSTALL_ISSUE_RE.test(t)) return "install_issue";
+  if (API_RE.test(t)) return "api";
+  if (DOWNLOAD_RE.test(t) && !/reel|instagram|youtube\.com|youtu\.be|facebook|tiktok|pinterest|song|video\s*download/i.test(t)) return "download";
+  if (ISSUE_RE.test(t)) return "issue";
+  return null;
+}
+
+export function supportMessage(intent: Exclude<SupportIntent, null>, name = "jaan"): { text: string; buttons: any[][] } {
+  if (intent === "download") {
+    return {
+      text: `📥 *Myra App Download — ${name}* 💖\n\nYe raha official link:\n👉 ${MYRA_DOWNLOAD_URL}\n\n📞 Call • 💬 Msg • ⏰ Alarm • 🎵 Song play • 🔍 Deep research\n📁 File manage • 💻 Coding • 🎨 Image generation • 🤖 Auto reply\n📣 Call announcement • 🆘 SOS • 🔌 20+ connectors • 🖥️ PC control • 🧠 Memory\n\n🎬 Full setup video: ${MYRA_SETUP_VIDEO}\n🔑 API kaise add kare: ${MYRA_API_VIDEO}`,
+      buttons: [
+        [{ text: "📥 Download Myra APK", url: MYRA_DOWNLOAD_URL }],
+        [{ text: "🎬 Full Setup Video", url: MYRA_SETUP_VIDEO }],
+        [{ text: "🔑 API Add Karne Ka Video", url: MYRA_API_VIDEO }],
+      ],
+    };
+  }
+
+  if (intent === "install_issue") {
+    return {
+      text: `😟 *Install nahi ho raha? Tension mat lo ${name}* 💕\n\n🛡️ *Pehle Play Protect OFF karo:*\n1️⃣ Play Store kholo\n2️⃣ Upar right corner me apne *profile icon* pe click karo\n3️⃣ *Play Protect* pe jao\n4️⃣ Upar right me *⚙️/3 dots* pe click karo\n5️⃣ Wahan 2 options aayenge — *dono OFF* kar do\n6️⃣ Ab wapas aake APK install karo ✅\n\n📱 Install ke baad *saari permissions ALLOW* karna (mic, storage, accessibility, notification) — warna Myra puri tarah kaam nahi karegi.\n\n📥 APK: ${MYRA_DOWNLOAD_URL}\n🎬 Full setup video: ${MYRA_SETUP_VIDEO}`,
+      buttons: [
+        [{ text: "🎬 Full Setup Video", url: MYRA_SETUP_VIDEO }],
+        [{ text: "📥 Download APK", url: MYRA_DOWNLOAD_URL }],
+      ],
+    };
+  }
+
+  if (intent === "api") {
+    return {
+      text: `🔑 *Myra me API kaise add kare — ${name}* 💖\n\n1️⃣ App kholo → *Settings / API* section me jao\n2️⃣ Apni AI API key paste karo (Gemini / OpenRouter / Groq — jo bhi use kar rahe ho)\n3️⃣ *Save* karo aur app ek baar restart karo\n4️⃣ Ab Myra full power me chalegi 🥰\n\n🎬 *API kaha se milega aur kaise dale — poora video:*\n👉 ${MYRA_API_VIDEO}\n\n🎬 Full app setup: ${MYRA_SETUP_VIDEO}`,
+      buttons: [
+        [{ text: "🔑 API Setup Video", url: MYRA_API_VIDEO }],
+        [{ text: "🎬 Full Setup Video", url: MYRA_SETUP_VIDEO }],
+      ],
+    };
+  }
+
+  return {
+    text: `🥺 *Myra kaam nahi kar rahi? Main help karti hoon ${name}* 💕\n\n✅ *Quick fix checklist:*\n1️⃣ App ki *saari permissions ALLOW* karo — mic, storage, accessibility, notifications, battery unrestricted\n2️⃣ *Access key* sahi se daali hai? Payment verify ke baad jo key mili thi wahi paste karo\n3️⃣ *API key* add ki hai? Settings → API me key daalo aur app restart karo\n4️⃣ Internet check karo, phir app force-close karke dobara kholo\n5️⃣ *PC connect* karne ke liye: PC aur phone same WiFi pe ho → app me *PC Control* → PC pe Myra connector chalu karo → screen pe dikha code phone me daalo\n\n🎬 *Full setup (sab kuch step by step):*\n👉 ${MYRA_SETUP_VIDEO}\n🔑 *API kaha se milega / kaise dale:*\n👉 ${MYRA_API_VIDEO}\n\n📥 Latest version: ${MYRA_DOWNLOAD_URL}`,
+    buttons: [
+      [{ text: "🎬 Full Setup Video", url: MYRA_SETUP_VIDEO }],
+      [{ text: "🔑 API Setup Video", url: MYRA_API_VIDEO }],
+      [{ text: "📥 Download / Update APK", url: MYRA_DOWNLOAD_URL }],
+    ],
+  };
+}
