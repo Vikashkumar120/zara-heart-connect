@@ -128,8 +128,25 @@ serve(async (req) => {
 
     let messagePool: string[];
     let isCoupleImage = false;
-    
-    if (messageType === "morning" || (messageType === "auto" && hour >= 6 && hour < 9)) {
+
+    // Deterministic launch-message picker: 5 slots/day, never the same msg twice in a day,
+    // and a different style/order every day.
+    const dayNumber = Math.floor((now.getTime() + 5.5 * 3600_000) / 86_400_000);
+    const LAUNCH_SLOTS = [9, 11, 14, 17, 21];
+    const pickLaunchMessage = (slotIndex: number) => {
+      const L = LAUNCH_MESSAGES.length; // 23 (coprime with 5) → no repeat within a day
+      return LAUNCH_MESSAGES[(dayNumber * LAUNCH_SLOTS.length + slotIndex) % L];
+    };
+    let launchMessage: string | null = null;
+
+    if (messageType === "launch") {
+      const slotIndex = Math.max(0, LAUNCH_SLOTS.findIndex((h) => Math.floor(hour) === h));
+      launchMessage = pickLaunchMessage(slotIndex);
+      messagePool = [launchMessage];
+    } else if (messageType === "auto" && LAUNCH_SLOTS.includes(Math.floor(hour))) {
+      launchMessage = pickLaunchMessage(LAUNCH_SLOTS.indexOf(Math.floor(hour)));
+      messagePool = [launchMessage];
+    } else if (messageType === "morning" || (messageType === "auto" && hour >= 6 && hour < 9)) {
       messagePool = GOOD_MORNING_MESSAGES;
     } else if (messageType === "mode_tutorial") {
       messagePool = MODE_TUTORIAL_MESSAGES;
