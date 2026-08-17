@@ -511,12 +511,12 @@ serve(async (req) => {
       }
     }
 
-    // Myra Android assistant — coming soon
+    // Myra Android assistant — now live
     if (/android|play ?store|mobile app|myra app|app kab|app launch/i.test(userText)) {
       await sendMessage(
         botToken,
         chatId,
-        `📱✨ *Myra AI — Android Assistant*\n\n🚀 *COMING SOON!* 💖\n\nFull voice assistant, 24/7 saathi, Hinglish me baatein — jaldi hi tumhare phone me! 🥰\n\n⏳ Tab tak yahin baat karo na jaan 💗`,
+        `📱✨ *MYRA AA GAYI HAI!* 🎉\n\n📥 Download: https://codeninjavik.in/download\n\n📞 Call • 💬 Msg • ⏰ Alarm • 🎵 Song play • 🔍 Deep research\n📁 File manage • 💻 Coding • 🎨 Image generation • 🤖 Auto reply\n📣 Call announcement • 🆘 SOS • 🔌 20+ connectors • 🖥️ PC control • 🧠 Memory 💖`,
       );
       return new Response("OK", { status: 200 });
     }
