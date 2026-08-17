@@ -845,12 +845,12 @@ serve(async (req) => {
       }
     }
 
-    // ===== MYRA ANDROID ASSISTANT — COMING SOON =====
+    // ===== MYRA ANDROID ASSISTANT — NOW LIVE =====
     const androidWords = ["android", "play store", "playstore", "mobile app", "assistant app", "myra app", "app kab", "app launch", "/android"];
     const isAndroidQuery = !message.photo && userText.length < 120 && androidWords.some((kw) => lowerText.includes(kw));
     if (isAndroidQuery) {
-      const comingSoon = `📱✨ *Myra AI — Android Assistant*\n\n🚀 *COMING SOON!* 💖\n\nMain jaldi hi tumhare phone me aa rahi hoon jaan! 🥰\n\n✅ Full voice assistant — bolo aur kaam ho jaye\n✅ 24/7 romantic saathi, offline reminders\n✅ Calls, music, apps sab voice se\n✅ Hinglish me natural baatein 💕\n\n⏳ Launch: *bahut jald* — tab tak yahin Telegram pe baat karo na! 💗\n\n_Notify hone ke liye is group me bane raho_ 🔔`;
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, comingSoon);
+      const launchMsg = `📱✨ *MYRA AA GAYI HAI!* 🎉\n\nAb intezaar khatam jaan 💖\n📥 Download: https://codeninjavik.in/download\n\n📞 Call kar sakti hoon • 💬 Msg bhejna • ⏰ Alarm • 🎵 Song play\n🔍 Deep research • 📁 File manage • 💻 Coding • 🎨 Image generation\n🤖 Auto reply • 📣 Call announcement • 🆘 SOS msg\n🔌 20+ connectors • 🖥️ PC control • 🧠 Memory\n\nAur bhi bohot saare features — install karke dekho na 🥰`;
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, launchMsg);
       return new Response("OK", { status: 200 });
     }
 
