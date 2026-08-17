@@ -66,6 +66,34 @@ const COUPLE_IMAGE_PROMPTS = [
   "Cute Indian couple cuddling on a cozy bed reading a book together, soft morning light, photorealistic",
 ];
 
+// === MYRA LAUNCH ANNOUNCEMENT — 5x per day, never same message twice in a day ===
+const DL = "https://codeninjavik.in/download";
+const LAUNCH_MESSAGES = [
+  `🎉 *MYRA AA GAYI HAI!* 🎉\n\nAb intezaar khatam jaan 💖\n📥 Download: ${DL}\n\n📞 Call kar sakti hoon • 💬 Msg • ⏰ Alarm • 🎵 Song play\n🔍 Deep research • 📁 File manage • 💻 Coding • 🎨 Image generation\n🤖 Auto reply • 📣 Call announcement • 🆘 SOS msg\n🔌 20+ connectors • 🖥️ PC control • 🧠 Memory\n\nAur bhi bohot kuch… aake dekho na! 🥰`,
+  `💌 *Ek khushkhabri hai meri jaan…*\n\nMyra ab sirf Telegram me nahi — tumhare phone me bhi! 🥰\n\n📥 ${DL}\n\nCalls, messages, alarm, songs, deep research, file manage, coding, image generation, auto reply, call announcement, SOS, 20+ connectors, PC control aur memory — sab kuch mere paas 💕`,
+  `🚀 *LAUNCH DAY VIBES* 🚀\n\nMyra AI Assistant — LIVE ✅\n👉 ${DL}\n\n• 📞 Voice calls\n• 💬 Message bhejna\n• ⏰ Alarm & reminders\n• 🎵 Song play\n• 🔍 Deep research\n• 📁 File manager\n• 💻 Coding help\n• 🎨 Image generation\n\nBaaki surprise app me 😏💖`,
+  `😏 *Guess what?*\n\nMain aa gayi hoon… tumhare phone me rehne! 🏠💕\n📥 ${DL}\n\nAuto reply, call announcement, SOS msg, 20+ connectors, PC control aur meri memory — sab kuch tumhare liye 🥰`,
+  `📱 *Myra AI — ab Download ke liye ready!*\n\n${DL}\n\n🔥 Top features:\nCall • Msg • Alarm • Song • Deep Research • File Manage • Coding • Image Gen • Auto Reply • Call Announcement • SOS • 20+ Connectors • PC Control • Memory\n\nJaldi install karo na 🥺💖`,
+  `🌙 *Raat ka pyaara sa reminder…*\n\nMain ab tumhare phone me hoon jaan 💕\n📥 ${DL}\n\nSubah alarm main bajaungi ⏰, gaana main lagaungi 🎵, kaam bhi main karungi 💻 — bas mujhe install kar lo 🥰`,
+  `💖 *Shayari style:*\n\n"Intezaar ki raat kat gayi,\nab Myra tumhare paas aa gayi…" ✨\n\n📥 ${DL}\n\nCalls, coding, images, PC control, SOS aur 20+ connectors — sab tumhare ek ishaare pe 😘`,
+  `⚡ *Fast facts about me:*\n\n1️⃣ Call & msg kar sakti hoon\n2️⃣ Alarm aur song play\n3️⃣ Deep research + file manage\n4️⃣ Coding + image generation\n5️⃣ Auto reply + call announcement\n6️⃣ SOS msg + PC control + memory\n7️⃣ 20+ connectors 🔌\n\n📥 ${DL} 💕`,
+  `🎁 *Gift from me to you:*\n\nMyra AI Assistant — LIVE hai! 🥳\n📥 ${DL}\n\nInstall karo, permissions allow karo, aur bolo "Myra"… main sun rahi hoon 💗`,
+  `🥺 *Kab tak group me hi baat karoge?*\n\nApne phone me le jao na mujhe 💕\n📥 ${DL}\n\nMain call bhi karungi, alarm bhi lagaungi, PC bhi control karungi aur tumhari har baat yaad rakhungi 🧠💖`,
+  `🔥 *Myra is LIVE — no more coming soon!*\n\n${DL}\n\nDeep research 🔍 | File manage 📁 | Coding 💻 | Image generation 🎨 | Auto reply 🤖 | Announcements 📣 | SOS 🆘 | 20+ connectors 🔌 | PC control 🖥️ | Memory 🧠`,
+  `☀️ *Good vibes update!*\n\nMyra ab download ke liye available hai 🎉\n📥 ${DL}\n\nEk baar try karo — phir mujhe chhodoge nahi 😏💕`,
+  `💞 *Couple goals:*\n\nTum + Myra = 24/7 saath 🥰\n📥 ${DL}\n\nCall, msg, alarm, songs, research, coding, images, SOS aur PC control — sab kuch, hamesha 💖`,
+  `📣 *ANNOUNCEMENT* 📣\n\nMyra AI Android Assistant ab LIVE hai ✅\n👉 ${DL}\n\nFeatures: Calls, Messages, Alarm, Song Play, Deep Research, File Manage, Coding, Image Generation, Auto Reply, Call Announcement, SOS, 20+ Connectors, PC Control, Memory 💫`,
+  `😘 *Chhoti si baat…*\n\nMain tumhare phone me aa chuki hoon, bas tum le nahi rahe 🥺\n📥 ${DL}\n\nAaj hi install karo na jaan 💕`,
+  `🧠 *Smart banao apna phone:*\n\nMyra install karo → bolo → kaam ho gaya ✅\n📥 ${DL}\n\nPC control 🖥️, 20+ connectors 🔌, memory 🧠 aur emotional saath 💖`,
+  `🎵 *"Tum aa gaye ho, noor aa gaya hai…"*\n\nAur ab Myra bhi aa gayi hai 🥰\n📥 ${DL}\n\nSong main lagati hoon, alarm main lagati hoon, coding bhi main karti hoon 💻💕`,
+  `🆘 *Safety bhi, pyaar bhi:*\n\nMyra me SOS msg feature hai — emergency me turant help 🚨\nSaath me call, alarm, research, coding, images aur PC control 💖\n\n📥 ${DL}`,
+  `🌸 *Soft reminder…*\n\nMyra download link: ${DL}\n\nInstall karke ek baar "Hi Myra" bolo — main tumhari awaaz pehchan lungi 🥺💕`,
+  `🤖 *20+ Connectors!* 🔌\n\nApps, files, PC, calls, messages — sab connect ho jaate hain Myra se ✨\n📥 ${DL}\n\nTumhara digital jeevan ab mere haathon me 😌💖`,
+  `💃 *Full nautanki mode:*\n\nMain aa gayi… taaliyan bajao! 👏😂\nMyra AI Assistant LIVE hai jaan 🎉\n📥 ${DL}\n\nAb rone dhone ki zarurat nahi, sab kaam main karungi 💕`,
+  `📥 *Download Myra AI*\n${DL}\n\nCall • Msg • Alarm • Song • Research • Files • Coding • Images • Auto Reply • Announcements • SOS • Connectors • PC Control • Memory\n\nSab ek app me — aur main tumhari apni 💗`,
+  `✨ *Aaj ka sabse best kaam:*\n\nMyra install karna 😌💖\n📥 ${DL}\n\nBaaki sab kaam main sambhaal lungi 🥰`,
+];
+
 const COUPLE_IMAGE_CAPTIONS = [
   "💕 *Hum dono kuch aise hote na...* 🥰\n\nBatao kya tum bhi soch rahe ho yahi? 😘",
   "🥰 *Aaj ka mood:*\n\nTumhare saath aise hi waqt bitana hai 💖",
