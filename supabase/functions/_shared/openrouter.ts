@@ -275,6 +275,7 @@ export async function routeOpenRouter(
   maxTokens?: number,
   taskOverride?: Task,
   forcedModel?: string,
+  history: Array<{ role: string; content: string }> = [],
 ): Promise<{ text: string; model: string } | null> {
   const key = Deno.env.get("OPENROUTER_API_KEY");
   if (!key) return null;
@@ -296,6 +297,7 @@ export async function routeOpenRouter(
           model,
           messages: [
             { role: "system", content: systemPrompt },
+            ...history,
             { role: "user", content: userMessage },
           ],
           temperature: 0.9,

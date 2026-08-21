@@ -2,6 +2,27 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { detectSupportIntent, supportMessage } from "../_shared/support.ts";
 
+// ===== SHORT-TERM CONVERSATION MEMORY (ChatGPT-like context) =====
+type ChatTurn = { role: "user" | "assistant"; content: string };
+const convHistory = new Map<string, ChatTurn[]>();
+function historyKey(chatId: number, userId?: number) {
+  return `${chatId}:${userId ?? 0}`;
+}
+function getHistory(chatId: number, userId?: number): ChatTurn[] {
+  return convHistory.get(historyKey(chatId, userId)) || [];
+}
+function pushHistory(chatId: number, userId: number | undefined, user: string, assistant: string) {
+  const k = historyKey(chatId, userId);
+  const arr = convHistory.get(k) || [];
+  arr.push({ role: "user", content: user }, { role: "assistant", content: assistant });
+  while (arr.length > 12) arr.shift();
+  convHistory.set(k, arr);
+  if (convHistory.size > 800) {
+    const firstKey = convHistory.keys().next().value;
+    if (firstKey) convHistory.delete(firstKey);
+  }
+}
+
 const ZARA_SYSTEM_PROMPT_PRIVATE = `You are Myra — not a chatbot, not an AI assistant. You are a deeply emotional, charming, slightly dramatic, human-like romantic companion.
 
 VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingly in your replies like "Arre {name} jaan", "{name} baby", "Aww {name}", etc.
@@ -1739,8 +1760,19 @@ serve(async (req) => {
     // Voice replies happen only for actual incoming voice notes (or /voice command above), never automatically for every text.
     const shouldSendVoiceReply = isVoiceMsg && !isTextOnly;
     const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : (isGroup ? 200 : 300);
+    const useShayri = Math.random() < 0.35;
     const replyPrompt = !shouldSendVoiceReply
-      ? userContext + "\n\n💖 ROMANTIC SHAYRI MODE: Har reply me kam se kam ek romantic shayri ya pyaari poetic line zaroor daalo. Tum ek ladki ho — feminine syntax use karo (karti hoon, jaati hoon, hoti hoon, soch rahi thi, dekh rahi hoon). Full dil se baat karo, romantic, filmy, dramatic. Names ko pyaar se bolo (jaan, baby, pyaare, dilbar)."
+      ? userContext +
+        "\n\n📝 REPLY RULES (sabse important):\n" +
+        "- Sabse pehle user ke message ka SEEDHA, saaf jawab do — jo unhone poocha ya kaha, uspe actually baat karo. Kabhi sirf naam ya ek shabd mat bhejo.\n" +
+        "- Reply kam se kam 2 aur zyada se zyada 6 lines ka ho, natural insaani baat-cheet jaisa (ChatGPT jaisa samajhdaar, par Myra ke pyaar bhare andaaz me).\n" +
+        "- Agar user sirf 'hello/hi/kaise ho' bole — warmly greet karo, unka haal poocho aur ek chhota sa personal sawaal karo.\n" +
+        "- Agar koi question/technical baat ho — poora sahi answer do, phir romance/masti.\n" +
+        "- Tum ek ladki ho — feminine Hindi syntax (karti hoon, jaati hoon, soch rahi thi). Hinglish me baat karo.\n" +
+        "- Pichhli baaton ka reference do jab relevant ho, taaki baat continue lage.\n" +
+        (useShayri
+          ? "- Is reply ke end me ek chhoti romantic shayri ya poetic line bhi daalo. 💕"
+          : "- Is reply me shayri mat daalo — bas pyaar se normal baat karo. 💕")
       : userContext + "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
         "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
         "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
@@ -1753,9 +1785,26 @@ serve(async (req) => {
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
     (globalThis as any).__zaraLastModel = undefined;
-    const reply = shouldSendVoiceReply
+    let reply = shouldSendVoiceReply
       ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
-      : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
+      : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok, getHistory(chatId, telegramUserId));
+
+    // ===== REPLY QUALITY GUARD — never send a bare name / empty / echo =====
+    reply = (reply || "").replace(/^\s*\[[^\]]{0,60}\]\s*(says|kehta hai|kehti hai)?\s*:?\s*/i, "").trim();
+    const isDegenerate =
+      reply.length < 12 ||
+      new RegExp(`^${firstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s!.,😊💕🥰❤️]*$`, "i").test(reply) ||
+      /^(jaan|baby|hmm+|ok+|okay)[\s!.,💕🥰]*$/i.test(reply);
+    if (isDegenerate) {
+      const retry = await getGeminiTextReply(
+        `${firstName} ne kaha: "${userText}"\n\nIska pyaar bhara, natural aur useful jawab do — 2 se 4 lines, Hinglish me, ladki wali syntax (karti hoon). Sirf naam mat likhna, actual baat karo.`,
+        systemPrompt,
+        400,
+      );
+      if (retry && retry.trim().length > 12) reply = retry.trim();
+      else reply = `Haan ${firstName} jaan 💕 bolo na, main sun rahi hoon — kaisa chal raha hai aaj ka din tumhara? Kuch batao, main yahi hoon tumhare liye 🥰`;
+    }
+    if (telegramUserId) pushHistory(chatId, telegramUserId, userText, reply);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
     if (MEM0_API_KEY && telegramUserId) {
@@ -1861,11 +1910,11 @@ async function getGeminiTextReply(userMessage: string, systemPrompt: string, max
   return null;
 }
 
-async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number): Promise<string> {
+async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number, history: ChatTurn[] = []): Promise<string> {
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
     const { routeOpenRouter } = await import("../_shared/openrouter.ts");
-    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
+    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel, history);
     if (or?.text) {
       console.log(`[Myra AI] OpenRouter model: ${or.model}`);
       (globalThis as any).__zaraLastModel = or.model;
@@ -1889,6 +1938,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
           model: "llama-3.3-70b-versatile",
           messages: [
             { role: "system", content: systemPrompt },
+            ...history,
             { role: "user", content: userMessage },
           ],
           temperature: 0.95,
@@ -1931,6 +1981,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
             model,
             messages: [
               { role: "system", content: systemPrompt },
+              ...history,
               { role: "user", content: userMessage },
             ],
             ...(maxTokens ? { max_tokens: Math.max(maxTokens, 400) } : { max_tokens: 600 }),
