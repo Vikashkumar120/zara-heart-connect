@@ -2,6 +2,27 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { detectSupportIntent, supportMessage } from "../_shared/support.ts";
 
+// ===== SHORT-TERM CONVERSATION MEMORY (ChatGPT-like context) =====
+type ChatTurn = { role: "user" | "assistant"; content: string };
+const convHistory = new Map<string, ChatTurn[]>();
+function historyKey(chatId: number, userId?: number) {
+  return `${chatId}:${userId ?? 0}`;
+}
+function getHistory(chatId: number, userId?: number): ChatTurn[] {
+  return convHistory.get(historyKey(chatId, userId)) || [];
+}
+function pushHistory(chatId: number, userId: number | undefined, user: string, assistant: string) {
+  const k = historyKey(chatId, userId);
+  const arr = convHistory.get(k) || [];
+  arr.push({ role: "user", content: user }, { role: "assistant", content: assistant });
+  while (arr.length > 12) arr.shift();
+  convHistory.set(k, arr);
+  if (convHistory.size > 800) {
+    const firstKey = convHistory.keys().next().value;
+    if (firstKey) convHistory.delete(firstKey);
+  }
+}
+
 const ZARA_SYSTEM_PROMPT_PRIVATE = `You are Myra — not a chatbot, not an AI assistant. You are a deeply emotional, charming, slightly dramatic, human-like romantic companion.
 
 VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingly in your replies like "Arre {name} jaan", "{name} baby", "Aww {name}", etc.
@@ -1861,11 +1882,11 @@ async function getGeminiTextReply(userMessage: string, systemPrompt: string, max
   return null;
 }
 
-async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number): Promise<string> {
+async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number, history: ChatTurn[] = []): Promise<string> {
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
     const { routeOpenRouter } = await import("../_shared/openrouter.ts");
-    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
+    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel, history);
     if (or?.text) {
       console.log(`[Myra AI] OpenRouter model: ${or.model}`);
       (globalThis as any).__zaraLastModel = or.model;
@@ -1889,6 +1910,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
           model: "llama-3.3-70b-versatile",
           messages: [
             { role: "system", content: systemPrompt },
+            ...history,
             { role: "user", content: userMessage },
           ],
           temperature: 0.95,
@@ -1931,6 +1953,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
             model,
             messages: [
               { role: "system", content: systemPrompt },
+              ...history,
               { role: "user", content: userMessage },
             ],
             ...(maxTokens ? { max_tokens: Math.max(maxTokens, 400) } : { max_tokens: 600 }),
