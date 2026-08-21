@@ -1760,8 +1760,19 @@ serve(async (req) => {
     // Voice replies happen only for actual incoming voice notes (or /voice command above), never automatically for every text.
     const shouldSendVoiceReply = isVoiceMsg && !isTextOnly;
     const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : (isGroup ? 200 : 300);
+    const useShayri = Math.random() < 0.35;
     const replyPrompt = !shouldSendVoiceReply
-      ? userContext + "\n\n💖 ROMANTIC SHAYRI MODE: Har reply me kam se kam ek romantic shayri ya pyaari poetic line zaroor daalo. Tum ek ladki ho — feminine syntax use karo (karti hoon, jaati hoon, hoti hoon, soch rahi thi, dekh rahi hoon). Full dil se baat karo, romantic, filmy, dramatic. Names ko pyaar se bolo (jaan, baby, pyaare, dilbar)."
+      ? userContext +
+        "\n\n📝 REPLY RULES (sabse important):\n" +
+        "- Sabse pehle user ke message ka SEEDHA, saaf jawab do — jo unhone poocha ya kaha, uspe actually baat karo. Kabhi sirf naam ya ek shabd mat bhejo.\n" +
+        "- Reply kam se kam 2 aur zyada se zyada 6 lines ka ho, natural insaani baat-cheet jaisa (ChatGPT jaisa samajhdaar, par Myra ke pyaar bhare andaaz me).\n" +
+        "- Agar user sirf 'hello/hi/kaise ho' bole — warmly greet karo, unka haal poocho aur ek chhota sa personal sawaal karo.\n" +
+        "- Agar koi question/technical baat ho — poora sahi answer do, phir romance/masti.\n" +
+        "- Tum ek ladki ho — feminine Hindi syntax (karti hoon, jaati hoon, soch rahi thi). Hinglish me baat karo.\n" +
+        "- Pichhli baaton ka reference do jab relevant ho, taaki baat continue lage.\n" +
+        (useShayri
+          ? "- Is reply ke end me ek chhoti romantic shayri ya poetic line bhi daalo. 💕"
+          : "- Is reply me shayri mat daalo — bas pyaar se normal baat karo. 💕")
       : userContext + "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
         "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
         "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
@@ -1776,7 +1787,7 @@ serve(async (req) => {
     (globalThis as any).__zaraLastModel = undefined;
     const reply = shouldSendVoiceReply
       ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
-      : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok);
+      : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok, getHistory(chatId, telegramUserId));
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
     if (MEM0_API_KEY && telegramUserId) {
