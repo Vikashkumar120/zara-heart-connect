@@ -2,6 +2,7 @@
 // URL pattern: /functions/v1/user-bot-webhook/<BOT_TOKEN>
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { detectSupportIntent, supportMessage } from "../_shared/support.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -507,6 +508,16 @@ serve(async (req) => {
             { text: "🔥 4K Max", callback_data: `dl|max|${linkId}` },
           ],
         ]);
+        return new Response("OK", { status: 200 });
+      }
+    }
+
+    // Myra support: download / install / api / troubleshooting
+    if (userText.length < 300) {
+      const supportIntent = detectSupportIntent(userText);
+      if (supportIntent) {
+        const { text: sText, buttons } = supportMessage(supportIntent, firstName);
+        await sendButtons(botToken, chatId, sText, buttons as any);
         return new Response("OK", { status: 200 });
       }
     }
