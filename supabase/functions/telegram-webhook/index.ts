@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { detectSupportIntent, supportMessage } from "../_shared/support.ts";
 
 const ZARA_SYSTEM_PROMPT_PRIVATE = `You are Myra — not a chatbot, not an AI assistant. You are a deeply emotional, charming, slightly dramatic, human-like romantic companion.
 
@@ -841,6 +842,16 @@ serve(async (req) => {
             ],
           ],
         );
+        return new Response("OK", { status: 200 });
+      }
+    }
+
+    // ===== MYRA SUPPORT: download / install / api / troubleshooting =====
+    if (!message.photo && userText.length < 300) {
+      const supportIntent = detectSupportIntent(userText);
+      if (supportIntent) {
+        const { text: sText, buttons } = supportMessage(supportIntent, firstName);
+        await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, sText, buttons as any);
         return new Response("OK", { status: 200 });
       }
     }
