@@ -1785,9 +1785,26 @@ serve(async (req) => {
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
     (globalThis as any).__zaraLastModel = undefined;
-    const reply = shouldSendVoiceReply
+    let reply = shouldSendVoiceReply
       ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
       : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok, getHistory(chatId, telegramUserId));
+
+    // ===== REPLY QUALITY GUARD — never send a bare name / empty / echo =====
+    reply = (reply || "").replace(/^\s*\[[^\]]{0,60}\]\s*(says|kehta hai|kehti hai)?\s*:?\s*/i, "").trim();
+    const isDegenerate =
+      reply.length < 12 ||
+      new RegExp(`^${firstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s!.,😊💕🥰❤️]*$`, "i").test(reply) ||
+      /^(jaan|baby|hmm+|ok+|okay)[\s!.,💕🥰]*$/i.test(reply);
+    if (isDegenerate) {
+      const retry = await getGeminiTextReply(
+        `${firstName} ne kaha: "${userText}"\n\nIska pyaar bhara, natural aur useful jawab do — 2 se 4 lines, Hinglish me, ladki wali syntax (karti hoon). Sirf naam mat likhna, actual baat karo.`,
+        systemPrompt,
+        400,
+      );
+      if (retry && retry.trim().length > 12) reply = retry.trim();
+      else reply = `Haan ${firstName} jaan 💕 bolo na, main sun rahi hoon — kaisa chal raha hai aaj ka din tumhara? Kuch batao, main yahi hoon tumhare liye 🥰`;
+    }
+    if (telegramUserId) pushHistory(chatId, telegramUserId, userText, reply);
 
     // ===== MEM0 MEMORY: Store new memory from conversation =====
     if (MEM0_API_KEY && telegramUserId) {
