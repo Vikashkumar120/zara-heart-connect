@@ -846,6 +846,16 @@ serve(async (req) => {
       }
     }
 
+    // ===== MYRA SUPPORT: download / install / api / troubleshooting =====
+    if (!message.photo && userText.length < 300) {
+      const supportIntent = detectSupportIntent(userText);
+      if (supportIntent) {
+        const { text: sText, buttons } = supportMessage(supportIntent, firstName);
+        await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, sText, buttons as any);
+        return new Response("OK", { status: 200 });
+      }
+    }
+
     // ===== MYRA ANDROID ASSISTANT — NOW LIVE =====
     const androidWords = ["android", "play store", "playstore", "mobile app", "assistant app", "myra app", "app kab", "app launch", "/android"];
     const isAndroidQuery = !message.photo && userText.length < 120 && androidWords.some((kw) => lowerText.includes(kw));
