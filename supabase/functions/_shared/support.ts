@@ -12,13 +12,16 @@ const API_RE = /(api\s*(key)?\s*(kaha|kahan|kaise|kahase|kaha se|se\s*milega|mil
 
 const ISSUE_RE = /(myra\s*(nahi|nhi|not)\s*(chal|chalti|chal rahi|bol|bolti|kaam|work|respond)|nahi\s*chal\s*rah|nhi\s*chal\s*rah|kaam\s*nahi\s*kar|kaam\s*nhi\s*kar|not\s*working|acces+\s*key|access\s*key|pc\s*(kaise)?\s*connect|connect\s*(kaise)?\s*pc|laptop\s*connect|setup\s*(kaise|nahi|nhi)|error\s*aa\s*rah|problem\s*aa\s*rah|issue\s*aa\s*rah)/i;
 
-export type SupportIntent = "download" | "install_issue" | "api" | "issue" | null;
+const DEMO_RE = /(demo|setup\s*video|video\s*(dikhao|do|send|bhejo|chahiye|link)|tutorial|kaise\s*use\s*kar|use\s*kaise|chalana\s*kaise|kaise\s*chalaye|guide|youtube\s*(video|link)|dikhao\s*na\s*kaise)/i;
+
+export type SupportIntent = "download" | "install_issue" | "api" | "issue" | "demo" | null;
 
 export function detectSupportIntent(text: string): SupportIntent {
   const t = (text || "").toLowerCase();
   if (!t.trim()) return null;
   if (INSTALL_ISSUE_RE.test(t)) return "install_issue";
   if (API_RE.test(t)) return "api";
+  if (DEMO_RE.test(t)) return "demo";
   if (DOWNLOAD_RE.test(t) && !/reel|instagram|youtube\.com|youtu\.be|facebook|tiktok|pinterest|song|video\s*download/i.test(t)) return "download";
   if (ISSUE_RE.test(t)) return "issue";
   return null;
@@ -42,6 +45,17 @@ export function supportMessage(intent: Exclude<SupportIntent, null>, name = "jaa
       buttons: [
         [{ text: "🎬 Full Setup Video", url: MYRA_SETUP_VIDEO }],
         [{ text: "📥 Download APK", url: MYRA_DOWNLOAD_URL }],
+      ],
+    };
+  }
+
+  if (intent === "demo") {
+    return {
+      text: `🎬 *Myra Demo & Full Setup — ${name}* 💖\n\nDekho ye do videos, sab clear ho jayega:\n\n1️⃣ *Full setup + demo (sab features):*\n👉 ${MYRA_SETUP_VIDEO}\n\n2️⃣ *API key kaha se milega aur kaise dale:*\n👉 ${MYRA_API_VIDEO}\n\n📥 App download: ${MYRA_DOWNLOAD_URL}\n\nKoi step samajh na aaye to mujhe bata dena jaan, main step by step bataungi 🥰`,
+      buttons: [
+        [{ text: "🎬 Demo / Full Setup Video", url: MYRA_SETUP_VIDEO }],
+        [{ text: "🔑 API Setup Video", url: MYRA_API_VIDEO }],
+        [{ text: "📥 Download Myra APK", url: MYRA_DOWNLOAD_URL }],
       ],
     };
   }
