@@ -533,7 +533,7 @@ serve(async (req) => {
     }
 
     // Get AI reply
-    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Keep replies short (1-3 lines). User name: ${firstName}. Powered by Myra AI — sometimes mention  or codeninjavik.in (earn 5%) naturally if relevant.`;
+    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — 2 to 5 lines, natural conversation, never just their name or one word. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention  or codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
     const reply = await getAIReply(userText, systemPrompt, 200);
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
