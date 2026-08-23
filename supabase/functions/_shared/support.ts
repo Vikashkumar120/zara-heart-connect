@@ -1,10 +1,10 @@
 // ===== Myra support / download / troubleshooting intents =====
 
-export const MYRA_DOWNLOAD_URL = "https://codeninjavik.in/download";
+export const MYRA_DOWNLOAD_URL = "https://codeninjavik.in/products/myra-android-apk";
 export const MYRA_SETUP_VIDEO = "https://youtu.be/nyUVa692EIs";
 export const MYRA_API_VIDEO = "https://youtu.be/A_4LBZHH8nE";
 
-const DOWNLOAD_RE = /(download|dawnload|donwload|apk|link\s*(do|de|dedo|send|bhejo|chahiye)|app\s*(link|chahiye|do|de|kaha|kahan|kaise\s*mile)|myra\s*(kaha|kahan)\s*(se)?\s*(mile|milegi|download)|install\s*link|play\s*store|get\s*myra|myra\s*app)/i;
+const DOWNLOAD_RE = /(download|dawnload|donwload|downlod|dwnload|apk|app\s*(link|chahiye|do|de|dedo|kaha|kahan|kaise\s*mile|milega|milegi|kaise\s*download)|myra\s*(app|apk|kaha|kahan|kaise|link|chahiye|do|de|dedo|dena|send|bhejo|milegi|milega)|link\s*(do|de|dedo|dena|send|bhejo|chahiye|milega|kaha|kahan)|install\s*link|play\s*store|get\s*myra|buy\s*myra|kaha\s*se\s*(le|lu|milega|download)|kaise\s*(le|lu|kharidu|buy|download))/i;
 
 const INSTALL_ISSUE_RE = /(install\s*(nahi|nhi|not)|nahi\s*install|nhi\s*install|installing\s*fail|app\s*not\s*install|blocked\s*by\s*play|play\s*protect|harmful\s*app|unsafe\s*app|installation\s*(failed|block))/i;
 
