@@ -2059,7 +2059,17 @@ async function sendMessageWithButtons(
       reply_markup: { inline_keyboard: keyboard },
     }),
   });
-  if (!r.ok) console.error("sendMessageWithButtons failed:", r.status, (await r.text()).slice(0, 200));
+  if (!r.ok) {
+    console.error("sendMessageWithButtons failed:", r.status, (await r.text()).slice(0, 200));
+    // Retry without markdown so the user still gets the message (links/buttons intact)
+    const plain = text.replace(/[*_`]/g, "");
+    const r2 = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: plain, reply_markup: { inline_keyboard: keyboard } }),
+    });
+    if (!r2.ok) console.error("sendMessageWithButtons plain retry failed:", r2.status, (await r2.text()).slice(0, 200));
+  }
 }
 
 async function answerCallback(token: string, callbackQueryId: string, text: string) {
