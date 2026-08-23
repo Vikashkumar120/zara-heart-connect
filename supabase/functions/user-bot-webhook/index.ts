@@ -525,7 +525,7 @@ serve(async (req) => {
       await sendMessage(
         botToken,
         chatId,
-        `📱✨ *MYRA AA GAYI HAI!* 🎉\n\n📥 Download: https://codeninjavik.in/download\n\n📞 Call • 💬 Msg • ⏰ Alarm • 🎵 Song play • 🔍 Deep research\n📁 File manage • 💻 Coding • 🎨 Image generation • 🤖 Auto reply\n📣 Call announcement • 🆘 SOS • 🔌 20+ connectors • 🖥️ PC control • 🧠 Memory 💖`,
+        `📱✨ *MYRA AA GAYI HAI!* 🎉\n\n📥 Download: https://codeninjavik.in/products/myra-android-apk\n\n📞 Call • 💬 Msg • ⏰ Alarm • 🎵 Song play • 🔍 Deep research\n📁 File manage • 💻 Coding • 🎨 Image generation • 🤖 Auto reply\n📣 Call announcement • 🆘 SOS • 🔌 20+ connectors • 🖥️ PC control • 🧠 Memory 💖`,
       );
       return new Response("OK", { status: 200 });
     }
