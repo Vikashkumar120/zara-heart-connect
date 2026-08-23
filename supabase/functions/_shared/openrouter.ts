@@ -124,32 +124,31 @@ export const MODEL_CATALOG: string[] = Object.values(ALL_MODELS).flat() as strin
 // Curated OpenRouter model IDs (no Gemini). Order = preference within category.
 const MODELS: Record<Task, string[]> = {
   coding: [
-    "deepseek/deepseek-chat-v3.1:free",
-    "mistralai/mistral-large-2411",
-    "openai/gpt-4o-mini",
-    "deepseek/deepseek-coder",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "qwen/qwen3-coder:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "mistralai/mistral-small-3.2-24b-instruct:free",
   ],
   long: [
-    "anthropic/claude-3.5-sonnet",
-    "anthropic/claude-3-opus",
-    "mistralai/mistral-large-2411",
-    "openai/gpt-4o",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen3-235b-a22b:free",
   ],
   fast: [
-    "meta-llama/llama-3.3-70b-instruct",
-    "openai/gpt-4o-mini",
-    "mistralai/mistral-small-latest",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "mistralai/mistral-small-3.2-24b-instruct:free",
+    "deepseek/deepseek-chat-v3-0324:free",
   ],
   creative: [
-    "anthropic/claude-3.5-sonnet",
-    "openai/gpt-4o",
-    "x-ai/grok-2-1212",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen3-235b-a22b:free",
   ],
   general: [
-    "openai/gpt-4o-mini",
-    "anthropic/claude-3.5-haiku",
-    "meta-llama/llama-3.3-70b-instruct",
-    "mistralai/mistral-small-latest",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "mistralai/mistral-small-3.2-24b-instruct:free",
+    "qwen/qwen3-235b-a22b:free",
   ],
 };
 
@@ -166,7 +165,7 @@ export function detectTask(userMessage: string): Task {
   return "general";
 }
 
-/Validate / normalize a /model command argument (case-insensitive prefix-match if needed) */
+/** Validate  normalize a /model command argument (case-insensitive prefix-match if needed) */
 export function resolveModelId(input: string): string | null {
   const q = input.trim().toLowerCase();
   if (!q) return null;
@@ -181,7 +180,7 @@ export function resolveModelId(input: string): string | null {
   return sub || null;
 }
 
-/Direct call to a specific OpenRouter model (text only) */
+/** Direct call to a specific OpenRouter model (text only) */
 export async function callOpenRouterModel(
   model: string,
   userMessage: string,
@@ -221,7 +220,7 @@ export async function callOpenRouterModel(
   }
 }
 
-/Vision: send image + question. imageUrl can be data URL or https URL */
+/** Vision: send image + question. imageUrl can be data URL or https URL */
 export async function visionAsk(
   imageUrl: string,
   question: string,

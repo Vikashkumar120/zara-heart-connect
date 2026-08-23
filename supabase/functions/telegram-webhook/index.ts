@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { detectSupportIntent, supportMessage } from "../_shared/support.ts";
+import { detectSupportIntent, supportMessage, MYRA_DOWNLOAD_URL } from "../_shared/support.ts";
+import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
 // ===== SHORT-TERM CONVERSATION MEMORY (ChatGPT-like context) =====
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -401,7 +402,7 @@ async function transcribeTelegramVoice(botToken: string, voice: any): Promise<st
     const mimeType = filePath.endsWith(".mp3") ? "audio/mpeg" : filePath.endsWith(".wav") ? "audio/wav" : "audio/ogg";
 
     const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -650,7 +651,6 @@ serve(async (req) => {
             const photoBuffer = await photoResp.arrayBuffer();
             const photoBase64 = btoa(String.fromCharCode(...new Uint8Array(photoBuffer)));
             const dataUrl = `data:image/jpeg;base64,${photoBase64}`;
-            const { visionAsk } = await import("../_shared/openrouter.ts");
             // Use forced model if set
             let forced: string | undefined;
             try {
@@ -877,22 +877,12 @@ serve(async (req) => {
       }
     }
 
-    // ===== MYRA ANDROID ASSISTANT — NOW LIVE =====
-    const androidWords = ["android", "play store", "playstore", "mobile app", "assistant app", "myra app", "app kab", "app launch", "/android"];
-    const isAndroidQuery = !message.photo && userText.length < 120 && androidWords.some((kw) => lowerText.includes(kw));
+    // ===== MYRA ANDROID APP / APK REQUEST =====
+    const androidWords = ["android", "play store", "playstore", "mobile app", "assistant app", "myra app", "app kab", "app launch", "/android", "apk", "app download", "app link", "app kaha", "app kahan", "app milega"];
+    const isAndroidQuery = !message.photo && userText.length < 160 && androidWords.some((kw) => lowerText.includes(kw));
     if (isAndroidQuery) {
-      const launchMsg = `📱✨ *MYRA AA GAYI HAI!* 🎉\n\nAb intezaar khatam jaan 💖\n📥 Download: https://codeninjavik.in/download\n\n📞 Call kar sakti hoon • 💬 Msg bhejna • ⏰ Alarm • 🎵 Song play\n🔍 Deep research • 📁 File manage • 💻 Coding • 🎨 Image generation\n🤖 Auto reply • 📣 Call announcement • 🆘 SOS msg\n🔌 20+ connectors • 🖥️ PC control • 🧠 Memory\n\nAur bhi bohot saare features — install karke dekho na 🥰`;
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, launchMsg);
-      return new Response("OK", { status: 200 });
-    }
-
-    // ===== APK / ZARA APP DETECTION =====
-    const apkKeywords = ["apk", "zara app", "zara ka app", "app download", "download zara", "zara download", "app link", "app kaha", "app kahan", "app milega"];
-    const isApkRequest = !message.photo && userText.length < 80 && apkKeywords.some((kw) => lowerText.includes(kw));
-    
-    if (isApkRequest) {
-      const apkReply = `Arre ${firstName}! 😏✨\n\nMyra AI app download karo! 💕\n\n🔥 *5% DISCOUNT* is link se milega! 💰\n\nWahaan pe mujhse unlimited baat kar sakte ho,\nvoice calls, video calls, sab kuch! ✨\n\nJao jaldi! 💖`;
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, apkReply);
+      const { text: dText, buttons: dBtns } = supportMessage("download", firstName);
+      await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, dText, dBtns as any);
       return new Response("OK", { status: 200 });
     }
 
@@ -1497,7 +1487,6 @@ serve(async (req) => {
     // ===== /model command — force OpenRouter model per-user =====
     if (/^\/model(@\S+)?(\s|$)/i.test(userText)) {
       const arg = userText.replace(/^\/model(@\S+)?/i, "").trim();
-      const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
       if (!arg || arg.toLowerCase() === "list") {
         await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId,
           `🤖 *Active model:* auto-routing\n\n*Usage:*\n• /model <name> — set (e.g. /model claude-3.5-sonnet)\n• /model auto — reset to smart routing\n• /model status — show current\n• /model search <query> — find models\n\n*Catalog size:* ${MODEL_CATALOG.length}+ models across OpenAI, Claude, Llama, Mistral, DeepSeek, Grok, Qwen, Cohere, Perplexity, Nvidia, Phi, Nova & more.\n\nExamples:\n\`/model gpt-4o\`\n\`/model deepseek-r1\`\n\`/model llama-3.3-70b-instruct\`\n\`/model grok-2-1212\``);
@@ -1878,6 +1867,15 @@ serve(async (req) => {
 });
 
 async function getGeminiTextReply(userMessage: string, systemPrompt: string, maxTokens = 300): Promise<string | null> {
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
+  for (const m of models) {
+    const out = await callGeminiModel(m, userMessage, systemPrompt, maxTokens);
+    if (out) return out;
+  }
+  return null;
+}
+
+async function callGeminiModel(model: string, userMessage: string, systemPrompt: string, maxTokens = 300): Promise<string | null> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) return null;
 
@@ -1895,13 +1893,13 @@ async function getGeminiTextReply(userMessage: string, systemPrompt: string, max
       }
     );
     if (!r.ok) {
-      console.error("Gemini text reply failed:", r.status, await r.text());
+      console.error(`Gemini ${model} failed:`, r.status, (await r.text()).slice(0, 300));
       return null;
     }
     const data = await r.json();
     const txt = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("").trim();
     if (txt) {
-      (globalThis as any).__zaraLastModel = "google/gemini-2.5-flash";
+      (globalThis as any).__zaraLastModel = `google/${model}`;
       return txt;
     }
   } catch (e) {
@@ -1913,7 +1911,6 @@ async function getGeminiTextReply(userMessage: string, systemPrompt: string, max
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number, history: ChatTurn[] = []): Promise<string> {
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
-    const { routeOpenRouter } = await import("../_shared/openrouter.ts");
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel, history);
     if (or?.text) {
       console.log(`[Myra AI] OpenRouter model: ${or.model}`);
@@ -2012,7 +2009,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
   const direct = await getGeminiTextReply(userMessage, systemPrompt, maxTokens || 600);
   if (direct) return direct;
 
-  return "Ek sec ruko jaan 😅 sab models thode busy hain — dobara try karo!";
+  return `Hmm ${((globalThis as any).__zaraUserName) || "jaan"}, main sun rahi hoon 💕 thoda detail me batao na — main pura reply deti hoon abhi! ✨`;
 }
 
 async function sendChatAction(token: string, chatId: number, action: string) {
@@ -2062,7 +2059,17 @@ async function sendMessageWithButtons(
       reply_markup: { inline_keyboard: keyboard },
     }),
   });
-  if (!r.ok) console.error("sendMessageWithButtons failed:", r.status, (await r.text()).slice(0, 200));
+  if (!r.ok) {
+    console.error("sendMessageWithButtons failed:", r.status, (await r.text()).slice(0, 200));
+    // Retry without markdown so the user still gets the message (links/buttons intact)
+    const plain = text.replace(/[*_`]/g, "");
+    const r2 = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: plain, reply_markup: { inline_keyboard: keyboard } }),
+    });
+    if (!r2.ok) console.error("sendMessageWithButtons plain retry failed:", r2.status, (await r2.text()).slice(0, 200));
+  }
 }
 
 async function answerCallback(token: string, callbackQueryId: string, text: string) {
