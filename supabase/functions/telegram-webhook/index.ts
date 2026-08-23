@@ -2049,13 +2049,16 @@ async function sendMessageWithButtons(
   text: string,
   keyboard: Array<Array<{ text: string; callback_data: string }>>,
 ) {
+  // Markdown entities must be balanced — otherwise Telegram rejects the whole message
+  const balanced = (ch: string) => (text.split(ch).length - 1) % 2 === 0;
+  const safeMarkdown = balanced("*") && balanced("_") && balanced("`");
   const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
       text,
-      parse_mode: "Markdown",
+      ...(safeMarkdown ? { parse_mode: "Markdown" } : {}),
       reply_markup: { inline_keyboard: keyboard },
     }),
   });
