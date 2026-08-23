@@ -3,6 +3,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { detectSupportIntent, supportMessage } from "../_shared/support.ts";
+import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -49,7 +50,6 @@ function isModelBlocked(userId: number | undefined, model: string): boolean {
 async function getAIReply(userMessage: string, systemPrompt: string, maxTokens = 200): Promise<string> {
   // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
-    const { routeOpenRouter } = await import("../_shared/openrouter.ts");
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
     if (or?.text) {
       console.log(`[Clone Bot] OpenRouter model: ${or.model}`);
@@ -385,7 +385,6 @@ serve(async (req) => {
           const photoBuffer = await photoResp.arrayBuffer();
           const photoBase64 = btoa(String.fromCharCode(...new Uint8Array(photoBuffer)));
           const dataUrl = `data:image/jpeg;base64,${photoBase64}`;
-          const { visionAsk } = await import("../_shared/openrouter.ts");
           let forced: string | undefined;
           if (telegramUserId) {
             const { data: mrow } = await supabase.from("zara_user_model").select("model").eq("telegram_user_id", telegramUserId).maybeSingle();
@@ -421,7 +420,6 @@ serve(async (req) => {
     // /model command
     if (lowerText.startsWith("/model")) {
       const arg = userText.slice(6).trim();
-      const { resolveModelId, MODEL_CATALOG } = await import("../_shared/openrouter.ts");
       if (!arg || arg.toLowerCase() === "list") {
         await sendMessage(botToken, chatId, `🤖 ${MODEL_CATALOG.length}+ OpenRouter models available!\n\n• /model <name> — set\n• /model auto — reset\n• /model status — show current\n• /model search <query> — find\n\nExamples: \`/model gpt-4o\`, \`/model deepseek-r1\`, \`/model claude-3.5-sonnet\``);
         return new Response("OK", { status: 200 });
