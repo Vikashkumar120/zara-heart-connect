@@ -14,11 +14,14 @@ const ISSUE_RE = /(myra\s*(nahi|nhi|not)\s*(chal|chalti|chal rahi|bol|bolti|kaam
 
 const DEMO_RE = /(demo|setup\s*video|video\s*(dikhao|do|send|bhejo|chahiye|link)|tutorial|kaise\s*use\s*kar|use\s*kaise|chalana\s*kaise|kaise\s*chalaye|guide|youtube\s*(video|link)|dikhao\s*na\s*kaise)/i;
 
-export type SupportIntent = "download" | "install_issue" | "api" | "issue" | "demo" | null;
+const LIMIT_RE = /(reach(ed)?\s*(your|the)?\s*limit|limit\s*(reach|reached|exceed|exceeded|khatam|over|full|pura|puri|end)|khatam\s*ho\s*gaya\s*limit|quota\s*(exceed|exceeded|khatam|over|limit)|rate\s*limit|resource[_\s-]*exhausted|too\s*many\s*requests|429|daily\s*limit|free\s*(tier|quota)\s*(over|exceed|exceeded|khatam)|usage\s*limit|credit(s)?\s*(khatam|over|exhaust|exhausted|finish))/i;
+
+export type SupportIntent = "download" | "install_issue" | "api" | "issue" | "demo" | "limit" | null;
 
 export function detectSupportIntent(text: string): SupportIntent {
   const t = (text || "").toLowerCase();
   if (!t.trim()) return null;
+  if (LIMIT_RE.test(t)) return "limit";
   if (INSTALL_ISSUE_RE.test(t)) return "install_issue";
   if (API_RE.test(t)) return "api";
   if (DEMO_RE.test(t)) return "demo";
