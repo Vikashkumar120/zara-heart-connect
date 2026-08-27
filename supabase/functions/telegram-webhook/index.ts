@@ -620,6 +620,7 @@ serve(async (req) => {
     const chatId = message?.chat?.id;
     const firstName = message?.from?.first_name || "Jaan";
     const username = message?.from?.username || "";
+    const incomingMessageId: number | undefined = message?.message_id;
 
     if (!chatId || !message) {
       return new Response("OK", { status: 200 });
