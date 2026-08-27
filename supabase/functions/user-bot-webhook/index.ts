@@ -148,6 +148,16 @@ function cleanImagePrompt(text: string): string {
   return stripped.length >= 4 ? stripped : text.trim();
 }
 
+function startChatAction(token: string, chatId: number, action = "typing"): () => void {
+  let stopped = false;
+  sendChatAction(token, chatId, action).catch(() => {});
+  const timer = setInterval(() => {
+    if (stopped) return;
+    sendChatAction(token, chatId, action).catch(() => {});
+  }, 4000);
+  return () => { if (stopped) return; stopped = true; clearInterval(timer); };
+}
+
 async function sendChatAction(token: string, chatId: number, action: string) {
   await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
     method: "POST",
@@ -533,6 +543,7 @@ serve(async (req) => {
     // Get AI reply
     const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — 2 to 5 lines, natural conversation, never just their name or one word. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention  or codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
+    const stopIndicator = startChatAction(botToken, chatId, "typing");
     const reply = await getAIReply(userText, systemPrompt, 200);
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
@@ -540,6 +551,7 @@ serve(async (req) => {
     if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
       finalText += "\n\n(phir se wahi baat 😅 kuch naya poocho na jaan 💕)";
     }
+    stopIndicator();
     await sendMessage(botToken, chatId, finalText);
 
     return new Response("OK", { status: 200 });

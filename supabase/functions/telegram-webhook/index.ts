@@ -620,6 +620,7 @@ serve(async (req) => {
     const chatId = message?.chat?.id;
     const firstName = message?.from?.first_name || "Jaan";
     const username = message?.from?.username || "";
+    const incomingMessageId: number | undefined = message?.message_id;
 
     if (!chatId || !message) {
       return new Response("OK", { status: 200 });
@@ -1774,6 +1775,9 @@ serve(async (req) => {
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
     (globalThis as any).__zaraLastModel = undefined;
+    // Human feel: mark message as "seen" and keep the typing/recording indicator alive
+    if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "👀").catch(() => {});
+    const stopIndicator = startChatAction(TELEGRAM_BOT_TOKEN, chatId, shouldSendVoiceReply ? "record_voice" : "typing");
     let reply = shouldSendVoiceReply
       ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
       : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok, getHistory(chatId, telegramUserId));
@@ -1828,6 +1832,8 @@ serve(async (req) => {
           await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
           const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanText, userMode);
           if (sent) {
+            stopIndicator();
+            if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "❤️").catch(() => {});
             return new Response("OK", { status: 200 });
           }
           console.log("Voice failed, falling back to text");
@@ -1857,7 +1863,9 @@ serve(async (req) => {
       ];
       finalText += variants[Math.floor(Math.random() * variants.length)];
     }
+    stopIndicator();
     await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
+    if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "❤️").catch(() => {});
 
     return new Response("OK", { status: 200 });
   } catch (e) {
@@ -2010,6 +2018,36 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
   if (direct) return direct;
 
   return `Hmm ${((globalThis as any).__zaraUserName) || "jaan"}, main sun rahi hoon 💕 thoda detail me batao na — main pura reply deti hoon abhi! ✨`;
+}
+
+// ===== HUMAN-LIKE INDICATORS: persistent typing + seen/sent reactions =====
+function startChatAction(token: string, chatId: number, action = "typing"): () => void {
+  let stopped = false;
+  sendChatAction(token, chatId, action).catch(() => {});
+  const timer = setInterval(() => {
+    if (stopped) return;
+    sendChatAction(token, chatId, action).catch(() => {});
+  }, 4000);
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(timer);
+  };
+}
+
+async function setMessageReaction(token: string, chatId: number, messageId: number, emoji: string | null) {
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/setMessageReaction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        reaction: emoji ? [{ type: "emoji", emoji }] : [],
+        is_big: false,
+      }),
+    });
+  } catch (_e) { /* reactions are best-effort */ }
 }
 
 async function sendChatAction(token: string, chatId: number, action: string) {
