@@ -31,6 +31,13 @@ export function detectSupportIntent(text: string): SupportIntent {
 }
 
 export function supportMessage(intent: Exclude<SupportIntent, null>, name = "jaan"): { text: string; buttons: any[][] } {
+  if (intent === "limit") {
+    return {
+      text: `⏳ Limit reach ho gaya hai, ${name} 💕\n\nIska limit 24 ghante baad reset hoga. Kal subah 5, 6 ya 7 baje ke aas-paas dobara try karna — us waqt chal jana chahiye ✅\n\nAgar subah 10 baje ke baad try karoge, to phir yahi limit error aa sakta hai.`,
+      buttons: [],
+    };
+  }
+
   if (intent === "download") {
     return {
       text: `📥 Myra App Download — ${name} 💖\n\nYe raha official link:\n👉 ${MYRA_DOWNLOAD_URL}\n\n📞 Call • 💬 Msg • ⏰ Alarm • 🎵 Song play • 🔍 Deep research\n📁 File manage • 💻 Coding • 🎨 Image generation • 🤖 Auto reply\n📣 Call announcement • 🆘 SOS • 🔌 20+ connectors • 🖥️ PC control • 🧠 Memory\n\n🎬 Full setup video: ${MYRA_SETUP_VIDEO}\n🔑 API kaise add kare: ${MYRA_API_VIDEO}`,

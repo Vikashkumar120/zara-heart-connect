@@ -631,6 +631,15 @@ serve(async (req) => {
     // Track current user for per-user model failover state
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
+    // ===== LIMIT ERROR HELP — works for text and image captions =====
+    const limitText = (message.text || message.caption || "").trim();
+    const limitIntent = detectSupportIntent(limitText);
+    if (limitIntent === "limit") {
+      const { text: limitReply, buttons: limitButtons } = supportMessage("limit", firstName);
+      await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, limitReply, limitButtons as any);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== PHOTO + CAPTION = IMAGE EDIT =====
     if (message.photo && message.photo.length > 0) {
       const caption = (message.caption || "").trim();
@@ -662,9 +671,14 @@ serve(async (req) => {
                 .maybeSingle();
               if (mrow?.model) forced = mrow.model;
             } catch (_) {}
-            const sysVision = `You are Myra, sweet Hinglish AI girl. User ${firstName} ne image bheji hai. Describe / answer naturally in Hinglish, 2-4 lines, light emojis.`;
+            const sysVision = `You are Myra, sweet Hinglish AI girl. User ${firstName} ne image bheji hai. Describe / answer naturally in Hinglish, 2-4 lines, light emojis. If the image is a screenshot showing a quota, rate-limit, daily-limit, resource-exhausted, or "limit reached" error, clearly mention that it is a limit error.`;
             const v = await visionAsk(dataUrl, caption, sysVision, forced);
             if (v?.text) {
+              if (detectSupportIntent(v.text) === "limit") {
+                const { text: limitReply, buttons: limitButtons } = supportMessage("limit", firstName);
+                await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, limitReply, limitButtons as any);
+                return new Response("OK", { status: 200 });
+              }
               await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${v.text}\n\n_(via ${v.model})_`);
               return new Response("OK", { status: 200 });
             }
