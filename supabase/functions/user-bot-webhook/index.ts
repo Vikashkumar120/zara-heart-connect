@@ -409,8 +409,13 @@ serve(async (req) => {
             const { data: mrow } = await supabase.from("zara_user_model").select("model").eq("telegram_user_id", telegramUserId).maybeSingle();
             if (mrow?.model) forced = mrow.model;
           }
-          const v = await visionAsk(dataUrl, caption, `You are ${botName}, sweet Hinglish AI. Describe / answer about user's image, 2-4 lines, light emojis.`, forced);
+          const v = await visionAsk(dataUrl, caption, `You are ${botName}, sweet Hinglish AI. Describe / answer about user's image, 2-4 lines, light emojis. If the image is a screenshot showing a quota, rate-limit, daily-limit, resource-exhausted, or "limit reached" error, clearly mention that it is a limit error.`, forced);
           if (v?.text) {
+            if (detectSupportIntent(v.text) === "limit") {
+              const { text: limitReply, buttons: limitButtons } = supportMessage("limit", firstName);
+              await sendButtons(botToken, chatId, limitReply, limitButtons as any);
+              return new Response("OK", { status: 200 });
+            }
             await sendMessage(botToken, chatId, `${v.text}\n\n_(via ${v.model})_`);
             return new Response("OK", { status: 200 });
           }
