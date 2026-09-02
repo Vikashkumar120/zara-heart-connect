@@ -3,6 +3,7 @@
 export const MYRA_DOWNLOAD_URL = "https://codeninjavik.in/products/myra-android-apk";
 export const MYRA_SETUP_VIDEO = "https://youtu.be/nyUVa692EIs";
 export const MYRA_API_VIDEO = "https://youtu.be/A_4LBZHH8nE";
+export const MYRA_ALT_DOWNLOAD_URL = "https://www.mediafire.com/file/d67zzslhxoce26z/app-release.apk/file";
 
 const DOWNLOAD_RE = /(download|dawnload|donwload|downlod|dwnload|apk|app\s*(link|chahiye|do|de|dedo|kaha|kahan|kaise\s*mile|milega|milegi|kaise\s*download)|myra\s*(app|apk|kaha|kahan|kaise|link|chahiye|do|de|dedo|dena|send|bhejo|milegi|milega)|link\s*(do|de|dedo|dena|send|bhejo|chahiye|milega|kaha|kahan)|install\s*link|play\s*store|get\s*myra|buy\s*myra|kaha\s*se\s*(le|lu|milega|download)|kaise\s*(le|lu|kharidu|buy|download))/i;
 
@@ -16,11 +17,14 @@ const DEMO_RE = /(demo|setup\s*video|video\s*(dikhao|do|send|bhejo|chahiye|link)
 
 const LIMIT_RE = /(reach(ed)?\s*(your|the)?\s*limit|limit\s*(reach|reached|exceed|exceeded|khatam|over|full|pura|puri|end)|khatam\s*ho\s*gaya\s*limit|quota\s*(exceed|exceeded|khatam|over|limit)|rate\s*limit|resource[_\s-]*exhausted|too\s*many\s*requests|429|daily\s*limit|free\s*(tier|quota)\s*(over|exceed|exceeded|khatam)|usage\s*limit|credit(s)?\s*(khatam|over|exhaust|exhausted|finish))/i;
 
-export type SupportIntent = "download" | "install_issue" | "api" | "issue" | "demo" | "limit" | null;
+const ALT_DOWNLOAD_RE = /(global_daily_limit_reached|daily\s*request\s*limit|try\s*again\s*after\s*midnight|midnight\s*utc|application\s*has\s*reached|website\s*(nahi|nhi|not)\s*(khul|kul|open|chal|load)|site\s*(nahi|nhi|not)\s*(khul|kul|open|chal|load)|download\s*(nahi|nhi|not)\s*(ho\s*raha|ho\s*rhi|ho\s*rahi|ho\s*rah|hota|kar)|nahi\s*download|nhi\s*download|app\s*(nahi|nhi|not)\s*(khul|kul|open|chal|load)|apk\s*(nahi|nhi|not)\s*(khul|kul|open|download|install|chal)|link\s*(nahi|nhi|not)\s*(khul|kul|open|chal|work)|codeninjavik)/i;
+
+export type SupportIntent = "download" | "install_issue" | "api" | "issue" | "demo" | "limit" | "alt_download" | null;
 
 export function detectSupportIntent(text: string): SupportIntent {
   const t = (text || "").toLowerCase();
   if (!t.trim()) return null;
+  if (ALT_DOWNLOAD_RE.test(t)) return "alt_download";
   if (LIMIT_RE.test(t)) return "limit";
   if (INSTALL_ISSUE_RE.test(t)) return "install_issue";
   if (API_RE.test(t)) return "api";
@@ -31,6 +35,15 @@ export function detectSupportIntent(text: string): SupportIntent {
 }
 
 export function supportMessage(intent: Exclude<SupportIntent, null>, name = "jaan"): { text: string; buttons: any[][] } {
+  if (intent === "alt_download") {
+    return {
+      text: `📥 Yahan se download karo, ${name} 💖\n\n${MYRA_ALT_DOWNLOAD_URL}`,
+      buttons: [
+        [{ text: "📥 Download Myra APK", url: MYRA_ALT_DOWNLOAD_URL }],
+      ],
+    };
+  }
+
   if (intent === "limit") {
     return {
       text: `⏳ Limit reach ho gaya hai, ${name} 💕\n\nIska limit 24 ghante baad reset hoga. Kal subah 5, 6 ya 7 baje ke aas-paas dobara try karna — us waqt chal jana chahiye ✅\n\nAgar subah 10 baje ke baad try karoge, to phir yahi limit error aa sakta hai.`,
