@@ -631,6 +631,15 @@ serve(async (req) => {
     // Track current user for per-user model failover state
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
+    // ===== LIMIT ERROR HELP — works for text and image captions =====
+    const limitText = (message.text || message.caption || "").trim();
+    const limitIntent = detectSupportIntent(limitText);
+    if (limitIntent === "limit") {
+      const { text: limitReply, buttons: limitButtons } = supportMessage("limit", firstName);
+      await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, limitReply, limitButtons as any);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== PHOTO + CAPTION = IMAGE EDIT =====
     if (message.photo && message.photo.length > 0) {
       const caption = (message.caption || "").trim();

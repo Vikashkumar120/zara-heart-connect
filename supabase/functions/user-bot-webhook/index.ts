@@ -382,6 +382,15 @@ serve(async (req) => {
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
+    // ===== LIMIT ERROR HELP — works for text and image captions =====
+    const limitText = (message.text || message.caption || "").trim();
+    const limitIntent = detectSupportIntent(limitText);
+    if (limitIntent === "limit") {
+      const { text: limitReply, buttons: limitButtons } = supportMessage("limit", firstName);
+      await sendButtons(botToken, chatId, limitReply, limitButtons as any);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== PHOTO → vision describe =====
     if (message.photo && message.photo.length > 0) {
       try {
