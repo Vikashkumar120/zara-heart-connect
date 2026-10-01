@@ -433,6 +433,30 @@ async function transcribeTelegramVoice(botToken: string, voice: any): Promise<st
   }
 }
 
+function normalizeReplyText(value: string): string {
+  return (value || "")
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isEchoLikeReply(reply: string, userText: string): boolean {
+  const answer = normalizeReplyText(reply);
+  const input = normalizeReplyText(userText);
+  if (!answer || !input || answer === input) return true;
+  if (answer.length <= 120 && (answer.includes(input) || input.includes(answer))) return true;
+
+  const inputWords = new Set(input.split(" ").filter((word) => word.length > 2));
+  const answerWords = answer.split(" ").filter((word) => word.length > 2);
+  if (inputWords.size >= 3 && answerWords.length > 0) {
+    const overlap = answerWords.filter((word) => inputWords.has(word)).length / answerWords.length;
+    return overlap >= 0.85 && answerWords.length <= inputWords.size + 2;
+  }
+  return false;
+}
+
 // Track per-user image edit mode in memory (resets on cold start, but that's fine)
 const imageEditModeUsers = new Set<number>();
 
