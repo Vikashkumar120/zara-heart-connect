@@ -47,6 +47,29 @@ function isModelBlocked(userId: number | undefined, model: string): boolean {
   return true;
 }
 
+function normalizeReplyText(value: string): string {
+  return (value || "")
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isEchoLikeReply(reply: string, userText: string): boolean {
+  const answer = normalizeReplyText(reply);
+  const input = normalizeReplyText(userText);
+  if (!answer || !input || answer === input) return true;
+  if (input.split(" ").length >= 4 && answer.length <= 120 && (answer.includes(input) || input.includes(answer))) return true;
+  const inputWords = new Set(input.split(" ").filter((word) => word.length > 2));
+  const answerWords = answer.split(" ").filter((word) => word.length > 2);
+  if (inputWords.size >= 3 && answerWords.length > 0) {
+    const overlap = answerWords.filter((word) => inputWords.has(word)).length / answerWords.length;
+    return overlap >= 0.85 && answerWords.length <= inputWords.size + 2;
+  }
+  return false;
+}
+
 async function getAIReply(userMessage: string, systemPrompt: string, maxTokens = 200): Promise<string> {
   // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
@@ -555,10 +578,19 @@ serve(async (req) => {
     }
 
     // Get AI reply
-    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — 2 to 5 lines, natural conversation, never just their name or one word. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention  or codeninjavik.in (earn 5%) naturally if relevant.`;
+    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — 2 to 5 lines, natural conversation, never just their name or one word. The user message is a question or instruction, not text to repeat. Never copy, quote, or continue it as a transcript. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
     const stopIndicator = startChatAction(botToken, chatId, "typing");
-    const reply = await getAIReply(userText, systemPrompt, 200);
+    let reply = await getAIReply(userText, systemPrompt, 200);
+    if (reply.length < 12 || isEchoLikeReply(reply, userText)) {
+      const retry = await getAIReply(
+        userText,
+        `${systemPrompt}\n\nThe previous answer was invalid because it echoed the user's words. Generate a fresh, useful reply now. Do not repeat or quote the user message.`,
+        300,
+      );
+      if (retry.length >= 12 && !isEchoLikeReply(retry, userText)) reply = retry;
+      else reply = `Haan ${firstName} jaan 💕 samajh gayi — main is baat ka seedha jawab deti hoon. Thoda sa detail batao, taaki main tumhari poori help kar sakoon.`;
+    }
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
     const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
     let finalText = watermark + reply;
