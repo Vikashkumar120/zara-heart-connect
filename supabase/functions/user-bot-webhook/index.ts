@@ -60,7 +60,7 @@ function isEchoLikeReply(reply: string, userText: string): boolean {
   const answer = normalizeReplyText(reply);
   const input = normalizeReplyText(userText);
   if (!answer || !input || answer === input) return true;
-  if (answer.length <= 120 && (answer.includes(input) || input.includes(answer))) return true;
+  if (input.split(" ").length >= 4 && answer.length <= 120 && (answer.includes(input) || input.includes(answer))) return true;
   const inputWords = new Set(input.split(" ").filter((word) => word.length > 2));
   const answerWords = answer.split(" ").filter((word) => word.length > 2);
   if (inputWords.size >= 3 && answerWords.length > 0) {
