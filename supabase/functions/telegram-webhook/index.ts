@@ -402,7 +402,7 @@ async function transcribeTelegramVoice(botToken: string, voice: any): Promise<st
     const mimeType = filePath.endsWith(".mp3") ? "audio/mpeg" : filePath.endsWith(".wav") ? "audio/wav" : "audio/ogg";
 
     const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
