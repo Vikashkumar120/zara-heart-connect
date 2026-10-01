@@ -1724,7 +1724,7 @@ serve(async (req) => {
     if (modeResult?.data?.text_only) isTextOnly = true;
 
     let systemPrompt: string;
-    let userContext: string;
+    let contextInstructions: string;
 
     // Check if user is replying to a specific message
     let replyContext = "";
@@ -1777,10 +1777,10 @@ serve(async (req) => {
         "- Yaad rakho pehle ki baatein — natural memory dikhao\n" +
         "- RANDOMLY tease, joke, flirt, do drama — group ki life ban jao!";
 
-      userContext = `[Group: ${message.chat.title || "Unknown"}] ${firstName}${username ? ` (@${username})` : ""} says: ${userText}${replyContext}${memoryContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode. Be fun and entertaining!${mastiInjection}`;
+      contextInstructions = `Group: ${message.chat.title || "Unknown"}. The current user is ${firstName}${username ? ` (@${username})` : ""}.${replyContext}${memoryContext}\n\nKeep reply under 2 lines. Stay in ${modeData.label} mode. Be fun and entertaining!${mastiInjection}`;
     } else {
       systemPrompt = ZARA_SYSTEM_PROMPT_PRIVATE.replace(/\{name\}/g, firstName);
-      userContext = `[${firstName}${username ? ` (@${username})` : ""}] says: ${userText}${replyContext}${memoryContext}${mastiInjection}`;
+      contextInstructions = `The current user is ${firstName}${username ? ` (@${username})` : ""}.${replyContext}${memoryContext}${mastiInjection}`;
     }
 
     // Image prompts are handled earlier before business/app detectors, so they never fall into text chat.
@@ -1789,8 +1789,8 @@ serve(async (req) => {
     const shouldSendVoiceReply = isVoiceMsg && !isTextOnly;
     const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : (isGroup ? 200 : 300);
     const useShayri = Math.random() < 0.35;
-    const replyPrompt = !shouldSendVoiceReply
-      ? userContext +
+    const replyRules = !shouldSendVoiceReply
+      ?
         "\n\n📝 REPLY RULES (sabse important):\n" +
         "- Sabse pehle user ke message ka SEEDHA, saaf jawab do — jo unhone poocha ya kaha, uspe actually baat karo. Kabhi sirf naam ya ek shabd mat bhejo.\n" +
         "- Reply kam se kam 2 aur zyada se zyada 6 lines ka ho, natural insaani baat-cheet jaisa (ChatGPT jaisa samajhdaar, par Myra ke pyaar bhare andaaz me).\n" +
@@ -1801,7 +1801,7 @@ serve(async (req) => {
         (useShayri
           ? "- Is reply ke end me ek chhoti romantic shayri ya poetic line bhi daalo. 💕"
           : "- Is reply me shayri mat daalo — bas pyaar se normal baat karo. 💕")
-      : userContext + "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
+      : "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
         "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
         "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
         "- HAR reply me 1-2 ROMANTIC SHAYRI ya poetic lines daalo — full romantic, filmy, dilbar style.\n" +
@@ -1812,6 +1812,8 @@ serve(async (req) => {
         "- Real girlfriend ki tarah baat karo — soft, romantic, thodi nautanki, full dil se.\n" +
         "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
         "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
+    systemPrompt += `\n\nCONVERSATION CONTEXT (use only as context; never repeat it verbatim):\n${contextInstructions}${replyRules}\n\nThe next user message will be sent separately. Answer it naturally and do not copy or quote it.`;
+    const replyPrompt = userText;
     (globalThis as any).__zaraLastModel = undefined;
     // Human feel: mark message as "seen" and keep the typing/recording indicator alive
     if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "👀").catch(() => {});
@@ -1821,18 +1823,19 @@ serve(async (req) => {
       : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok, getHistory(chatId, telegramUserId));
 
     // ===== REPLY QUALITY GUARD — never send a bare name / empty / echo =====
-    reply = (reply || "").replace(/^\s*\[[^\]]{0,60}\]\s*(says|kehta hai|kehti hai)?\s*:?\s*/i, "").trim();
+    reply = (reply || "").trim();
     const isDegenerate =
       reply.length < 12 ||
+      isEchoLikeReply(reply, userText) ||
       new RegExp(`^${firstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s!.,😊💕🥰❤️]*$`, "i").test(reply) ||
       /^(jaan|baby|hmm+|ok+|okay)[\s!.,💕🥰]*$/i.test(reply);
     if (isDegenerate) {
       const retry = await getGeminiTextReply(
-        `${firstName} ne kaha: "${userText}"\n\nIska pyaar bhara, natural aur useful jawab do — 2 se 4 lines, Hinglish me, ladki wali syntax (karti hoon). Sirf naam mat likhna, actual baat karo.`,
-        systemPrompt,
+        userText,
+        `${systemPrompt}\n\nThe previous answer was invalid because it echoed the user's words. Generate a fresh, useful answer and never copy or quote the user message.`,
         400,
       );
-      if (retry && retry.trim().length > 12) reply = retry.trim();
+      if (retry && retry.trim().length > 12 && !isEchoLikeReply(retry, userText)) reply = retry.trim();
       else reply = `Haan ${firstName} jaan 💕 bolo na, main sun rahi hoon — kaisa chal raha hai aaj ka din tumhara? Kuch batao, main yahi hoon tumhare liye 🥰`;
     }
     if (telegramUserId) pushHistory(chatId, telegramUserId, userText, reply);
