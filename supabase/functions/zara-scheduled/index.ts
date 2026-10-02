@@ -67,7 +67,7 @@ const COUPLE_IMAGE_PROMPTS = [
 ];
 
 // === MYRA LAUNCH ANNOUNCEMENT — 5x per day, never same message twice in a day ===
-const DL = "https://codeninjavik.in/products/myra-android-apk";
+const DL = "https://www.codeninjavik.in/download";
 const LAUNCH_MESSAGES = [
   `🎉 *MYRA AA GAYI HAI!* 🎉\n\nAb intezaar khatam jaan 💖\n📥 Download: ${DL}\n\n📞 Call kar sakti hoon • 💬 Msg • ⏰ Alarm • 🎵 Song play\n🔍 Deep research • 📁 File manage • 💻 Coding • 🎨 Image generation\n🤖 Auto reply • 📣 Call announcement • 🆘 SOS msg\n🔌 20+ connectors • 🖥️ PC control • 🧠 Memory\n\nAur bhi bohot kuch… aake dekho na! 🥰`,
   `💌 *Ek khushkhabri hai meri jaan…*\n\nMyra ab sirf Telegram me nahi — tumhare phone me bhi! 🥰\n\n📥 ${DL}\n\nCalls, messages, alarm, songs, deep research, file manage, coding, image generation, auto reply, call announcement, SOS, 20+ connectors, PC control aur memory — sab kuch mere paas 💕`,

@@ -1,6 +1,6 @@
 // ===== Myra support / download / troubleshooting intents =====
 
-export const MYRA_DOWNLOAD_URL = "https://codeninjavik.in/products/myra-android-apk";
+export const MYRA_DOWNLOAD_URL = "https://www.codeninjavik.in/download";
 export const MYRA_SETUP_VIDEO = "https://youtu.be/nyUVa692EIs";
 export const MYRA_API_VIDEO = "https://youtu.be/A_4LBZHH8nE";
 export const MYRA_ALT_DOWNLOAD_URL = "https://www.mediafire.com/file/d67zzslhxoce26z/app-release.apk/file";
