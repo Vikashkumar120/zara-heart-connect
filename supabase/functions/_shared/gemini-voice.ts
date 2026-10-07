@@ -45,11 +45,12 @@ export async function sendGeminiTelegramVoice(
       if (!response.ok) {
         const errorBody = await response.text();
         console.error(`Gemini TTS request failed (${model}):`, response.status, errorBody.slice(0, 300));
-        const retryable = response.status === 429 || response.status >= 500;
+        if (response.status === 429) return false;
+        const retryable = response.status >= 500;
         if (!retryable || index === orderedModels.length - 1) return false;
         const retryAfter = Number(response.headers.get("retry-after"));
         const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
-          ? Math.min(retryAfter * 1000, 5000)
+          ? retryAfter * 1000
           : 500 + Math.floor(Math.random() * 500);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;

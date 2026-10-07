@@ -910,6 +910,7 @@ serve(async (req) => {
       if (supportIntent) {
         const { text: sText, buttons } = supportMessage(supportIntent, firstName);
         await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, sText, buttons as any);
+        await sendGeminiTelegramVoice(TELEGRAM_BOT_TOKEN, chatId, sText, "Aoede", telegramUserId);
         return new Response("OK", { status: 200 });
       }
     }
@@ -1876,7 +1877,7 @@ serve(async (req) => {
       finalText += variants[Math.floor(Math.random() * variants.length)];
     }
     stopIndicator();
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
     if (shouldSendVoiceReply && reply.length > 5 && reply.length < 4000) {
       try {
         await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
