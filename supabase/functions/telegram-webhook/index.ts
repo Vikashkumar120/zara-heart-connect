@@ -705,6 +705,7 @@ serve(async (req) => {
                 return new Response("OK", { status: 200 });
               }
               await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${v.text}\n\n_(via ${v.model})_`);
+              await sendGeminiTelegramVoice(TELEGRAM_BOT_TOKEN, chatId, v.text, "Aoede", telegramUserId);
               return new Response("OK", { status: 200 });
             }
             await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${firstName}, image dekh nahi paayi 😅 thodi der baad try karo!`);
@@ -1274,7 +1275,6 @@ serve(async (req) => {
           return new Response("OK", { status: 200 });
         }
       }
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, voiceReply);
       return new Response("OK", { status: 200 });
     }
 

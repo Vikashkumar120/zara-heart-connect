@@ -11,7 +11,7 @@ export function detectMyraCommercialIntent(text: string): MyraCommercialIntent {
   const t = (text || "").toLowerCase();
   if (!t.trim()) return null;
 
-  const asksForFree = /\bfree\b.{0,35}\b(myra|assistant|app|apk|bot|version|me|mein|mujhe|chahiye|do|de|mile|mil|hai|kya)\b|\b(myra|assistant|app|apk|bot)\b.{0,35}\bfree\b|\b(mu[f]?t|free me|free mein|without payment|bina paise)\b/i.test(t);
+  const asksForFree = /\bfree\b.{0,35}\b(myra|assistant|app|apk|bot|version|me|mein|mujhe|chahiye|do|de|mile|mil|hai|h|kya)\b|\b(myra|assistant|app|apk|bot)\b.{0,35}\bfree\b|\bfree\s*(hai|h|chahiye|milega|milegi|de\s*do|do|version)\b|\b(mu[f]?t|free me|free mein|without payment|bina paise)\b/i.test(t);
   if (asksForFree) return "free";
 
   const asksPrice = /\b(price|cost|kitna|kitne|kimat|kimmat|keemat|rate|rupees|rupaye|subscription|premium|paid)\b|₹|\brs\.?\s*\d/i.test(t);

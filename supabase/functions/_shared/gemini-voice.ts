@@ -18,33 +18,56 @@ export async function sendGeminiTelegramVoice(
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey || !text.trim()) return false;
 
-  const model = selectVoiceModel(userId);
-  try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        contents: [{ role: "user", parts: [{ text: `Speak this complete message warmly in a natural Indian female voice: ${text}` }] }],
-        generationConfig: {
-          responseModalities: ["AUDIO"],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
-        },
-        stream_format: "audio",
-      }),
-    });
+  const primaryIndex = VOICE_MODELS.indexOf(selectVoiceModel(userId) as typeof VOICE_MODELS[number]);
+  const orderedModels = [VOICE_MODELS[primaryIndex], VOICE_MODELS[1 - primaryIndex]];
+  let audio: Uint8Array | null = null;
 
-    if (!response.ok) {
-      console.error(`Gemini TTS request failed (${model}):`, response.status, (await response.text()).slice(0, 300));
+  for (let index = 0; index < orderedModels.length; index += 1) {
+    const model = orderedModels[index];
+    try {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          contents: [{ role: "user", parts: [{ text: `Speak this complete message warmly in a natural Indian female voice: ${text}` }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
+          },
+          stream_format: "audio",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`Gemini TTS request failed (${model}):`, response.status, errorBody.slice(0, 300));
+        const retryable = response.status === 429 || response.status >= 500;
+        if (!retryable || index === orderedModels.length - 1) return false;
+        const retryAfter = Number(response.headers.get("retry-after"));
+        const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 5000)
+          : 500 + Math.floor(Math.random() * 500);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      audio = new Uint8Array(await response.arrayBuffer());
+      if (audio.length >= 100) break;
+      audio = null;
+      if (index === orderedModels.length - 1) return false;
+    } catch (error) {
+      console.error(`Gemini TTS error (${model}):`, error);
       return false;
     }
+  }
 
-    const audio = new Uint8Array(await response.arrayBuffer());
-    if (audio.length < 100) return false;
+  if (!audio) return false;
 
+  try {
     const form = new FormData();
     form.append("chat_id", String(chatId));
     form.append("voice", new Blob([audio], { type: "audio/wav" }), "myra-voice.wav");
@@ -66,7 +89,7 @@ export async function sendGeminiTelegramVoice(
     console.error("Telegram sendAudio fallback failed:", audioResponse.status, (await audioResponse.text()).slice(0, 300));
     return false;
   } catch (error) {
-    console.error(`Gemini TTS error (${model}):`, error);
+    console.error("Telegram voice delivery error:", error);
     return false;
   }
 }
