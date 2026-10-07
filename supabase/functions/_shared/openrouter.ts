@@ -280,7 +280,7 @@ export async function routeOpenRouter(
   if (!key) return null;
 
   const task = taskOverride || detectTask(userMessage);
-  const models = forcedModel ? [forcedModel, ...MODELS[task]] : MODELS[task];
+  const models = (forcedModel ? [forcedModel, ...MODELS[task]] : MODELS[task]).slice(0, 3);
 
   for (const model of models) {
     try {
@@ -302,6 +302,7 @@ export async function routeOpenRouter(
           temperature: 0.9,
           ...(maxTokens ? { max_tokens: maxTokens } : {}),
         }),
+        signal: AbortSignal.timeout(8000),
       });
       if (!r.ok) {
         console.error(`OpenRouter ${model} failed:`, r.status);

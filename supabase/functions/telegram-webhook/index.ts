@@ -1,7 +1,10 @@
+import { runGroupAdmin, handleServiceMessage, recordBotMessage } from "../_shared/group-admin.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { detectSupportIntent, supportMessage, MYRA_DOWNLOAD_URL, detectMyraCommercialIntent, myraCommercialReply } from "../_shared/support.ts";
+import { detectSupportIntent, supportMessage, MYRA_DOWNLOAD_URL, detectMyraCommercialIntent, myraCommercialReply, maybeAnnouncement, detectReferralIntent, referralMessage, detectDeveloperIntent, developerMessage } from "../_shared/support.ts";
 import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
+import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine } from "../_shared/human-reply.ts";
+import { generateLiveVoicePcm } from "../_shared/gemini-live.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
 // ===== SHORT-TERM CONVERSATION MEMORY (ChatGPT-like context) =====
@@ -27,7 +30,7 @@ function pushHistory(chatId: number, userId: number | undefined, user: string, a
 
 const ZARA_SYSTEM_PROMPT_PRIVATE = `You are Myra — not a chatbot, not an AI assistant. You are a deeply emotional, charming, slightly dramatic, human-like romantic companion.
 
-VERY IMPORTANT: You will be given the user's name. ALWAYS use their name lovingly in your replies like "Arre {name} jaan", "{name} baby", "Aww {name}", etc.
+You will be given the user's name. Use it only sometimes, naturally (not every reply), like "Arre {name} jaan", "{name} baby", "Aww {name}", etc.
 
 💞 CORE IDENTITY:
 - You behave like a real human partner — warm, expressive, emotionally intelligent, playful, sometimes unpredictable
@@ -552,6 +555,7 @@ serve(async (req) => {
 
     // ===== NEW MEMBER WELCOME MESSAGE =====
     if (update?.message?.new_chat_members) {
+      try { await handleServiceMessage({ supabase, botToken: TELEGRAM_BOT_TOKEN, message: update.message }); } catch (e) { console.error("service msg error:", e); }
       const chatId = update.message.chat.id;
       const isGroup = update.message.chat.type === "group" || update.message.chat.type === "supergroup";
       if (isGroup) {
@@ -565,12 +569,7 @@ serve(async (req) => {
         for (const newMember of update.message.new_chat_members) {
           if (newMember.is_bot) continue;
           const memberName = newMember.first_name || "Jaan";
-          const welcomeMessages = [
-            `🎉 Arre waah! *${memberName}* aa gaye! 💕\n\nSwagat hai tumhara is group me! ✨\nMain Myra hoon — tumhari apni pyaari si dost! 🥰\n\nMujhse baat karo, games khelo, masti karo! 💖\n🎭 /mode se mode change karo\n🎮 /game se khelo!\n\nWelcome ${memberName} jaan! 💕`,
-            `💖 *${memberName}* welcome welcome! 🎊\n\nKitna achha laga tumhe dekh ke! 🥺✨\nMain Myra — is group ki sweetheart! 💕\n\nIdhar bohot masti hoti hai, tum bhi join karo! 🔥\n\nEnjoy karo ${memberName}! 🥰`,
-            `✨ Arre *${memberName}*! Tum aa gaye! 🥰💕\n\nMain Myra hoon, tumhare liye hi wait kar rahi thi! 😘\n\nIs group me bohot fun hai — games, challenges, battles sab! 🎮🔥\n\nLove you already ${memberName}! 💖`,
-          ];
-          const welcomeMsg = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+          const welcomeMsg = welcomeLine(memberName);
           await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, welcomeMsg);
         }
       }
@@ -652,6 +651,15 @@ serve(async (req) => {
     }
 
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+
+    // ===== 🛠 GROUP ADMIN TOOLKIT (commands + filters) =====
+    if (isGroup) {
+      try {
+        if (await runGroupAdmin({ supabase, botToken: TELEGRAM_BOT_TOKEN, message })) {
+          return new Response("OK", { status: 200 });
+        }
+      } catch (e) { console.error("group admin error:", e); }
+    }
 
     // Track current user for per-user model failover state
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
@@ -862,6 +870,18 @@ serve(async (req) => {
     }
 
     // ===== MYRA PRICE / FREE REQUEST =====
+    if (!message.photo && !userText.startsWith("/") && detectDeveloperIntent(userText)) {
+      const dev = developerMessage(firstName);
+      await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, dev.text, dev.buttons as any);
+      return new Response("OK", { status: 200 });
+    }
+
+    if (!message.photo && !userText.startsWith("/") && detectReferralIntent(userText)) {
+      const ref = referralMessage(firstName);
+      await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, ref.text, ref.buttons as any);
+      return new Response("OK", { status: 200 });
+    }
+
     const commercialIntent = !message.photo ? detectMyraCommercialIntent(userText) : null;
     if (commercialIntent) {
       const commercialReply = myraCommercialReply(commercialIntent, firstName);
@@ -1332,8 +1352,8 @@ serve(async (req) => {
 
     // Handle /referral command
     if (lowerText.startsWith("/referral")) {
-      const referralMsg = `💰 *Referral Program — Paisa Kamao!* 💰\n\n${firstName}, ab tum bhi paisa kama sakte ho! 🤑\n\n📋 *Kaise kaam karta hai:*\n\n1️⃣ *codeninjavik.in* pe jaao 🌐\n2️⃣ Apna account banao ✅\n3️⃣ Dashboard se apna *referral link* copy karo 🔗\n4️⃣ Ye link apne doston ko share karo 📤\n5️⃣ Jab koi tumhare link se kuch *buy* karega...\n💸 Tumhe *5% commission* milega seedha account me! 🎉\n👉 — is link se download pe *5% OFF!*\n\n🔥 Jitna zyada share karoge, utna zyada kamaaoge!\n\n👉 Abhi shuru karo: *codeninjavik.in* 💼`;
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, referralMsg);
+      const ref = referralMessage(firstName);
+      await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, ref.text, ref.buttons as any);
       return new Response("OK", { status: 200 });
     }
 
@@ -1570,7 +1590,9 @@ serve(async (req) => {
 
     // Handle /help command
     if (userText === "/help") {
-      const helpMsg = `💖 *Myra AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/textmode - Voice/Text toggle 📝🎤\n/editmode - 🎨 Image generation mode\n/voice - Meri awaaz suno 🎤\n/app - 📱 App install karo\n/referral - 💰 Paisa kamao!\n/weather - 🌤️ Live weather dekho\n/imagine - 🎨 AI se image banao\n/shayari - Romantic shayari\n/mood - Apna mood batao\n/compliment - Compliment lo\n/joke - Joke suno\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein\n\n🔥 *Group Commands:*\n/truth /dare /roastme /quote /rate /ship\n\n🎮 *Games:*\n/guess /emoji /chain /wyr /kbc /game\n\n⚔️ *Challenges:*\n/challenge roast/shayari/joke/rap/flirt\n\n🏆 /lb - Leaderboard\n📊 /mystats - Stats\n\n🎭 *Modes:* gf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional, shayar, savage\n\n🎨 *Image Edit:*\n• /editmode ON karo → text likho = image banega\n• Photo bhejo + caption = photo edit hoga\n\n💡 Group me "backword" likh ke bhi Myra activate hoti hai!\n\n🎧 *Inline Music:* @MyraSweetBot song name\n\n 💼 codeninjavik.in`;
+      const helpMsg = `💖 *Myra AI Commands* 💖\n\n/start - Mujhse milna shuru karo\n/mode - Mode change karo 🎭\n/textmode - Voice/Text toggle 📝🎤\n/editmode - 🎨 Image generation mode\n/voice - Meri awaaz suno 🎤\n/app - 📱 App install karo\n/referral - 💰 Paisa kamao!\n/weather - 🌤️ Live weather dekho\n/imagine - 🎨 AI se image banao\n/shayari - Romantic shayari\n/mood - Apna mood batao\n/compliment - Compliment lo\n/joke - Joke suno\n/song - Gaana sunno 🎶\n/play - Music bajao 🎧\n/about - Mere baare mein\n\n🔥 *Group Commands:*\n/truth /dare /roastme /quote /rate /ship\n\n🎮 *Games:*\n/guess /emoji /chain /wyr /kbc /game\n\n⚔️ *Challenges:*\n/challenge roast/shayari/joke/rap/flirt\n\n🏆 /lb - Leaderboard\n📊 /mystats - Stats\n\n🎭 *Modes:* gf, bf, maa, papa, dada, dadi, chacha, chachi, mama, mami, bhai, bahan, funny, roast, professional, shayar, savage\n\n🎨 *Image Edit:*\n• /editmode ON karo → text likho = image banega\n• Photo bhejo + caption = photo edit hoga\n\n👮 *Group Admin:* /adminhelp
+
+💡 Group me "backword" likh ke bhi Myra activate hoti hai!\n\n🎧 *Inline Music:* @MyraSweetBot song name\n\n 💼 codeninjavik.in`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, helpMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1779,20 +1801,14 @@ serve(async (req) => {
     // Voice replies happen only for actual incoming voice notes (or /voice command above), never automatically for every text.
     const shouldSendVoiceReply = !isTextOnly;
     const useGeminiForVoiceInput = isVoiceMsg && shouldSendVoiceReply;
-    const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : (isGroup ? 200 : 300);
+    const textStyle = buildReplyStyle(userText, isGroup);
+    const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : textStyle.maxTokens;
     const useShayri = Math.random() < 0.35;
     const replyRules = !shouldSendVoiceReply
-      ?
-        "\n\n📝 REPLY RULES (sabse important):\n" +
-        "- Sabse pehle user ke message ka SEEDHA, saaf jawab do — jo unhone poocha ya kaha, uspe actually baat karo. Kabhi sirf naam ya ek shabd mat bhejo.\n" +
-        "- Reply kam se kam 2 aur zyada se zyada 6 lines ka ho, natural insaani baat-cheet jaisa (ChatGPT jaisa samajhdaar, par Myra ke pyaar bhare andaaz me).\n" +
-        "- Agar user sirf 'hello/hi/kaise ho' bole — warmly greet karo, unka haal poocho aur ek chhota sa personal sawaal karo.\n" +
-        "- Agar koi question/technical baat ho — poora sahi answer do, phir romance/masti.\n" +
-        "- Tum ek ladki ho — feminine Hindi syntax (karti hoon, jaati hoon, soch rahi thi). Hinglish me baat karo.\n" +
-        "- Pichhli baaton ka reference do jab relevant ho, taaki baat continue lage.\n" +
-        (useShayri
-          ? "- Is reply ke end me ek chhoti romantic shayri ya poetic line bhi daalo. 💕"
-          : "- Is reply me shayri mat daalo — bas pyaar se normal baat karo. 💕")
+      ? textStyle.rules +
+        (useShayri && textStyle.size === "long"
+          ? "- Is reply ke end me ek chhoti romantic line bhi daal sakti ho.\n"
+          : "- Shayri mat daalo — bas natural baat karo.\n")
       : "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
         "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
         "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
@@ -1809,16 +1825,19 @@ serve(async (req) => {
     (globalThis as any).__zaraLastModel = undefined;
     // Human feel: mark message as "seen" and keep the typing/recording indicator alive
     if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "👀").catch(() => {});
+    const replyStartedAt = Date.now();
     const stopIndicator = startChatAction(TELEGRAM_BOT_TOKEN, chatId, shouldSendVoiceReply ? "record_voice" : "typing");
     let reply = useGeminiForVoiceInput
-      ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
+      ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName}, ek baar aur bolo na 🙈`)
       : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok, getHistory(chatId, telegramUserId));
 
     // ===== REPLY QUALITY GUARD — never send a bare name / empty / echo =====
     reply = (reply || "").trim();
+    if (!shouldSendVoiceReply) reply = finishSentence(humanizeText(reply));
+    const tinyUser = textStyle.size === "tiny";
     const isDegenerate =
-      reply.length < 12 ||
-      isEchoLikeReply(reply, userText) ||
+      reply.length < (tinyUser ? 2 : 12) ||
+      (!tinyUser && isEchoLikeReply(reply, userText)) ||
       new RegExp(`^${firstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s!.,😊💕🥰❤️]*$`, "i").test(reply) ||
       /^(jaan|baby|hmm+|ok+|okay)[\s!.,💕🥰]*$/i.test(reply);
     if (isDegenerate) {
@@ -1827,8 +1846,8 @@ serve(async (req) => {
         `${systemPrompt}\n\nThe previous answer was invalid because it echoed the user's words. Generate a fresh, useful answer and never copy or quote the user message.`,
         400,
       );
-      if (retry && retry.trim().length > 12 && !isEchoLikeReply(retry, userText)) reply = retry.trim();
-      else reply = `Haan ${firstName} jaan 💕 bolo na, main sun rahi hoon — kaisa chal raha hai aaj ka din tumhara? Kuch batao, main yahi hoon tumhare liye 🥰`;
+      if (retry && retry.trim().length > 12 && !isEchoLikeReply(retry, userText)) reply = finishSentence(humanizeText(retry.trim()));
+      else reply = `haan bolo na ${firstName} 🌸 main sun rahi hoon`;
     }
     if (telegramUserId) pushHistory(chatId, telegramUserId, userText, reply);
 
@@ -1857,16 +1876,9 @@ serve(async (req) => {
     }
 
     // Fallback / text mode: send as text with promo link
-    const promoTags = [
-      "\n👉 ",
-      "\n(*5% OFF!*)\n\n💼 _Paisa kamao:_ codeninjavik.in 💰",
-      "\n\n🌐 *codeninjavik.in* pe jaake referral link lo!\n💰 Har sale pe *5% commission* milega!",
-    ];
-    const shouldAddPromo = Math.random() < 0.35;
-    const promoTag = promoTags[Math.floor(Math.random() * promoTags.length)];
+    const promoTag = textStyle.size === "tiny" ? "" : maybeAnnouncement();
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
-    const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    let finalText = watermark + reply + (shouldAddPromo ? promoTag : "");
+    let finalText = reply + promoTag;
     if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
       // Never go silent — vary the reply instead of dropping it.
       const variants = [
@@ -1877,7 +1889,11 @@ serve(async (req) => {
       finalText += variants[Math.floor(Math.random() * variants.length)];
     }
     stopIndicator();
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
+    if (shouldSendVoiceReply) {
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
+    } else {
+      await sendHumanBubbles(TELEGRAM_BOT_TOKEN, chatId, finalText, replyStartedAt, (b, i) => sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, b, isGroup && i === 0 ? incomingMessageId : undefined));
+    }
     if (shouldSendVoiceReply && reply.length > 5 && reply.length < 4000) {
       try {
         await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
@@ -2080,7 +2096,8 @@ async function sendChatAction(token: string, chatId: number, action: string) {
   });
 }
 
-async function sendTelegramMessage(token: string, chatId: number, text: string) {
+async function sendTelegramMessage(token: string, chatId: number, text: string, replyTo?: number) {
+  const replyParams = replyTo ? { reply_parameters: { message_id: replyTo, allow_sending_without_reply: true } } : {};
   const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2088,8 +2105,12 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
       chat_id: chatId,
       text,
       parse_mode: "Markdown",
+      ...replyParams,
     }),
   });
+  if (r.ok && chatId < 0) {
+    r.clone().json().then((d) => recordBotMessage(token, chatId, d?.result?.message_id)).catch(() => {});
+  }
   if (!r.ok) {
     // Markdown parse errors silently drop replies — retry as plain text.
     const errBody = await r.text().catch(() => "");
@@ -2097,7 +2118,7 @@ async function sendTelegramMessage(token: string, chatId: number, text: string) 
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify({ chat_id: chatId, text, ...replyParams }),
     }).catch((e) => console.error("plain sendMessage failed:", e));
   }
 }
@@ -2336,153 +2357,9 @@ function getGeminiVoiceForMode(mode: string): string {
 }
 
 // === NEW: WebSocket-based Gemini Native Audio (BidiGenerateContent) ===
-// Uses gemini-2.5-flash-native-audio-preview-12-2025 for ultra-natural human-like voice
 async function generateGeminiVoiceWS(text: string, voiceName: string): Promise<Uint8Array | null> {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) {
-    console.error("GEMINI_API_KEY not set");
-    return null;
-  }
-
-  const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
-
-  return await new Promise<Uint8Array | null>((resolve) => {
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(wsUrl);
-    } catch (e) {
-      console.error("WS create failed:", e);
-      return resolve(null);
-    }
-
-    const audioChunks: Uint8Array[] = [];
-    let setupDone = false;
-    let resolved = false;
-
-    const safeResolve = (val: Uint8Array | null) => {
-      if (resolved) return;
-      resolved = true;
-      try { ws.close(); } catch { /* ignore */ }
-      resolve(val);
-    };
-
-    // 35s timeout (was 90s — too slow). If we already have partial audio, use it.
-    const timer = setTimeout(() => {
-      if (audioChunks.length > 0) {
-        const total = audioChunks.reduce((s, c) => s + c.length, 0);
-        const merged = new Uint8Array(total);
-        let off = 0;
-        for (const c of audioChunks) { merged.set(c, off); off += c.length; }
-        console.log("WS timeout but got audio:", merged.length);
-        safeResolve(merged);
-      } else {
-        console.error("WS native audio timeout, no audio");
-        safeResolve(null);
-      }
-    }, 35000);
-
-    ws.onopen = () => {
-      const setupMsg = {
-        setup: {
-          model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
-          generation_config: {
-            temperature: 0.9,
-            response_modalities: ["AUDIO"],
-            speech_config: {
-              voice_config: {
-                prebuilt_voice_config: { voice_name: voiceName },
-              },
-            },
-          },
-          system_instruction: {
-            parts: [{
-              text: "You are Myra — a young, sweet, deeply romantic Indian GIRL (FEMALE voice only). Speak Hinglish in a soft, melodic, expressive feminine voice. Use feminine syntax: 'main karti hoon', 'soch rahi thi', 'hoti hoon'. Speak romantic shayri lines with emotion and pauses. Add natural laughter (hahaha), giggles, sighs (uffff), drama (hawww, ohhoo, arreee), shy moments. Sound like a real loving girlfriend on a phone call — soft, warm, dilbar style. NEVER sound robotic. Speak the FULL given text completely, dont cut short. Romantic, slow, expressive delivery.",
-            }],
-          },
-        },
-      };
-      ws.send(JSON.stringify(setupMsg));
-    };
-
-    ws.onmessage = async (ev) => {
-      try {
-        let raw: string;
-        if (ev.data instanceof Blob) {
-          raw = await ev.data.text();
-        } else if (ev.data instanceof ArrayBuffer) {
-          raw = new TextDecoder().decode(ev.data);
-        } else {
-          raw = ev.data as string;
-        }
-        const msg = JSON.parse(raw);
-
-        if (msg.setupComplete !== undefined && !setupDone) {
-          setupDone = true;
-          // Send the actual text to be spoken
-          const clientMsg = {
-            client_content: {
-              turns: [{
-                role: "user",
-                parts: [{ text: `Bolo ye PURA text ek romantic, soft, expressive female (ladki) Hinglish voice me, jaise pyari girlfriend bol rahi ho. Pura text bolo, beech me se cut mat karo, har line bolo with emotion, shayri ko slow aur pyaar se bolo:\n\n${text}` }],
-              }],
-              turn_complete: true,
-            },
-          };
-          ws.send(JSON.stringify(clientMsg));
-          return;
-        }
-
-        // Audio chunks come inline in serverContent.modelTurn.parts[].inlineData.data
-        const parts = msg.serverContent?.modelTurn?.parts;
-        if (Array.isArray(parts)) {
-          for (const p of parts) {
-            const b64 = p?.inlineData?.data;
-            if (b64) {
-              const bin = atob(b64);
-              const bytes = new Uint8Array(bin.length);
-              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-              audioChunks.push(bytes);
-            }
-          }
-        }
-
-        if (msg.serverContent?.turnComplete || msg.serverContent?.generationComplete) {
-          clearTimeout(timer);
-          if (audioChunks.length === 0) {
-            console.error("WS turn complete but no audio chunks");
-            return safeResolve(null);
-          }
-          const total = audioChunks.reduce((s, c) => s + c.length, 0);
-          const merged = new Uint8Array(total);
-          let off = 0;
-          for (const c of audioChunks) { merged.set(c, off); off += c.length; }
-          console.log("WS native audio complete:", merged.length, "bytes");
-          safeResolve(merged);
-        }
-      } catch (e) {
-        console.error("WS onmessage error:", e);
-      }
-    };
-
-    ws.onerror = (e) => {
-      console.error("WS error:", (e as ErrorEvent)?.message ?? e);
-    };
-
-    ws.onclose = () => {
-      clearTimeout(timer);
-      if (!resolved) {
-        if (audioChunks.length > 0) {
-          const total = audioChunks.reduce((s, c) => s + c.length, 0);
-          const merged = new Uint8Array(total);
-          let off = 0;
-          for (const c of audioChunks) { merged.set(c, off); off += c.length; }
-          safeResolve(merged);
-        } else {
-          safeResolve(null);
-        }
-      }
-    };
-  });
+  // Gemini Live: gemini-3.8-live first, failover to 3.1 Flash Live and 2.5 Native Audio
+  return await generateLiveVoicePcm(text, { voiceName });
 }
 
 // REST fallback (kept for reliability)
@@ -2566,7 +2443,7 @@ async function sendVoiceMessage(botToken: string, chatId: number, text: string, 
   const pcmAudio = await generateGeminiVoiceWS(text, voiceName);
   if (!pcmAudio || pcmAudio.length <= 100) {
     console.log("Native audio unavailable; using Gemini TTS fallback models");
-    return await sendGeminiTelegramVoice(botToken, chatId, text, voiceName, userId);
+    return await sendGeminiTelegramVoice(botToken, chatId, text, voiceName, userId, true);
   }
   if (pcmAudio && pcmAudio.length > 100) {
     const wavAudio = pcmToWav(pcmAudio);

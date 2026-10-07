@@ -1,3 +1,5 @@
+import { generateLiveVoicePcm, pcmToWavBytes } from "./gemini-live.ts";
+
 const VOICE_MODELS = [
   "google/gemini-3.1-flash-tts-preview",
   "google/gemini-2.5-pro-tts",
@@ -14,9 +16,19 @@ export async function sendGeminiTelegramVoice(
   text: string,
   voiceName = "Aoede",
   userId?: number,
+  skipLive = false,
 ): Promise<boolean> {
+  if (!text.trim()) return false;
+
+  // Primary: Gemini Live (gemini-3.8-live by default, failover to 3.1 / 2.5 native audio)
+  if (!skipLive) {
+    const pcm = await generateLiveVoicePcm(text, { voiceName });
+    if (pcm) return await deliverTelegramAudio(botToken, chatId, pcmToWavBytes(pcm));
+  }
+
+  // Fallback: Gemini TTS through the gateway
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey || !text.trim()) return false;
+  if (!apiKey) return false;
 
   const primaryIndex = VOICE_MODELS.indexOf(selectVoiceModel(userId) as typeof VOICE_MODELS[number]);
   const orderedModels = [VOICE_MODELS[primaryIndex], VOICE_MODELS[1 - primaryIndex]];
@@ -68,6 +80,10 @@ export async function sendGeminiTelegramVoice(
 
   if (!audio) return false;
 
+  return await deliverTelegramAudio(botToken, chatId, audio);
+}
+
+async function deliverTelegramAudio(botToken: string, chatId: number, audio: Uint8Array): Promise<boolean> {
   try {
     const form = new FormData();
     form.append("chat_id", String(chatId));

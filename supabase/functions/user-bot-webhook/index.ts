@@ -1,8 +1,10 @@
 // User-created bot webhook — handles all custom Myra-clone bots
 // URL pattern: /functions/v1/user-bot-webhook/<BOT_TOKEN>
+import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine } from "../_shared/human-reply.ts";
+import { runGroupAdmin, handleServiceMessage, recordBotMessage } from "../_shared/group-admin.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { detectSupportIntent, supportMessage, detectMyraCommercialIntent, myraCommercialReply } from "../_shared/support.ts";
+import { detectSupportIntent, supportMessage, detectMyraCommercialIntent, myraCommercialReply, maybeAnnouncement, detectReferralIntent, referralMessage, detectDeveloperIntent, developerMessage } from "../_shared/support.ts";
 import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
@@ -270,19 +272,23 @@ async function generateAndSendImage(botToken: string, chatId: number, prompt: st
   }
 }
 
-async function sendMessage(token: string, chatId: number, text: string) {
+async function sendMessage(token: string, chatId: number, text: string, replyTo?: number) {
+  const replyParams = replyTo ? { reply_parameters: { message_id: replyTo, allow_sending_without_reply: true } } : {};
   const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown", ...replyParams }),
   });
+  if (r.ok && chatId < 0) {
+    r.clone().json().then((d) => recordBotMessage(token, chatId, d?.result?.message_id)).catch(() => {});
+  }
   if (!r.ok) {
     const errBody = await r.text().catch(() => "");
     console.error("clone sendMessage failed, retrying plain:", r.status, errBody.slice(0, 200));
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify({ chat_id: chatId, text, ...replyParams }),
     }).catch((e) => console.error("clone plain sendMessage failed:", e));
   }
 }
@@ -384,13 +390,12 @@ serve(async (req) => {
 
     // === New chat members welcome ===
     if (update?.message?.new_chat_members) {
+      try { await handleServiceMessage({ supabase, botToken, message: update.message }); } catch (e) { console.error("service msg error:", e); }
       const chatId = update.message.chat.id;
       for (const m of update.message.new_chat_members) {
         if (m.is_bot) continue;
         const name = m.first_name || "Jaan";
-        await sendMessage(botToken, chatId,
-          `🎉 *${name}* welcome! 💕\n\nMain *${botName}* hoon — ${botRow.owner_first_name} ka apna AI assistant!\n\nMujhse baat karo, masti karo! 🥰\n\n💡 Powered by Myra AI — `
-        );
+        await sendMessage(botToken, chatId, welcomeLine(name));
       }
       return new Response("OK", { status: 200 });
     }
@@ -405,6 +410,25 @@ serve(async (req) => {
     const firstName = message.from?.first_name || "Jaan";
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
+
+    // ===== 🛠 GROUP ADMIN TOOLKIT (commands + filters) =====
+    if (isGroup) {
+      try {
+        if (await runGroupAdmin({ supabase, botToken, message })) return new Response("OK", { status: 200 });
+      } catch (e) { console.error("clone group admin error:", e); }
+    }
+
+    if (!userText.startsWith("/") && detectDeveloperIntent(userText)) {
+      const dev = developerMessage(firstName);
+      await sendButtons(botToken, chatId, dev.text, dev.buttons as any);
+      return new Response("OK", { status: 200 });
+    }
+
+    if (lowerText.startsWith("/referral") || (!userText.startsWith("/") && detectReferralIntent(userText))) {
+      const ref = referralMessage(firstName);
+      await sendButtons(botToken, chatId, ref.text, ref.buttons as any);
+      return new Response("OK", { status: 200 });
+    }
 
     const commercialIntent = detectMyraCommercialIntent(userText);
     if (commercialIntent) {
@@ -589,27 +613,29 @@ serve(async (req) => {
     }
 
     // Get AI reply
-    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — 2 to 5 lines, natural conversation, never just their name or one word. The user message is a question or instruction, not text to repeat. Never copy, quote, or continue it as a transcript. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention codeninjavik.in (earn 5%) naturally if relevant.`;
+    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — short, human-sized, natural conversation, never just their name or one word. The user message is a question or instruction, not text to repeat. Never copy, quote, or continue it as a transcript. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
+    const replyStartedAt = Date.now();
     const stopIndicator = startChatAction(botToken, chatId, "typing");
-    let reply = await getAIReply(userText, systemPrompt, 200);
-    if (reply.length < 12 || isEchoLikeReply(reply, userText)) {
+    const style = buildReplyStyle(userText, isGroup);
+    const tinyUser = style.size === "tiny";
+    let reply = finishSentence(humanizeText(await getAIReply(userText, systemPrompt + style.rules, style.maxTokens)));
+    if (reply.length < (tinyUser ? 2 : 12) || (!tinyUser && isEchoLikeReply(reply, userText))) {
       const retry = await getAIReply(
         userText,
         `${systemPrompt}\n\nThe previous answer was invalid because it echoed the user's words. Generate a fresh, useful reply now. Do not repeat or quote the user message.`,
         300,
       );
-      if (retry.length >= 12 && !isEchoLikeReply(retry, userText)) reply = retry;
-      else reply = `Haan ${firstName} jaan 💕 samajh gayi — main is baat ka seedha jawab deti hoon. Thoda sa detail batao, taaki main tumhari poori help kar sakoon.`;
+      if (retry.length >= 12 && !isEchoLikeReply(retry, userText)) reply = finishSentence(humanizeText(retry));
+      else reply = `haan bolo na ${firstName} 🌸 main sun rahi hoon`;
     }
     const usedModel = (globalThis as any).__zaraLastModel as string | undefined;
-    const watermark = usedModel ? `🤖 _via ${usedModel}_\n\n` : "";
-    let finalText = watermark + reply;
+    let finalText = reply + (tinyUser ? "" : maybeAnnouncement());
     if (telegramUserId && shouldSkipDuplicateReply(telegramUserId, chatId, finalText)) {
       finalText += "\n\n(phir se wahi baat 😅 kuch naya poocho na jaan 💕)";
     }
     stopIndicator();
-    await sendMessage(botToken, chatId, finalText);
+    await sendHumanBubbles(botToken, chatId, finalText, replyStartedAt, (b, i) => sendMessage(botToken, chatId, b, isGroup && i === 0 ? message.message_id : undefined));
     if (reply.length > 5 && reply.length < 4000) {
       await sendChatAction(botToken, chatId, "record_voice").catch(() => {});
       await sendGeminiTelegramVoice(botToken, chatId, reply, "Aoede", telegramUserId);

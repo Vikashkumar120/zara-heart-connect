@@ -1,6 +1,7 @@
 // ===== Myra support / download / troubleshooting intents =====
 
 export const MYRA_DOWNLOAD_URL = "https://www.codeninjavik.in/download";
+export const MYRA_SITE_URL = "https://codeninjavik.in";
 export const MYRA_SETUP_VIDEO = "https://youtu.be/nyUVa692EIs";
 export const MYRA_API_VIDEO = "https://youtu.be/A_4LBZHH8nE";
 export const MYRA_ALT_DOWNLOAD_URL = "https://www.mediafire.com/file/d67zzslhxoce26z/app-release.apk/file";
@@ -21,8 +22,65 @@ export function detectMyraCommercialIntent(text: string): MyraCommercialIntent {
 
 export function myraCommercialReply(intent: Exclude<MyraCommercialIntent, null>, name = "jaan"): string {
   return intent === "free"
-    ? `Nahi ${name}, Myra free nahi hai — paid hai. Iski price ₹999 hai. 💕`
-    : `${name}, Myra paid hai aur iski price ₹999 hai. 💕`;
+    ? `Nahi ${name}, Myra free nahi hai — ₹999 ka lifetime plan hai 💕\nLink: ${MYRA_SITE_URL}`
+    : `${name}, Myra ki price ₹999 hai (lifetime) 💕\nLink: ${MYRA_SITE_URL}`;
+}
+
+// ===== Developer contact =====
+
+export const DEVELOPER_HANDLE = "codeninjavik_official";
+export const DEVELOPER_URL = `https://t.me/${DEVELOPER_HANDLE}`;
+
+const DEVELOPER_RE = /(developer|devloper|owner|creator|maalik|malik|banane\s*wal|banaya\s*kisne|kisne\s*banaya|who\s*(made|created|built)|admin\s*(se|ka)?\s*(baat|contact|number)|contact\s*(do|kar|number|karna|chahiye|info)|(apne|uska|iska|tumhare)\s*(developer|owner|creator)|support\s*(team|contact|chahiye))/i;
+
+export function detectDeveloperIntent(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return !!t.trim() && t.length < 120 && DEVELOPER_RE.test(t) && !/^\/(start|help)/.test(t);
+}
+
+export function developerMessage(name = "jaan"): { text: string; buttons: any[][] } {
+  return {
+    text: `Mere developer ka contact ye hai ${name} 🌸\n👉 @${DEVELOPER_HANDLE}`,
+    buttons: [[{ text: "💬 Developer se baat karo", url: DEVELOPER_URL }]],
+  };
+}
+
+// ===== Referral program (facts taken from jarvis-myra-ai-hub: 5% credited to wallet, ?ref= link, min withdrawal ₹500) =====
+
+const REFERRAL_RE = /(referr?al|refer\s*(link|code|kaise|karo|and earn)|commission|paisa\s*kam|kamai|earn(ing)?\s*(money|kaise|kare)|affiliate|invite\s*(link|code)|ref\s*link)/i;
+
+export function detectReferralIntent(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return !!t.trim() && t.length < 200 && REFERRAL_RE.test(t) && !/^\/(start|help)/.test(t);
+}
+
+export function referralMessage(name = "jaan"): { text: string; buttons: any[][] } {
+  return {
+    text:
+      `💰 Referral se paisa kamao, ${name} 🌸\n\n` +
+      `1️⃣ ${MYRA_SITE_URL} pe account banao (signup / login)\n` +
+      `2️⃣ Dashboard kholo — wahan tumhara apna referral link milega\n` +
+      `   (format: ${MYRA_SITE_URL}/pricing?ref=TUMHARA_CODE)\n` +
+      `3️⃣ Wo link doston ko bhejo\n` +
+      `4️⃣ Koi us link se Myra (₹999) kharidta hai to payment verify hote hi 5% commission (≈ ₹49) tumhare wallet me aa jata hai 💸\n` +
+      `5️⃣ Wallet ₹500 hone par Dashboard se UPI ya bank me withdraw kar sakte ho\n\n` +
+      `ℹ️ Apne hi link se khud kharidne par commission nahi milta. Jo banda ek baar tumhare link se judta hai, wo tumhare saath hi attach rehta hai.\n\n` +
+      `👉 Shuru karo: ${MYRA_SITE_URL}`,
+    buttons: [[{ text: "🌐 codeninjavik.in", url: MYRA_SITE_URL }]],
+  };
+}
+
+const ANNOUNCEMENTS = [
+  `📢 Myra ka referral link banao aur har sale pe 5% kamao — dashboard: ${MYRA_SITE_URL}`,
+  `📢 Myra AI sirf ₹999 me (lifetime)! Call, msg, alarm, PC control sab kuch 👉 ${MYRA_SITE_URL}`,
+  `📢 Myra app ₹999 me lifetime milti hai 🌸 download aur details: ${MYRA_SITE_URL}`,
+  `📢 Apna Myra assistant chahiye? ₹999 me lifetime, link: ${MYRA_SITE_URL}`,
+];
+
+/** Occasional Myra announcement (default ~12% of replies). Returns "" most of the time. */
+export function maybeAnnouncement(chance = 0.12): string {
+  if (Math.random() >= chance) return "";
+  return "\n\n" + ANNOUNCEMENTS[Math.floor(Math.random() * ANNOUNCEMENTS.length)];
 }
 
 const DOWNLOAD_RE = /(download|dawnload|donwload|downlod|dwnload|apk|app\s*(link|chahiye|do|de|dedo|kaha|kahan|kaise\s*mile|milega|milegi|kaise\s*download)|myra\s*(app|apk|kaha|kahan|kaise|link|chahiye|do|de|dedo|dena|send|bhejo|milegi|milega)|link\s*(do|de|dedo|dena|send|bhejo|chahiye|milega|kaha|kahan)|install\s*link|play\s*store|get\s*myra|buy\s*myra|kaha\s*se\s*(le|lu|milega|download)|kaise\s*(le|lu|kharidu|buy|download))/i;
