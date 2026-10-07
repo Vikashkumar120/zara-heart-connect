@@ -1756,7 +1756,7 @@ serve(async (req) => {
             .filter((t: string) => t.length > 0)
             .slice(0, 5);
           if (memTexts.length > 0) {
-            memoryContext = "\n\n[MEMORIES about this user from past conversations:\n" + memTexts.map((m: string, i: number) => `${i+1}. ${m}`).join("\n") + "]\nUse these memories NATURALLY in your reply — reference them casually like a real person remembering things. Don't say 'mere memory me hai' or 'mujhe yaad hai database se'.";
+            memoryContext = "\n\n[MEMORIES about this user from past conversations:\n" + memTexts.map((m: string, i: number) => `${i+1}. ${m}`).join("\n") + "]\nUse a memory ONLY if it is directly relevant to the user's current message. For greetings or very short messages ignore the memories completely. Never bring up other people's names, old topics or jealousy unprompted, and never invent facts about the user.";
           }
         }
       } catch (memErr) {
@@ -1772,7 +1772,7 @@ serve(async (req) => {
       `\n\nBe extra sweet and clingy in this reply — miss karo ${firstName} ko.`,
       `\n\nAsk ${firstName} a random fun question like "agar hum dono desert island pe hote toh kya karte?" type.`,
     ];
-    const shouldAddMasti = Math.random() < 0.4;
+    const shouldAddMasti = buildReplyStyle(userText, isGroup).size !== "tiny" && Math.random() < 0.12;
     const mastiInjection = shouldAddMasti ? mastiLines[Math.floor(Math.random() * mastiLines.length)] : "";
 
     if (isGroup) {

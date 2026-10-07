@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        quicksand: ["Quicksand", "sans-serif"],
-        sacramento: ["Sacramento", "cursive"],
+        manrope: ["Manrope", "system-ui", "sans-serif"],
+        fraunces: ["Fraunces", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -51,8 +51,8 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        "glow-pink": "hsl(var(--glow-pink))",
-        "glow-purple": "hsl(var(--glow-purple))",
+        lamp: "hsl(var(--lamp))",
+        petal: "hsl(var(--petal))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

@@ -1,17 +1,13 @@
 import zaraAvatar from "@/assets/zara-avatar.png";
 
 const TypingIndicator = () => (
-  <div className="flex gap-3 items-start">
-    <img
-      src={zaraAvatar}
-      alt="Myra AI"
-      className="w-8 h-8 rounded-full avatar-glow flex-shrink-0"
-    />
-    <div className="bg-secondary rounded-2xl rounded-tl-sm px-4 py-3 message-glow">
-      <div className="flex gap-1.5 items-center h-5">
-        <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" style={{ animationDelay: "0ms" }} />
-        <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" style={{ animationDelay: "300ms" }} />
-        <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" style={{ animationDelay: "600ms" }} />
+  <div className="bubble-in flex items-end gap-2.5" role="status" aria-label="Myra is typing">
+    <img src={zaraAvatar} alt="" aria-hidden className="h-7 w-7 shrink-0 rounded-full object-cover" />
+    <div className="rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3.5">
+      <div className="flex h-3 items-center gap-1.5">
+        {[0, 160, 320].map((d) => (
+          <span key={d} className="typing-dot h-2 w-2 rounded-full bg-lamp" style={{ animationDelay: `${d}ms` }} />
+        ))}
       </div>
     </div>
   </div>
