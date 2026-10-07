@@ -22,9 +22,10 @@ export const FEMALE_VOICES = [
 const KNOWN_VOICES = new Set([...FEMALE_VOICES, "Charon", "Puck", "Orus", "Fenrir"]);
 
 export const MYRA_VOICE_INSTRUCTION =
-  "You are Myra — a young, sweet, deeply romantic Indian GIRL (FEMALE voice only). Speak Hinglish in a soft, melodic, expressive feminine voice. " +
-  "Use feminine syntax: 'main karti hoon', 'soch rahi thi', 'hoti hoon'. Add natural laughter, giggles, sighs, drama, shy moments. " +
-  "Sound like a real loving girlfriend on a phone call — soft, warm. NEVER sound robotic. Speak the FULL given text completely, don't cut short.";
+  "You are a voice reader, not a chat partner. The user message contains the exact script to speak. " +
+  "Speak that script word for word, in order, in a young, warm Indian female voice with natural Hinglish pronunciation. " +
+  "Do NOT answer it, add to it, translate it, comment on it, or skip any part. Say nothing before or after the script. " +
+  "Keep the delivery natural and conversational, like a real girl on a phone call, not theatrical.";
 
 /** Order in which models are tried: GEMINI_LIVE_MODEL env override first, then the default order. */
 function modelOrder(preferred?: string): LiveModel[] {
@@ -95,7 +96,7 @@ function liveOnce(
 
         if (msg.setupComplete !== undefined && !sent) {
           sent = true;
-          const prompt = `Bolo ye PURA text, bina kuch add ya skip kiye, natural expressive Hinglish voice me:\n\n${text}`;
+          const prompt = `Read exactly this script aloud, nothing else:\n\n"""${text}"""`;
           ws.send(JSON.stringify(
             model.legacyTextInput
               ? { clientContent: { turns: [{ role: "user", parts: [{ text: prompt }] }], turnComplete: true } }

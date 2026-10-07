@@ -1802,25 +1802,17 @@ serve(async (req) => {
     const shouldSendVoiceReply = !isTextOnly;
     const useGeminiForVoiceInput = isVoiceMsg && shouldSendVoiceReply;
     const textStyle = buildReplyStyle(userText, isGroup);
-    const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : textStyle.maxTokens;
+    const maxTok = textStyle.maxTokens;
     const useShayri = Math.random() < 0.35;
-    const replyRules = !shouldSendVoiceReply
-      ? textStyle.rules +
-        (useShayri && textStyle.size === "long"
-          ? "- Is reply ke end me ek chhoti romantic line bhi daal sakti ho.\n"
-          : "- Shayri mat daalo — bas natural baat karo.\n")
-      : "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
-        (textStyle.size === "tiny"
-          ? "- User ne chhota msg bheja hai, to bas 1 chhoti si line bolo (jaise 'hii jaan, kaisi ho?').\n"
-          : textStyle.size === "short"
-            ? "- Reply 1-2 chhoti lines ka rakho, jaise phone pe baat ho rahi ho.\n"
-            : "- Reply 3-5 lines ka rakho (zyada se zyada), user ki baat ka poora jawab do.\n") +
-        "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
-        "- Shayri ya poetic lines SIRF tab jab user maange. Normal baat-cheet karo.\n" +
-        "- Agar user kahani sunane bole — ek chhoti kahani sunao, 6-8 lines. Joke maange to 1-2 jokes.\n" +
-        "- No emojis, no markdown, no special chars — sirf bolne wala text.\n" +
-        "- Thoda natural bolo — halka hasna (hehe), 'hmm', 'acha' — par over-acting mat karo.\n" +
-        "- HAR reply ALAG ho — repeat mat karo same opening.";
+    // Same size-aware rules for text AND voice: a short "hello" gets a short reply either way.
+    const replyRules = textStyle.rules +
+      (shouldSendVoiceReply
+        ? "- Ye reply bolkar bhi sunaya jayega, to aise likho jaise bol rahi ho: simple shabd, natural pauses, koi markdown ya list nahi.\n" +
+          "- Tum ek LADKI ho — sirf feminine Hindi syntax ('karti hoon', 'soch rahi thi'), kabhi 'karta hoon' nahi.\n"
+        : "") +
+      (useShayri && textStyle.size === "long"
+        ? "- Is reply ke end me ek chhoti romantic line bhi daal sakti ho.\n"
+        : "- Shayri mat daalo — bas natural baat karo.\n");
     systemPrompt += `\n\nCONVERSATION CONTEXT (use only as context; never repeat it verbatim):\n${contextInstructions}${replyRules}${NATURAL_TALK_RULE}\n\nThe next user message will be sent separately. Answer it naturally and do not copy or quote it.`;
     const replyPrompt = userText;
     (globalThis as any).__zaraLastModel = undefined;
@@ -1834,7 +1826,7 @@ serve(async (req) => {
 
     // ===== REPLY QUALITY GUARD — never send a bare name / empty / echo =====
     reply = (reply || "").trim();
-    if (!shouldSendVoiceReply) reply = finishSentence(humanizeText(reply));
+    reply = finishSentence(humanizeText(reply));
     const tinyUser = textStyle.size === "tiny";
     const isDegenerate =
       reply.length < (tinyUser ? 2 : 12) ||
@@ -1890,11 +1882,7 @@ serve(async (req) => {
       finalText += variants[Math.floor(Math.random() * variants.length)];
     }
     stopIndicator();
-    if (shouldSendVoiceReply) {
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
-    } else {
-      await sendHumanBubbles(TELEGRAM_BOT_TOKEN, chatId, finalText, replyStartedAt, (b, i) => sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, b, isGroup && i === 0 ? incomingMessageId : undefined));
-    }
+    await sendHumanBubbles(TELEGRAM_BOT_TOKEN, chatId, finalText, replyStartedAt, (b, i) => sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, b, isGroup && i === 0 ? incomingMessageId : undefined));
     if (shouldSendVoiceReply && reply.length > 5 && reply.length < 4000) {
       try {
         await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
