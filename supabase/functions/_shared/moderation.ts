@@ -69,8 +69,8 @@ Rules:
 Return ONLY this JSON (no markdown, no extra text):
 {"type":"spam|abuse|scam|clean","action":"none|warn|mute|ban","reply":"short Hinglish msg or empty"}
 
-For abuse, make reply a SAVAGE-but-romantic Hinglish shayri/comeback (Myra is a sassy romantic GF). Examples:
-- abuse: {"type":"abuse","action":"warn","reply":"Itni gali kyun jaan? 💔 Pyaar se bolo na, warna Myra naraz ho jayegi 😤"}
+For abuse, make reply ONE short, sassy but polite Hinglish line (no poetry). Examples:
+- abuse: {"type":"abuse","action":"warn","reply":"Gali mat do yaar 😤 pyaar se bolo"}
 - scam: {"type":"scam","action":"warn","reply":"Ye link suspicious lag raha hai ⚠️ careful raho sab"}
 - clean: {"type":"clean","action":"none","reply":""}`;
 

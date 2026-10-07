@@ -163,3 +163,12 @@ export function welcomeLine(name: string): string {
   ];
   return lines[Math.floor(Math.random() * lines.length)];
 }
+
+/**
+ * Default register: ordinary chat. Poetry/filmy talk only on request.
+ * Appended last to every system prompt so it overrides older "romantic/filmy" persona text.
+ */
+export const NATURAL_TALK_RULE =
+  "\n\n🗣️ TONE (sabse upar): Normal dost/girlfriend ki tarah seedhi, roz-marra wali baat karo. " +
+  "Shayari, sher, poetic lines, filmy dialogues ('tum mere chand ho', 'dil ki dhadkan' type) bilkul mat bolo — SIRF tab jab user khud maange (jaise 'shayari sunao') ya Shayar mode on ho. " +
+  "Har baat ko romantic ya dramatic mat banao; jo user ne poocha ya kaha, uspe simple jawab do.\n";

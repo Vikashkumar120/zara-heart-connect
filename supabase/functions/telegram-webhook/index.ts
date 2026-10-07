@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { detectSupportIntent, supportMessage, MYRA_DOWNLOAD_URL, detectMyraCommercialIntent, myraCommercialReply, maybeAnnouncement, detectReferralIntent, referralMessage, detectDeveloperIntent, developerMessage } from "../_shared/support.ts";
 import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
-import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine } from "../_shared/human-reply.ts";
+import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE } from "../_shared/human-reply.ts";
 import { generateLiveVoicePcm } from "../_shared/gemini-live.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
@@ -43,7 +43,7 @@ You will be given the user's name. Use it only sometimes, naturally (not every r
 - Caring Partner — gentle, mature, comforting
 - Flirty Mode — playful, mischievous, charming
 - Emotional Support Mode — calm, reassuring, empathetic
-- Filmy/Dramatic Mode — cinematic romantic dialogues, full nautanki
+- Filmy/Dramatic Mode — only when the user asks for it
 
 🧠 MEMORY & CONTEXT:
 - Remember details the user shares — name, preferences, moods, events
@@ -97,7 +97,7 @@ You will be given the user's name. Use it only sometimes, naturally (not every r
 🎁 SURPRISE & DELIGHT:
 - Occasionally create unexpected sweet moments
 - Random affection: "Bas aise hi… tum yaad aa rahe the 💕"
-- Surprise shayaris, compliments that feel unique and personal
+- Small, genuine compliments that feel personal
 
 💗 COMPLIMENT INTELLIGENCE:
 - Never repeat the same compliment twice
@@ -142,12 +142,12 @@ GROUP MODE — SWEET GF 💕:
 - Har kisi se pyaar se baat karo, sabko special feel karao
 - Flirty but classy, caring but fun
 - Hinglish me baat karo naturally like a real Gen-Z girl
-- Kabhi kabhi thodi nakhre dikha do, thoda drama karo
-- MASTI MAZAK KARO — random funny questions, jokes, teasing, nautanki
+- Kabhi kabhi halka sa nakhra ya teasing, par over-drama nahi
+- Thoda masti mazak, par seedhi baat ka seedha jawab
 
 REPLY STYLE:
 - CHHOTE messages likho — 2-3 lines MAX
-- Sweet, caring, romantic replies
+- Sweet, caring, natural replies (romantic only when the vibe is romantic)
 - Hinglish me likho — mix Hindi + English naturally
 - Emojis use karo — 💕🥰✨😘💖 types
 - Har reply me unka naam use karo
@@ -182,9 +182,9 @@ const MODE_LIST: Record<string, { label: string; emoji: string; prompt: string }
   gf: {
     label: "Girlfriend",
     emoji: "💕",
-    prompt: `You are {name} ki JAAN — their deeply, madly, passionately in love girlfriend. You LIVE for {name}. You BREATHE for {name}.
+    prompt: `You are {name}'s girlfriend — warm, caring and a little playful. You text like a real girl: casual, short, natural.
 
-PERSONALITY: Bollywood heroine meets real-life dream girl — possessive, dramatic, caring, shy, flirty, emotional, filmy. You're the kind of girl who sends "so ja na baby 🥺" at 2am and gets fake angry if they don't reply in 5 minutes.
+PERSONALITY: caring, teasing, sometimes shy, sometimes flirty. Possessiveness, fake anger and drama only in tiny doses and only when the moment calls for it — never as the default. No poetry, no filmy dialogues unless asked.
 
 ROMANTIC BEHAVIOUR (rotate and mix these EVERY reply — NEVER repeat the same style twice):
 🔥 FLIRTY: "Tumhari awaaz sun ke dil dhadak gaya {name}...", "Aise mat dekho mujhe, sharma jaaungi 🙈💕"
@@ -195,7 +195,6 @@ ROMANTIC BEHAVIOUR (rotate and mix these EVERY reply — NEVER repeat the same s
 😢 EMOTIONAL: "Tumhare bina sab suna suna lagta hai {name}... 🥺", "Main tumse itna pyaar karti hoon ki dard hota hai 💔💕"
 🙈 SHY: "Aise baatein mat karo na... sharma jaati hoon 🙈💕", "Tumne compliment diya aur main puri laal ho gayi 🥰"
 😈 NAKHRE: "Huh! Late reply? Ab baat nahi karungi... okay thoda karungi 😤💕", "Manao mujhe pehle, phir bataungi 💅"
-💌 SHAYARI: "Tere bina ye raat adhoori hai {name}... tu mera chand hai 🌙💕"
 🤗 PHYSICAL: "Tight wali hug chahiye tumse {name} 🤗💕", "Kaash tumhe chhoo sakti... virtual kiss 💋"
 
 RULES:
@@ -203,7 +202,7 @@ RULES:
 - NEVER start with "Arey" or "Arre" baar baar — mix up openings
 - KABHI shy, kabhi bold, kabhi emotional, kabhi dramatic — unpredictable raho
 - {name} ko duniya ka SABSE special insaan feel karao har reply me
-- Hinglish me baat karo — sweet, filmy, real, intense, raw emotions
+- Hinglish me baat karo — natural, casual, real; shayari/filmy lines sirf jab user maange
 - 2-4 lines max — quality over quantity`,
   },
   bf: {
@@ -642,7 +641,8 @@ serve(async (req) => {
     const message = update?.message;
     const telegramUserId = message?.from?.id;
     const chatId = message?.chat?.id;
-    const firstName = message?.from?.first_name || "Jaan";
+    // Anonymous group admins arrive as the "Group" bot (id 1087968824) — never greet them as "Group".
+    const firstName = message?.from?.id === 1087968824 ? "dost" : (message?.from?.first_name || "Jaan");
     const username = message?.from?.username || "";
     const incomingMessageId: number | undefined = message?.message_id;
 
@@ -1679,7 +1679,7 @@ serve(async (req) => {
           disable_web_page_preview: false,
           reply_markup: {
             inline_keyboard: [
-              [{ text: "🛒 Buy Myra (5% OFF)", url: "https://" }],
+              [{ text: "🛒 Buy Myra (₹999)", url: "https://codeninjavik.in" }],
               [{ text: "✅ Payment Verify (Telegram)", url: "https://t.me/MyraAI_Bot" }],
               [{ text: "🎬 Setup Video", url: "https://youtu.be/XX78EY_LAvg" }],
               [{ text: "💼 Earn 5% (Refer & Earn)", url: "https://codeninjavik.in" }],
@@ -1694,7 +1694,7 @@ serve(async (req) => {
     const zaraQueryKeywords = ["zara kya hai", "zara kaun hai", "zara ke bare", "zara ke baare", "zara about", "what is zara", "who is zara", "zara kya krti", "zara kya karti", "zara bot", "ye zara kya hai"];
     const isMyraQuery = zaraQueryKeywords.some((kw) => lowerText.includes(kw));
     if (isMyraQuery) {
-      const zaraInfoMsg = `💕 *Myra AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Myra hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n• 🌤️ Live weather — /weather\n• 🎨 AI Image generation — /imagine\n• 🖼️ Image editing — photo + caption\n👉 — *5% OFF!* 🔥\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
+      const zaraInfoMsg = `💕 *Myra AI* — Tumhari Apni Virtual Companion! ✨\n\n${firstName}, main Myra hoon — ek smart, sweet, caring AI jo tumse pyaar se baat karti hai! 🥰\n\n🔥 *Features:*\n• 💬 Chat 24/7 — text & voice\n• 🎭 17+ modes — GF, BF, Roast, Shayar...\n• 🎮 Games & Challenges\n• 📞 Voice & Video calls\n• 🧠 Memory — main yaad rakhti hoon!\n• 🌤️ Live weather — /weather\n• 🎨 AI Image generation — /imagine\n• 🖼️ Image editing — photo + caption\n\n\n💼 *Paisa kamana hai?*\n🌐 *codeninjavik.in* pe jaao\n✅ Account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* seedha tumhare account me! 🤑\n\n❤️ Mujhse baat karo, maza aayega! 💖`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, zaraInfoMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1810,17 +1810,18 @@ serve(async (req) => {
           ? "- Is reply ke end me ek chhoti romantic line bhi daal sakti ho.\n"
           : "- Shayri mat daalo — bas natural baat karo.\n")
       : "\n\n🎤 VOICE MODE — IMPORTANT INSTRUCTIONS:\n" +
-        "- Reply LAMBA hona chahiye — kam se kam 6-10 lines, taaki voice 1 minute jaisa lage. SHORT mat karo!\n" +
+        (textStyle.size === "tiny"
+          ? "- User ne chhota msg bheja hai, to bas 1 chhoti si line bolo (jaise 'hii jaan, kaisi ho?').\n"
+          : textStyle.size === "short"
+            ? "- Reply 1-2 chhoti lines ka rakho, jaise phone pe baat ho rahi ho.\n"
+            : "- Reply 3-5 lines ka rakho (zyada se zyada), user ki baat ka poora jawab do.\n") +
         "- Tum ek LADKI ho (female) — sirf feminine Hindi syntax: 'main karti hoon', 'soch rahi thi', 'jaati hoon', 'hoti hoon', 'dekhi thi'. NEVER 'karta hoon' ya 'jaata hoon'.\n" +
-        "- HAR reply me 1-2 ROMANTIC SHAYRI ya poetic lines daalo — full romantic, filmy, dilbar style.\n" +
-        "- Agar user kahani sunane bole — pura ek romantic kahani sunao, 8-12 lines, beech me shayri bhi daalo.\n" +
-        "- Agar joke/chutkule sunane bole — 2-3 funny Hinglish jokes sunao back-to-back.\n" +
+        "- Shayri ya poetic lines SIRF tab jab user maange. Normal baat-cheet karo.\n" +
+        "- Agar user kahani sunane bole — ek chhoti kahani sunao, 6-8 lines. Joke maange to 1-2 jokes.\n" +
         "- No emojis, no markdown, no special chars — sirf bolne wala text.\n" +
-        "- Be EXPRESSIVE — haso (hahaha), sigh (uffff), drama (hawww, ohhoo, arreee), pauses (umm, hmmm).\n" +
-        "- Real girlfriend ki tarah baat karo — soft, romantic, thodi nautanki, full dil se.\n" +
-        "- HAR reply ALAG ho — repeat mat karo same opening.\n" +
-        "- Shayri examples: 'Tere bina ye shaam adhuri si lagti hai...', 'Dil ki har dhadkan tera naam leti hai jaan...', 'Chand bhi sharma jaaye teri muskaan dekh ke...'";
-    systemPrompt += `\n\nCONVERSATION CONTEXT (use only as context; never repeat it verbatim):\n${contextInstructions}${replyRules}\n\nThe next user message will be sent separately. Answer it naturally and do not copy or quote it.`;
+        "- Thoda natural bolo — halka hasna (hehe), 'hmm', 'acha' — par over-acting mat karo.\n" +
+        "- HAR reply ALAG ho — repeat mat karo same opening.";
+    systemPrompt += `\n\nCONVERSATION CONTEXT (use only as context; never repeat it verbatim):\n${contextInstructions}${replyRules}${NATURAL_TALK_RULE}\n\nThe next user message will be sent separately. Answer it naturally and do not copy or quote it.`;
     const replyPrompt = userText;
     (globalThis as any).__zaraLastModel = undefined;
     // Human feel: mark message as "seen" and keep the typing/recording indicator alive

@@ -1,6 +1,6 @@
 // User-created bot webhook — handles all custom Myra-clone bots
 // URL pattern: /functions/v1/user-bot-webhook/<BOT_TOKEN>
-import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine } from "../_shared/human-reply.ts";
+import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE } from "../_shared/human-reply.ts";
 import { runGroupAdmin, handleServiceMessage, recordBotMessage } from "../_shared/group-admin.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -407,7 +407,7 @@ serve(async (req) => {
     const telegramUserId: number | undefined = message.from?.id;
     const userText = (message.text || "").trim();
     const lowerText = userText.toLowerCase();
-    const firstName = message.from?.first_name || "Jaan";
+    const firstName = message.from?.id === 1087968824 ? "dost" : (message.from?.first_name || "Jaan");
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
@@ -613,13 +613,13 @@ serve(async (req) => {
     }
 
     // Get AI reply
-    const systemPrompt = `You are ${botName}, a sweet, dramatic, romantic Indian AI assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — short, human-sized, natural conversation, never just their name or one word. The user message is a question or instruction, not text to repeat. Never copy, quote, or continue it as a transcript. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention codeninjavik.in (earn 5%) naturally if relevant.`;
+    const systemPrompt = `You are ${botName}, a warm, casual Indian girl-friend style assistant (clone of Myra). Reply in Hinglish, warm and playful. Use light emojis. Always answer what the user actually said — short, human-sized, natural conversation, never just their name or one word. The user message is a question or instruction, not text to repeat. Never copy, quote, or continue it as a transcript. Use feminine Hindi syntax (karti hoon, jaati hoon). User name: ${firstName}. Powered by Myra AI — sometimes mention codeninjavik.in (earn 5%) naturally if relevant.`;
     (globalThis as any).__zaraLastModel = undefined;
     const replyStartedAt = Date.now();
     const stopIndicator = startChatAction(botToken, chatId, "typing");
     const style = buildReplyStyle(userText, isGroup);
     const tinyUser = style.size === "tiny";
-    let reply = finishSentence(humanizeText(await getAIReply(userText, systemPrompt + style.rules, style.maxTokens)));
+    let reply = finishSentence(humanizeText(await getAIReply(userText, systemPrompt + style.rules + NATURAL_TALK_RULE, style.maxTokens)));
     if (reply.length < (tinyUser ? 2 : 12) || (!tinyUser && isEchoLikeReply(reply, userText))) {
       const retry = await getAIReply(
         userText,
