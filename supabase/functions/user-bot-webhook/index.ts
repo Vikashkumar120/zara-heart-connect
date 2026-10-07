@@ -2,7 +2,8 @@
 // URL pattern: /functions/v1/user-bot-webhook/<BOT_TOKEN>
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { detectSupportIntent, supportMessage } from "../_shared/support.ts";
+import { detectSupportIntent, supportMessage, detectMyraCommercialIntent, myraCommercialReply } from "../_shared/support.ts";
+import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -405,6 +406,14 @@ serve(async (req) => {
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
 
+    const commercialIntent = detectMyraCommercialIntent(userText);
+    if (commercialIntent) {
+      const commercialReply = myraCommercialReply(commercialIntent, firstName);
+      await sendMessage(botToken, chatId, commercialReply);
+      await sendGeminiTelegramVoice(botToken, chatId, commercialReply, "Aoede", telegramUserId);
+      return new Response("OK", { status: 200 });
+    }
+
     // ===== LIMIT ERROR HELP — works for text and image captions =====
     const limitText = (message.text || message.caption || "").trim();
     const limitIntent = detectSupportIntent(limitText);
@@ -440,6 +449,7 @@ serve(async (req) => {
               return new Response("OK", { status: 200 });
             }
             await sendMessage(botToken, chatId, `${v.text}\n\n_(via ${v.model})_`);
+            await sendGeminiTelegramVoice(botToken, chatId, v.text, "Aoede", telegramUserId);
             return new Response("OK", { status: 200 });
           }
         }
@@ -563,6 +573,7 @@ serve(async (req) => {
       if (supportIntent) {
         const { text: sText, buttons } = supportMessage(supportIntent, firstName);
         await sendButtons(botToken, chatId, sText, buttons as any);
+        await sendGeminiTelegramVoice(botToken, chatId, sText, "Aoede", telegramUserId);
         return new Response("OK", { status: 200 });
       }
     }
@@ -599,6 +610,10 @@ serve(async (req) => {
     }
     stopIndicator();
     await sendMessage(botToken, chatId, finalText);
+    if (reply.length > 5 && reply.length < 4000) {
+      await sendChatAction(botToken, chatId, "record_voice").catch(() => {});
+      await sendGeminiTelegramVoice(botToken, chatId, reply, "Aoede", telegramUserId);
+    }
 
     return new Response("OK", { status: 200 });
   } catch (e) {
