@@ -172,3 +172,6 @@ export const NATURAL_TALK_RULE =
   "\n\n🗣️ TONE (sabse upar): Normal dost/girlfriend ki tarah seedhi, roz-marra wali baat karo. " +
   "Shayari, sher, poetic lines, filmy dialogues ('tum mere chand ho', 'dil ki dhadkan' type) bilkul mat bolo — SIRF tab jab user khud maange (jaise 'shayari sunao') ya Shayar mode on ho. " +
   "Har baat ko romantic ya dramatic mat banao; jo user ne poocha ya kaha, uspe simple jawab do.\n";
+
+/** Bump on every behaviour change; users can send /version to see which build is actually deployed. */
+export const BUILD_ID = "2026-10-07-voice-sizeaware-2";

@@ -1,6 +1,6 @@
 // User-created bot webhook — handles all custom Myra-clone bots
 // URL pattern: /functions/v1/user-bot-webhook/<BOT_TOKEN>
-import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE } from "../_shared/human-reply.ts";
+import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE, BUILD_ID } from "../_shared/human-reply.ts";
 import { runGroupAdmin, handleServiceMessage, recordBotMessage } from "../_shared/group-admin.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -73,6 +73,8 @@ function isEchoLikeReply(reply: string, userText: string): boolean {
   return false;
 }
 
+let groqDeadUntil = 0;
+
 async function getAIReply(userMessage: string, systemPrompt: string, maxTokens = 200): Promise<string> {
   // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
@@ -85,7 +87,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
   } catch (e) { console.error("OpenRouter fail:", e); }
 
   // 2) Groq fallback
-  if (GROQ_API_KEY) {
+  if (GROQ_API_KEY && Date.now() >= groqDeadUntil) {
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -104,6 +106,8 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
         if (txt) { (globalThis as any).__zaraLastModel = "groq/llama-3.3-70b-versatile"; return txt; }
+      } else if (r.status === 401 || r.status === 403) {
+        groqDeadUntil = Date.now() + 60 * 60_000;
       }
     } catch (e) { console.error("Groq fail:", e); }
   }
@@ -129,7 +133,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
               { role: "system", content: systemPrompt },
               { role: "user", content: userMessage },
             ],
-            max_tokens: Math.max(maxTokens, 400),
+            max_tokens: Math.max(maxTokens * 3, 600), // 2.5 "thinking" tokens count toward this cap
           }),
         });
         if (r.status === 429 || r.status === 402) { console.error(`Lovable ${model} limit`); blockModelForUser(currentUserId, model); continue; }
@@ -410,6 +414,11 @@ serve(async (req) => {
     const firstName = message.from?.id === 1087968824 ? "dost" : (message.from?.first_name || "Jaan");
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
     (globalThis as any).__zaraCurrentUserId = telegramUserId;
+
+    if (/^\/version(@\w+)?$/i.test(userText)) {
+      await sendMessage(botToken, chatId, `build: ${BUILD_ID}`);
+      return new Response("OK", { status: 200 });
+    }
 
     // ===== 🛠 GROUP ADMIN TOOLKIT (commands + filters) =====
     if (isGroup) {

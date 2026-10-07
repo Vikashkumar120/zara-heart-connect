@@ -74,6 +74,8 @@ For abuse, make reply ONE short, sassy but polite Hinglish line (no poetry). Exa
 - scam: {"type":"scam","action":"warn","reply":"Ye link suspicious lag raha hai ⚠️ careful raho sab"}
 - clean: {"type":"clean","action":"none","reply":""}`;
 
+let groqDeadUntil = 0;
+
 async function classifyWithAI(text: string, groqKey: string, lovableKey: string): Promise<ModResult | null> {
   const body = {
     messages: [
@@ -85,7 +87,7 @@ async function classifyWithAI(text: string, groqKey: string, lovableKey: string)
   };
 
   // Try Groq first (fast)
-  if (groqKey) {
+  if (groqKey && Date.now() >= groqDeadUntil) {
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -96,6 +98,8 @@ async function classifyWithAI(text: string, groqKey: string, lovableKey: string)
         const d = await r.json();
         const txt = d.choices?.[0]?.message?.content;
         if (txt) return parseModJson(txt);
+      } else if (r.status === 401 || r.status === 403) {
+        groqDeadUntil = Date.now() + 60 * 60_000;
       }
     } catch (e) { console.error("mod groq fail:", e); }
   }

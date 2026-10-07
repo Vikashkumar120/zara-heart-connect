@@ -87,7 +87,7 @@ async function deliverTelegramAudio(botToken: string, chatId: number, audio: Uin
   try {
     const form = new FormData();
     form.append("chat_id", String(chatId));
-    form.append("voice", new Blob([audio], { type: "audio/wav" }), "myra-voice.wav");
+    form.append("voice", new Blob([new Uint8Array(audio)], { type: "audio/wav" }), "myra-voice.wav");
     const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendVoice`, {
       method: "POST",
       body: form,
@@ -97,7 +97,7 @@ async function deliverTelegramAudio(botToken: string, chatId: number, audio: Uin
     console.error("Telegram sendVoice failed:", telegramResponse.status, (await telegramResponse.text()).slice(0, 300));
     const audioForm = new FormData();
     audioForm.append("chat_id", String(chatId));
-    audioForm.append("audio", new Blob([audio], { type: "audio/wav" }), "myra-voice.wav");
+    audioForm.append("audio", new Blob([new Uint8Array(audio)], { type: "audio/wav" }), "myra-voice.wav");
     const audioResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendAudio`, {
       method: "POST",
       body: audioForm,

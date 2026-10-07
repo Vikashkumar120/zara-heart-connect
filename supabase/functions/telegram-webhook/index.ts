@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { detectSupportIntent, supportMessage, MYRA_DOWNLOAD_URL, detectMyraCommercialIntent, myraCommercialReply, maybeAnnouncement, detectReferralIntent, referralMessage, detectDeveloperIntent, developerMessage } from "../_shared/support.ts";
 import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
-import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE } from "../_shared/human-reply.ts";
+import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE, BUILD_ID } from "../_shared/human-reply.ts";
 import { generateLiveVoicePcm } from "../_shared/gemini-live.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
@@ -651,6 +651,12 @@ serve(async (req) => {
     }
 
     const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+
+    // /version — shows which build is really deployed (helps when a deploy silently fails)
+    if (/^\/version(@\w+)?$/i.test((message.text || "").trim())) {
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `build: ${BUILD_ID}`);
+      return new Response("OK", { status: 200 });
+    }
 
     // ===== 🛠 GROUP ADMIN TOOLKIT (commands + filters) =====
     if (isGroup) {
@@ -1916,14 +1922,18 @@ async function callGeminiModel(model: string, userMessage: string, systemPrompt:
 
   try {
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: "user", parts: [{ text: userMessage }] }],
-          generationConfig: { temperature: 0.9, maxOutputTokens: maxTokens },
+          generationConfig: {
+            temperature: 0.9,
+            maxOutputTokens: maxTokens,
+            ...(model.includes("2.5") ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+          },
         }),
       }
     );
@@ -1943,6 +1953,8 @@ async function callGeminiModel(model: string, userMessage: string, systemPrompt:
   return null;
 }
 
+let groqDeadUntil = 0; // set when Groq answers 401/403 so we stop calling it per message
+
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number, history: ChatTurn[] = []): Promise<string> {
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
@@ -1957,7 +1969,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
   }
 
   // Skip Groq if key invalid/missing — saves 2-3s per reply (current key returns 401)
-  const skipGroq = !apiKey || apiKey.length < 20 || Deno.env.get("SKIP_GROQ") === "1";
+  const skipGroq = !apiKey || apiKey.length < 20 || Deno.env.get("SKIP_GROQ") === "1" || Date.now() < groqDeadUntil;
   if (!skipGroq) {
     try {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -1983,6 +1995,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
         const txt = data.choices?.[0]?.message?.content;
         if (txt) { (globalThis as any).__zaraLastModel = "groq/llama-3.3-70b-versatile"; return txt; }
       } else {
+        if (response.status === 401 || response.status === 403) groqDeadUntil = Date.now() + 60 * 60_000;
         console.error("Groq error:", response.status, "— falling back to Lovable AI");
       }
     } catch (e) {
@@ -2016,7 +2029,8 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
               ...history,
               { role: "user", content: userMessage },
             ],
-            ...(maxTokens ? { max_tokens: Math.max(maxTokens, 400) } : { max_tokens: 600 }),
+            // Gemini 2.5 counts hidden "thinking" tokens inside max_tokens, so a tight cap cut replies mid-sentence.
+            ...(maxTokens ? { max_tokens: Math.max(maxTokens * 3, 600) } : { max_tokens: 800 }),
           }),
         });
         if (r.status === 429 || r.status === 402) {

@@ -264,6 +264,12 @@ export async function visionAsk(
   return null;
 }
 
+// Models that answered 401/403/404 are retired or unauthorised: skip them for 30 min instead of
+// burning a round-trip on every single message.
+const deadModels = new Map<string, number>();
+const DEAD_MS = 30 * 60_000;
+const isDead = (m: string) => (deadModels.get(m) ?? 0) > Date.now();
+
 /**
  * Try OpenRouter with smart routing + cross-model fallback.
  * Returns reply text, or null if all attempts fail (caller should fall back to Groq/Gemini).
@@ -280,9 +286,10 @@ export async function routeOpenRouter(
   if (!key) return null;
 
   const task = taskOverride || detectTask(userMessage);
-  const models = (forcedModel ? [forcedModel, ...MODELS[task]] : MODELS[task]).slice(0, 3);
+  const models = (forcedModel ? [forcedModel, ...MODELS[task]] : MODELS[task]).filter((m) => !isDead(m)).slice(0, 3);
 
   for (const model of models) {
+    if (isDead(model)) continue;
     try {
       const r = await fetch(OR_URL, {
         method: "POST",
@@ -305,6 +312,7 @@ export async function routeOpenRouter(
         signal: AbortSignal.timeout(8000),
       });
       if (!r.ok) {
+        if (r.status === 401 || r.status === 403 || r.status === 404) deadModels.set(model, Date.now() + DEAD_MS);
         console.error(`OpenRouter ${model} failed:`, r.status);
         continue;
       }
