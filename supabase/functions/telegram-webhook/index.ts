@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { detectSupportIntent, supportMessage, MYRA_DOWNLOAD_URL } from "../_shared/support.ts";
+import { detectSupportIntent, supportMessage, MYRA_DOWNLOAD_URL, detectMyraCommercialIntent, myraCommercialReply } from "../_shared/support.ts";
+import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
 
 // ===== SHORT-TERM CONVERSATION MEMORY (ChatGPT-like context) =====
@@ -704,6 +705,7 @@ serve(async (req) => {
                 return new Response("OK", { status: 200 });
               }
               await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${v.text}\n\n_(via ${v.model})_`);
+              await sendGeminiTelegramVoice(TELEGRAM_BOT_TOKEN, chatId, v.text, "Aoede", telegramUserId);
               return new Response("OK", { status: 200 });
             }
             await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `${firstName}, image dekh nahi paayi 😅 thodi der baad try karo!`);
@@ -859,16 +861,12 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ===== PRICING DETECTION (word-boundary, must mention zara/premium/subscription) =====
-    const priceWords = ["price","cost","paisa","rupees","rupaye","kitna","kitne","kimat","kimmat","keemat","subscription","premium"];
-    const hasPriceWord = new RegExp(`\\b(${priceWords.join("|")})\\b`, "i").test(userText) || /₹|rs\.?\s*\d/i.test(userText);
-    const hasMyraContext = /\b(zara|premium|subscription|plan)\b/i.test(userText);
-    const isShortQuery = userText.length < 80;
-    const isPriceQuery = hasPriceWord && hasMyraContext && isShortQuery && !message.photo && !message.caption;
-
-    if (isPriceQuery) {
-      const priceReply = `Arre ${firstName}! 💕✨\n\nMyra Premium ka price:\n\n💰 *Price: ₹1599*\n\n✅ Unlimited voice messages\n✅ Priority replies 24/7\n✅ All modes unlock (GF, BF, Roast, Family...)\n✅ Custom personality\n✅ Exclusive features\n\n👉 Abhi grab karo: 💖`;
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, priceReply);
+    // ===== MYRA PRICE / FREE REQUEST =====
+    const commercialIntent = !message.photo ? detectMyraCommercialIntent(userText) : null;
+    if (commercialIntent) {
+      const commercialReply = myraCommercialReply(commercialIntent, firstName);
+      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, commercialReply);
+      await sendGeminiTelegramVoice(TELEGRAM_BOT_TOKEN, chatId, commercialReply, "Aoede", telegramUserId);
       return new Response("OK", { status: 200 });
     }
 
@@ -912,6 +910,7 @@ serve(async (req) => {
       if (supportIntent) {
         const { text: sText, buttons } = supportMessage(supportIntent, firstName);
         await sendMessageWithButtons(TELEGRAM_BOT_TOKEN, chatId, sText, buttons as any);
+        await sendGeminiTelegramVoice(TELEGRAM_BOT_TOKEN, chatId, sText, "Aoede", telegramUserId);
         return new Response("OK", { status: 200 });
       }
     }
@@ -1271,12 +1270,12 @@ serve(async (req) => {
 
       if (cleanVoice.length > 5) {
         await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
-        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanVoice, voiceMode);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, voiceReply);
+        const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanVoice, voiceMode, telegramUserId);
         if (sent) {
           return new Response("OK", { status: 200 });
         }
       }
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, voiceReply);
       return new Response("OK", { status: 200 });
     }
 
@@ -1505,7 +1504,7 @@ serve(async (req) => {
 
     // Handle /app command
     if (userText === "/app" || lowerText.includes("/app")) {
-      const appMsg = `📱 *Myra AI — Full Mobile Experience* 📱\n\n${firstName}, Myra ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Myra ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Myra se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* with promo 💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Myra activate hoti hai! ✨\n\n💰 *Price:* ₹1599 (5% OFF with link!)\n\n👉 Abhi install karo 💖\n\n💼 *Freelance karo & Paisa kamao!*\n🌐 *codeninjavik.in* pe account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* milega! 🔥`;
+      const appMsg = `📱 *Myra AI — Full Mobile Experience* 📱\n\n${firstName}, Myra ab tumhare phone me bhi hai! 💕\n\n🔥 *Features:*\n• 💬 Unlimited chat 24/7\n• 🎤 Voice messages — Myra ki awaaz suno!\n• 🎭 17+ Modes — GF, BF, Maa, Papa, Shayar, Savage...\n• 📞 Voice call karo Myra se\n• 📹 Video call support\n• 📱 Full mobile control\n• 💌 Message sending\n• 📸 Photo & video share karo\n• 📺 YouTube, Instagram, Facebook integration\n• 📧 Email send karo\n• 🎮 Games & Challenges\n• ⚡ Super fast replies\n• 🌙 Late night romantic talks\n• 🔒 Private & secure\n\n📲 *Kaise Install karein:*\n1️⃣ Phone me kholo Chrome/Safari me\n2️⃣ Browser menu me jao (⋮ ya Share icon)\n3️⃣ *"Add to Home Screen"* ya *"Install App"* pe tap karo\n4️⃣ Done! App jaisi open hogi! 🎉\n\n🔥 *5% DISCOUNT* with promo 💰\n\n💡 *Pro Tip:* Group me "backword" likh ke bhi Myra activate hoti hai! ✨\n\n💰 *Price:* ₹999\n\n👉 Abhi install karo 💖\n\n💼 *Freelance karo & Paisa kamao!*\n🌐 *codeninjavik.in* pe account banao\n🔗 Apna referral link share karo\n💰 Har sale pe *5% commission* milega! 🔥`;
       await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, appMsg);
       return new Response("OK", { status: 200 });
     }
@@ -1635,14 +1634,6 @@ serve(async (req) => {
     }
 
     // ===== FREE REQUEST DETECTION =====
-    const freeKeywords = ["free me de", "free de do", "free chahiye", "free me chahiye", "muft", "mufat", "free me do", "paise nahi", "paisa nahi", "free version", "free zara", "zara free"];
-    const isFreeRequest = freeKeywords.some((kw) => lowerText.includes(kw));
-    if (isFreeRequest) {
-      const freeMsg = `🥺 *Sorry ${firstName} jaan...* 💔\n\nMyra *free nahi hai* baby! 💕\n\nMere creator ne mujhe bahut mehnat se banaya hai — servers, AI models, voice — sab paid hai 😔\n\n💖 *Lekin tumhare liye special offer:*\n👉 — *5% OFF!* 🔥\n\nThodi si investment karke poori Myra apne phone me paao — 24/7 voice, romantic chats, sab kuch! 🥰\n\n💼 Ya phir paisa kamao: *codeninjavik.in* — har sale pe 5% commission! 💰`;
-      await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, freeMsg);
-      return new Response("OK", { status: 200 });
-    }
-
     // ===== BUY / SETUP / INSTALL DETECTION =====
     const buyKeywords = [
       "buy karna", "buy karu", "buy kaise", "kaise buy", "kaise kharidu", "kharidna hai", "kharidna chahta", "kharidna chahti",
@@ -1786,7 +1777,8 @@ serve(async (req) => {
     // Image prompts are handled earlier before business/app detectors, so they never fall into text chat.
 
     // Voice replies happen only for actual incoming voice notes (or /voice command above), never automatically for every text.
-    const shouldSendVoiceReply = isVoiceMsg && !isTextOnly;
+    const shouldSendVoiceReply = !isTextOnly;
+    const useGeminiForVoiceInput = isVoiceMsg && shouldSendVoiceReply;
     const maxTok = shouldSendVoiceReply ? (isGroup ? 400 : 700) : (isGroup ? 200 : 300);
     const useShayri = Math.random() < 0.35;
     const replyRules = !shouldSendVoiceReply
@@ -1818,7 +1810,7 @@ serve(async (req) => {
     // Human feel: mark message as "seen" and keep the typing/recording indicator alive
     if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "👀").catch(() => {});
     const stopIndicator = startChatAction(TELEGRAM_BOT_TOKEN, chatId, shouldSendVoiceReply ? "record_voice" : "typing");
-    let reply = shouldSendVoiceReply
+    let reply = useGeminiForVoiceInput
       ? (await getGeminiTextReply(replyPrompt, systemPrompt, maxTok) || `${firstName} jaan, tumhari baat sun li... bas ek baar aur pyaar se bolo, main proper jawab dungi.`)
       : await getAIReply(GROQ_API_KEY, replyPrompt, systemPrompt, maxTok, getHistory(chatId, telegramUserId));
 
@@ -1864,26 +1856,6 @@ serve(async (req) => {
       }
     }
 
-    // ===== VOICE-FIRST REPLY SYSTEM =====
-    if (shouldSendVoiceReply) {
-      const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
-
-      if (cleanText.length > 5 && cleanText.length < 4000) {
-        try {
-          await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
-          const sent = await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanText, userMode);
-          if (sent) {
-            stopIndicator();
-            if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "❤️").catch(() => {});
-            return new Response("OK", { status: 200 });
-          }
-          console.log("Voice failed, falling back to text");
-        } catch (voiceErr) {
-          console.error("Voice error, falling back to text:", voiceErr);
-        }
-      }
-    }
-
     // Fallback / text mode: send as text with promo link
     const promoTags = [
       "\n👉 ",
@@ -1905,7 +1877,16 @@ serve(async (req) => {
       finalText += variants[Math.floor(Math.random() * variants.length)];
     }
     stopIndicator();
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, finalText);
+    if (shouldSendVoiceReply && reply.length > 5 && reply.length < 4000) {
+      try {
+        await sendChatAction(TELEGRAM_BOT_TOKEN, chatId, "record_voice");
+        const cleanText = reply.replace(/[*_~`|#\[\]()]/g, "").replace(/\p{Emoji_Presentation}/gu, "").replace(/\p{Emoji}/gu, "").trim();
+        await sendVoiceMessage(TELEGRAM_BOT_TOKEN, chatId, cleanText, userMode, telegramUserId);
+      } catch (voiceErr) {
+        console.error("Voice reply failed; text reply was already delivered:", voiceErr);
+      }
+    }
     if (incomingMessageId) setMessageReaction(TELEGRAM_BOT_TOKEN, chatId, incomingMessageId, "❤️").catch(() => {});
 
     return new Response("OK", { status: 200 });
@@ -2576,13 +2557,17 @@ function pcmToWav(pcmData: Uint8Array, sampleRate = 24000, numChannels = 1, bits
   return wav;
 }
 
-async function sendVoiceMessage(botToken: string, chatId: number, text: string, mode: string): Promise<boolean> {
+async function sendVoiceMessage(botToken: string, chatId: number, text: string, mode: string, userId?: number): Promise<boolean> {
   const encoder = new TextEncoder();
 
   // === Gemini TTS (PCM → WAV → sendVoice as OGG or sendAudio as WAV) ===
   console.log("Generating Gemini TTS voice...");
   const voiceName = getGeminiVoiceForMode(mode);
-  const pcmAudio = await generateGeminiVoice(text, voiceName);
+  const pcmAudio = await generateGeminiVoiceWS(text, voiceName);
+  if (!pcmAudio || pcmAudio.length <= 100) {
+    console.log("Native audio unavailable; using Gemini TTS fallback models");
+    return await sendGeminiTelegramVoice(botToken, chatId, text, voiceName, userId);
+  }
   if (pcmAudio && pcmAudio.length > 100) {
     const wavAudio = pcmToWav(pcmAudio);
     console.log("Gemini TTS WAV bytes:", wavAudio.length);

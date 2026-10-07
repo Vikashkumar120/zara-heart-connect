@@ -5,6 +5,26 @@ export const MYRA_SETUP_VIDEO = "https://youtu.be/nyUVa692EIs";
 export const MYRA_API_VIDEO = "https://youtu.be/A_4LBZHH8nE";
 export const MYRA_ALT_DOWNLOAD_URL = "https://www.mediafire.com/file/d67zzslhxoce26z/app-release.apk/file";
 
+export type MyraCommercialIntent = "free" | "price" | null;
+
+export function detectMyraCommercialIntent(text: string): MyraCommercialIntent {
+  const t = (text || "").toLowerCase();
+  if (!t.trim()) return null;
+
+  const asksForFree = /\bfree\b.{0,35}\b(myra|assistant|app|apk|bot|version|me|mein|mujhe|chahiye|do|de|mile|mil|hai|h|kya)\b|\b(myra|assistant|app|apk|bot)\b.{0,35}\bfree\b|\bfree\s*(hai|h|chahiye|milega|milegi|de\s*do|do|version)\b|\b(mu[f]?t|free me|free mein|without payment|bina paise)\b/i.test(t);
+  if (asksForFree) return "free";
+
+  const asksPrice = /\b(price|cost|kitna|kitne|kimat|kimmat|keemat|rate|rupees|rupaye|subscription|premium|paid)\b|₹|\brs\.?\s*\d/i.test(t);
+  const mentionsMyra = /\b(myra|assistant|app|apk|bot|premium|subscription)\b/i.test(t);
+  return asksPrice && mentionsMyra && t.length < 180 ? "price" : null;
+}
+
+export function myraCommercialReply(intent: Exclude<MyraCommercialIntent, null>, name = "jaan"): string {
+  return intent === "free"
+    ? `Nahi ${name}, Myra free nahi hai — paid hai. Iski price ₹999 hai. 💕`
+    : `${name}, Myra paid hai aur iski price ₹999 hai. 💕`;
+}
+
 const DOWNLOAD_RE = /(download|dawnload|donwload|downlod|dwnload|apk|app\s*(link|chahiye|do|de|dedo|kaha|kahan|kaise\s*mile|milega|milegi|kaise\s*download)|myra\s*(app|apk|kaha|kahan|kaise|link|chahiye|do|de|dedo|dena|send|bhejo|milegi|milega)|link\s*(do|de|dedo|dena|send|bhejo|chahiye|milega|kaha|kahan)|install\s*link|play\s*store|get\s*myra|buy\s*myra|kaha\s*se\s*(le|lu|milega|download)|kaise\s*(le|lu|kharidu|buy|download))/i;
 
 const INSTALL_ISSUE_RE = /(install\s*(nahi|nhi|not)|nahi\s*install|nhi\s*install|installing\s*fail|app\s*not\s*install|blocked\s*by\s*play|play\s*protect|harmful\s*app|unsafe\s*app|installation\s*(failed|block))/i;
