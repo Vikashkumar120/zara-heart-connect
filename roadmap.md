@@ -1,0 +1,4 @@
+- [x] Verify GitHub main commit 87d5409 and confirm bot/shared source matches it.
+- [x] Check requested runtime secrets.
+- [x] Apply group-admin migration and service-role grants.
+- [x] Redeploy telegram-webhook and user-bot-webhook; confirm version label and deployment result.
