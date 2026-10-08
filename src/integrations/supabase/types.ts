@@ -116,25 +116,8 @@ export type Database = {
         }
         Relationships: []
       }
-      zara_group_approved: {
-        Row: { bot_token: string; chat_id: number; created_at: string; telegram_user_id: number }
-        Insert: { bot_token?: string; chat_id: number; created_at?: string; telegram_user_id: number }
-        Update: { bot_token?: string; chat_id?: number; created_at?: string; telegram_user_id?: number }
-        Relationships: []
-      }
-      zara_bot_msgs: {
-        Row: { bot_token: string; chat_id: number; created_at: string; message_id: number }
-        Insert: { bot_token?: string; chat_id: number; created_at?: string; message_id: number }
-        Update: { bot_token?: string; chat_id?: number; created_at?: string; message_id?: number }
-        Relationships: []
-      }
       zara_mod_config: {
         Row: {
-          antiflood_limit: number
-          antilink: boolean
-          antiforward: boolean
-          bioremove: boolean
-          join_remove: boolean
           blacklisted_words: string[]
           bot_token: string
           chat_id: number
@@ -145,11 +128,6 @@ export type Database = {
           whitelisted_words: string[]
         }
         Insert: {
-          antiflood_limit?: number
-          antilink?: boolean
-          antiforward?: boolean
-          bioremove?: boolean
-          join_remove?: boolean
           blacklisted_words?: string[]
           bot_token?: string
           chat_id: number
@@ -160,11 +138,6 @@ export type Database = {
           whitelisted_words?: string[]
         }
         Update: {
-          antiflood_limit?: number
-          antilink?: boolean
-          antiforward?: boolean
-          bioremove?: boolean
-          join_remove?: boolean
           blacklisted_words?: string[]
           bot_token?: string
           chat_id?: number
