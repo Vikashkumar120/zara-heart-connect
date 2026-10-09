@@ -6,6 +6,7 @@ import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
 import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE, BUILD_ID } from "../_shared/human-reply.ts";
 import { generateLiveVoicePcm } from "../_shared/gemini-live.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
+import { generateGeminiTextReply, temporaryReplyUnavailable } from "../_shared/gemini-text.ts";
 
 // ===== SHORT-TERM CONVERSATION MEMORY (ChatGPT-like context) =====
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -1908,54 +1909,36 @@ serve(async (req) => {
 });
 
 async function getGeminiTextReply(userMessage: string, systemPrompt: string, maxTokens = 300): Promise<string | null> {
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
-  for (const m of models) {
-    const out = await callGeminiModel(m, userMessage, systemPrompt, maxTokens);
-    if (out) return out;
-  }
-  return null;
-}
-
-async function callGeminiModel(model: string, userMessage: string, systemPrompt: string, maxTokens = 300): Promise<string | null> {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) return null;
-
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userMessage }] }],
-          generationConfig: {
-            temperature: 0.9,
-            maxOutputTokens: maxTokens,
-            ...(model.includes("2.5") ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-          },
-        }),
-      }
-    );
-    if (!r.ok) {
-      console.error(`Gemini ${model} failed:`, r.status, (await r.text()).slice(0, 300));
-      return null;
-    }
-    const data = await r.json();
-    const txt = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("").trim();
-    if (txt) {
-      (globalThis as any).__zaraLastModel = `google/${model}`;
-      return txt;
-    }
-  } catch (e) {
-    console.error("Gemini text reply exception:", e);
-  }
-  return null;
+  const result = await generateGeminiTextReply(
+    userMessage,
+    systemPrompt,
+    maxTokens,
+    [],
+    (globalThis as any).__zaraCurrentUserId,
+  );
+  if (!result) return null;
+  (globalThis as any).__zaraLastModel = result.model;
+  return result.text;
 }
 
 let groqDeadUntil = 0; // set when Groq answers 401/403 so we stop calling it per message
 
 async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number, history: ChatTurn[] = []): Promise<string> {
+  // Prefer live Gemini text generation for normal replies; keep /model overrides first.
+  if (!(globalThis as any).__zaraForcedModel) {
+    const gemini = await generateGeminiTextReply(
+      userMessage,
+      systemPrompt,
+      maxTokens || 600,
+      history,
+      (globalThis as any).__zaraCurrentUserId,
+    );
+    if (gemini?.text) {
+      (globalThis as any).__zaraLastModel = gemini.model;
+      return gemini.text;
+    }
+  }
+
   // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel, history);
@@ -2058,7 +2041,7 @@ async function getAIReply(apiKey: string, userMessage: string, systemPrompt: str
   const direct = await getGeminiTextReply(userMessage, systemPrompt, maxTokens || 600);
   if (direct) return direct;
 
-  return `Hmm ${((globalThis as any).__zaraUserName) || "jaan"}, main sun rahi hoon 💕 thoda detail me batao na — main pura reply deti hoon abhi! ✨`;
+  return temporaryReplyUnavailable();
 }
 
 // ===== HUMAN-LIKE INDICATORS: persistent typing + seen/sent reactions =====

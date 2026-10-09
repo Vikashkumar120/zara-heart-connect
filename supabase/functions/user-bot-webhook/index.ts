@@ -7,6 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { detectSupportIntent, supportMessage, detectMyraCommercialIntent, myraCommercialReply, maybeAnnouncement, detectReferralIntent, referralMessage, detectDeveloperIntent, developerMessage } from "../_shared/support.ts";
 import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
+import { generateGeminiTextReply, temporaryReplyUnavailable } from "../_shared/gemini-text.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -76,6 +77,21 @@ function isEchoLikeReply(reply: string, userText: string): boolean {
 let groqDeadUntil = 0;
 
 async function getAIReply(userMessage: string, systemPrompt: string, maxTokens = 200): Promise<string> {
+  // Use the bot owner's selected model when set; otherwise prefer working Gemini text models.
+  if (!(globalThis as any).__zaraForcedModel) {
+    const gemini = await generateGeminiTextReply(
+      userMessage,
+      systemPrompt,
+      maxTokens,
+      [],
+      (globalThis as any).__zaraCurrentUserId,
+    );
+    if (gemini?.text) {
+      (globalThis as any).__zaraLastModel = gemini.model;
+      return gemini.text;
+    }
+  }
+
   // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
   try {
     const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
@@ -144,7 +160,7 @@ async function getAIReply(userMessage: string, systemPrompt: string, maxTokens =
       } catch (e) { console.error(`Lovable ${model} ex:`, e); }
     }
   }
-  return "Ek sec ruko jaan 😅 sab models thode busy hain — dobara try karo!";
+  return temporaryReplyUnavailable();
 }
 
 

@@ -2,3 +2,4 @@
 - [x] Check requested runtime secrets.
 - [x] Apply group-admin migration and service-role grants.
 - [x] Redeploy telegram-webhook and user-bot-webhook; confirm version label and deployment result.
+- [x] Fix repetitive Telegram answers with shared verified Gemini text fallbacks; both webhooks redeployed and local tests/build passed. Live chat verification remains unconfirmed.
