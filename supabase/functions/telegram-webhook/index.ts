@@ -6,7 +6,7 @@ import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
 import { buildReplyStyle, finishSentence, humanizeText, sendHumanBubbles, welcomeLine, NATURAL_TALK_RULE, BUILD_ID } from "../_shared/human-reply.ts";
 import { generateLiveVoicePcm } from "../_shared/gemini-live.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
-import { generateGeminiTextReply, temporaryReplyUnavailable } from "../_shared/gemini-text.ts";
+import { generateGroqTextReply, temporaryReplyUnavailable } from "../_shared/groq-text.ts";
 
 // ===== SHORT-TERM CONVERSATION MEMORY (ChatGPT-like context) =====
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -1910,139 +1910,19 @@ serve(async (req) => {
   }
 });
 
-async function getGeminiTextReply(userMessage: string, systemPrompt: string, maxTokens = 300): Promise<string | null> {
-  const result = await generateGeminiTextReply(
+async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number, history: ChatTurn[] = []): Promise<string> {
+  const result = await generateGroqTextReply(
     userMessage,
     systemPrompt,
-    maxTokens,
-    [],
+    maxTokens || 600,
+    history,
     (globalThis as any).__zaraCurrentUserId,
+    apiKey,
   );
-  if (!result) return null;
-  (globalThis as any).__zaraLastModel = result.model;
-  return result.text;
-}
-
-let groqDeadUntil = 0; // set when Groq answers 401/403 so we stop calling it per message
-
-async function getAIReply(apiKey: string, userMessage: string, systemPrompt: string, maxTokens?: number, history: ChatTurn[] = []): Promise<string> {
-  // Prefer live Gemini text generation for normal replies; keep /model overrides first.
-  if (!(globalThis as any).__zaraForcedModel) {
-    const gemini = await generateGeminiTextReply(
-      userMessage,
-      systemPrompt,
-      maxTokens || 600,
-      history,
-      (globalThis as any).__zaraCurrentUserId,
-    );
-    if (gemini?.text) {
-      (globalThis as any).__zaraLastModel = gemini.model;
-      return gemini.text;
-    }
+  if (result?.text) {
+    (globalThis as any).__zaraLastModel = result.model;
+    return result.text;
   }
-
-  // 1) Try OpenRouter smart router first (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
-  try {
-    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel, history);
-    if (or?.text) {
-      console.log(`[Myra AI] OpenRouter model: ${or.model}`);
-      (globalThis as any).__zaraLastModel = or.model;
-      return or.text;
-    }
-  } catch (e) {
-    console.error("OpenRouter router failed, falling back:", e);
-  }
-
-  // Skip Groq if key invalid/missing — saves 2-3s per reply (current key returns 401)
-  const skipGroq = !apiKey || apiKey.length < 20 || Deno.env.get("SKIP_GROQ") === "1" || Date.now() < groqDeadUntil;
-  if (!skipGroq) {
-    try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...history,
-            { role: "user", content: userMessage },
-          ],
-          temperature: 0.95,
-          ...(maxTokens ? { max_tokens: maxTokens } : {}),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const txt = data.choices?.[0]?.message?.content;
-        if (txt) { (globalThis as any).__zaraLastModel = "groq/llama-3.3-70b-versatile"; return txt; }
-      } else {
-        if (response.status === 401 || response.status === 403) groqDeadUntil = Date.now() + 60 * 60_000;
-        console.error("Groq error:", response.status, "— falling back to Lovable AI");
-      }
-    } catch (e) {
-      console.error("Groq exception, falling back:", e);
-    }
-  }
-
-  // Fallback: Lovable AI Gateway — rotate through several models on limit/error
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (LOVABLE_API_KEY) {
-    const lovableChain = [
-      "google/gemini-2.5-flash",
-      "google/gemini-2.5-flash-lite",
-      "openai/gpt-5-mini",
-      "openai/gpt-5-nano",
-      "google/gemini-2.5-pro",
-    ];
-    for (const model of lovableChain) {
-      if ((globalThis as any).__zaraIsModelBlocked?.((globalThis as any).__zaraCurrentUserId, model)) {
-        console.log(`Skipping ${model}: blocked for user (rate-limited recently)`);
-        continue;
-      }
-      try {
-        const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...history,
-              { role: "user", content: userMessage },
-            ],
-            // Gemini 2.5 counts hidden "thinking" tokens inside max_tokens, so a tight cap cut replies mid-sentence.
-            ...(maxTokens ? { max_tokens: Math.max(maxTokens * 3, 600) } : { max_tokens: 800 }),
-          }),
-        });
-        if (r.status === 429 || r.status === 402) {
-          console.error(`Lovable AI ${model} limit hit (${r.status}), switching model`);
-          (globalThis as any).__zaraBlockModelForUser?.((globalThis as any).__zaraCurrentUserId, model);
-          continue;
-        }
-        if (!r.ok) {
-          console.error(`Lovable AI ${model} error:`, r.status);
-          continue;
-        }
-        const d = await r.json();
-        const txt = d.choices?.[0]?.message?.content;
-        if (txt && txt.trim()) {
-          (globalThis as any).__zaraLastModel = model;
-          return txt;
-        }
-      } catch (e) {
-        console.error(`Lovable AI ${model} exception:`, e);
-      }
-    }
-  }
-
-  // Final fallback: direct Gemini API
-  const direct = await getGeminiTextReply(userMessage, systemPrompt, maxTokens || 600);
-  if (direct) return direct;
-
   return temporaryReplyUnavailable();
 }
 
