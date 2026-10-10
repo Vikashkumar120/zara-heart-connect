@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { detectSupportIntent, supportMessage, detectMyraCommercialIntent, myraCommercialReply, maybeAnnouncement, detectReferralIntent, referralMessage, detectDeveloperIntent, developerMessage } from "../_shared/support.ts";
 import { sendGeminiTelegramVoice } from "../_shared/gemini-voice.ts";
 import { routeOpenRouter, visionAsk, resolveModelId, MODEL_CATALOG } from "../_shared/openrouter.ts";
-import { generateGeminiTextReply, temporaryReplyUnavailable } from "../_shared/gemini-text.ts";
+import { generateGroqTextReply, temporaryReplyUnavailable } from "../_shared/groq-text.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -74,91 +74,18 @@ function isEchoLikeReply(reply: string, userText: string): boolean {
   return false;
 }
 
-let groqDeadUntil = 0;
-
 async function getAIReply(userMessage: string, systemPrompt: string, maxTokens = 200): Promise<string> {
-  // Use the bot owner's selected model when set; otherwise prefer working Gemini text models.
-  if (!(globalThis as any).__zaraForcedModel) {
-    const gemini = await generateGeminiTextReply(
-      userMessage,
-      systemPrompt,
-      maxTokens,
-      [],
-      (globalThis as any).__zaraCurrentUserId,
-    );
-    if (gemini?.text) {
-      (globalThis as any).__zaraLastModel = gemini.model;
-      return gemini.text;
-    }
-  }
-
-  // 1) OpenRouter smart router (DeepSeek/Claude/GPT/Llama/Mistral/Grok — no Gemini)
-  try {
-    const or = await routeOpenRouter(userMessage, systemPrompt, maxTokens, undefined, (globalThis as any).__zaraForcedModel);
-    if (or?.text) {
-      console.log(`[Clone Bot] OpenRouter model: ${or.model}`);
-      (globalThis as any).__zaraLastModel = or.model;
-      return or.text;
-    }
-  } catch (e) { console.error("OpenRouter fail:", e); }
-
-  // 2) Groq fallback
-  if (GROQ_API_KEY && Date.now() >= groqDeadUntil) {
-    try {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-          temperature: 0.95,
-          max_tokens: maxTokens,
-        }),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        const txt = d.choices?.[0]?.message?.content;
-        if (txt) { (globalThis as any).__zaraLastModel = "groq/llama-3.3-70b-versatile"; return txt; }
-      } else if (r.status === 401 || r.status === 403) {
-        groqDeadUntil = Date.now() + 60 * 60_000;
-      }
-    } catch (e) { console.error("Groq fail:", e); }
-  }
-  // Lovable AI fallback
-  if (LOVABLE_API_KEY) {
-    const chain = [
-      "google/gemini-2.5-flash",
-      "google/gemini-2.5-flash-lite",
-      "openai/gpt-5-mini",
-      "openai/gpt-5-nano",
-      "google/gemini-2.5-pro",
-    ];
-    const currentUserId = (globalThis as any).__zaraCurrentUserId as number | undefined;
-    for (const model of chain) {
-      if (isModelBlocked(currentUserId, model)) { console.log(`Skipping blocked ${model} for user`); continue; }
-      try {
-        const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userMessage },
-            ],
-            max_tokens: Math.max(maxTokens * 3, 600), // 2.5 "thinking" tokens count toward this cap
-          }),
-        });
-        if (r.status === 429 || r.status === 402) { console.error(`Lovable ${model} limit`); blockModelForUser(currentUserId, model); continue; }
-        if (!r.ok) { console.error(`Lovable ${model}:`, r.status); continue; }
-        const d = await r.json();
-        const txt = d.choices?.[0]?.message?.content;
-        if (txt && txt.trim()) { (globalThis as any).__zaraLastModel = model; return txt; }
-      } catch (e) { console.error(`Lovable ${model} ex:`, e); }
-    }
+  const result = await generateGroqTextReply(
+    userMessage,
+    systemPrompt,
+    maxTokens,
+    [],
+    (globalThis as any).__zaraCurrentUserId,
+    GROQ_API_KEY,
+  );
+  if (result?.text) {
+    (globalThis as any).__zaraLastModel = result.model;
+    return result.text;
   }
   return temporaryReplyUnavailable();
 }
