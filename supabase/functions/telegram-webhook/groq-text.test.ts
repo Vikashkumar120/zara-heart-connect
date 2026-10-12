@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-import { generateGroqTextReply, GROQ_KEY_ENV_NAMES } from "./groq-text.ts";
+import { generateGroqTextReply, GROQ_KEY_ENV_NAMES } from "../_shared/groq-text.ts";
 
 Deno.test("Groq text uses the next saved API key after a quota response", async () => {
   assertEquals(GROQ_KEY_ENV_NAMES.length, 10);

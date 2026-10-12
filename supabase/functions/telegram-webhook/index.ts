@@ -519,8 +519,8 @@ serve(async (req) => {
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!TELEGRAM_BOT_TOKEN || !LOVABLE_API_KEY) {
-      console.error("Missing TELEGRAM_BOT_TOKEN or LOVABLE_API_KEY");
+    if (!TELEGRAM_BOT_TOKEN) {
+      console.error("Missing TELEGRAM_BOT_TOKEN");
       return new Response("OK", { status: 200 });
     }
 
